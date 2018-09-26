@@ -1,0 +1,723 @@
+#include "polygon.h"
+
+int polygon_num_points( struct polygon * p )
+{
+    int i = 0;
+    int count = 0;
+
+    if( p == NULL )
+    {
+        return 0;
+    }
+
+    for( i = 0; i < p->num_contours; i++ )
+    {
+        if( p->contours[i] != NULL )
+        {
+            count += p->contours[i]->num_points;
+        }
+    }
+
+    return count;
+}
+
+void polygon_boundingbox( struct polygon * p, Point * min, Point * max )
+{
+    double min_x = 0;
+    double min_y = 0;
+    double max_x = 0;
+    double max_y = 0;
+    int i = 0;
+    Point min_temp = {0.0};
+    Point max_temp = {0.0};
+
+    min_x = DBL_MAX;
+    min_y = DBL_MAX;
+    max_x = -DBL_MAX;
+    max_y = -DBL_MAX;
+
+    if( p == NULL )
+    {
+        return;
+    }
+
+    for( i = 0; i < p->num_contours; i++ )
+    {
+        if( p->contours[i] == NULL )
+        {
+            return;
+        }
+
+        contour_bounding_box( p->contours[i], &min_temp, &max_temp );
+
+        if( min_temp.x < min_x )
+        {
+            min_x = min_temp.x;
+        }
+
+        if( min_temp.y < min_y )
+        {
+            min_y = min_temp.y;
+        }
+
+        if( max_temp.x > max_x )
+        {
+            max_x = max_temp.x;
+        }
+
+        if( max_temp.y > max_y )
+        {
+            max_y = max_temp.y;
+        }
+    }
+
+    if( min == NULL )
+    {
+        min = ( Point * ) palloc0( sizeof( Point ) );
+    }
+
+    if( max == NULL )
+    {
+        max = ( Point * ) palloc0( sizeof( Point ) );
+    }
+
+    min->x = min_x;
+    min->y = min_y;
+    max->x = max_x;
+    max->y = max_y;
+
+    return;
+}
+
+void polygon_move( struct polygon * p, double x, double y )
+{
+    int i = 0;
+    int j = 0;
+
+    if( p == NULL )
+    {
+        return;
+    }
+
+    for( i = 0; i < p->num_contours; i++ )
+    {
+        if( p->contours[i] == NULL )
+        {
+            return;
+        }
+
+        for( j = 0; j < p->contours[i]->num_points; j++ )
+        {
+            p->contours[i]->points[j]->x = p->contours[i]->points[j]->x + x;
+            p->contours[i]->points[j]->y = p->contours[i]->points[j]->y + y;
+        }
+    }
+
+    return;
+}
+
+void polygon_erase_contour( struct polygon * p, int ind )
+{
+    int i = 0;
+    int c_i = 0;
+    struct contour ** temp_contours = NULL;
+
+    if( p == NULL )
+    {
+        return;
+    }
+
+    if( i >= p->num_contours )
+    {
+        return;
+    }
+
+    free_contour( p->contours[ind] );
+    p->contours[ind] = NULL;
+
+    temp_contours = ( struct contour ** ) palloc0(
+        sizeof( struct contour * )
+      * ( p->num_contours - 1 )
+    );
+
+    for( i = 0; i < p->num_contours; i++ )
+    {
+        if( p->contours[i] != NULL )
+        {
+            temp_contours[c_i] = p->contours[i];
+            c_i++;
+        }
+    }
+
+    pfree( p->contours );
+    p->contours = temp_contours;
+    p->num_contours = p->num_contours - 1;
+    return;
+}
+
+void polygon_add_contour( struct polygon * p, struct contour * c )
+{
+    if( p == NULL || c == NULL )
+    {
+        return;
+    }
+
+    if( p->contours == NULL )
+    {
+        if( p->num_contours != 0 )
+        {
+            return;
+        }
+
+        p->contours = ( struct contour ** ) palloc0( sizeof( struct contour * ) );
+        p->num_contours = 1;
+        p->contours[0] = c;
+    }
+    else
+    {
+        p->contours = ( struct contour ** ) repalloc(
+            p->contours,
+            sizeof( struct contour * )
+          * ( p->num_contours + 1 )
+        );
+
+        p->contours[p->num_contours] = c;
+        p->num_contours = p->num_contours + 1;
+    }
+
+    return;
+}
+
+struct polygon * new_polygon( void )
+{
+    struct polygon * p = NULL;
+
+    p = ( struct polygon * ) palloc0( sizeof( struct polygon ) );
+    p->num_contours = 0;
+    return p;
+}
+
+void free_polygon( struct polygon * p )
+{
+    int i = 0;
+
+    if( p == NULL )
+    {
+        return;
+    }
+
+    if( p->num_contours > 0 )
+    {
+        for( i = 0; i < p->num_contours; i++ )
+        {
+            free_contour( p->contours[i] );
+        }
+
+        pfree( p->contours );
+    }
+
+    pfree( p );
+    return;
+}
+
+struct segment * sweep_event_get_segment( struct sweep_event * se )
+{
+    struct segment * s;
+
+    if( se == NULL )
+    {
+        return NULL;
+    }
+
+    s = new_segment();
+    segment_set_begin( s, se->p );
+    segment_set_end( s, se->other->p );
+    return s;
+}
+
+bool sweep_event_below( struct sweep_event * e, Point * p )
+{
+    double area = 0;
+    if( e->left )
+    {
+        area = signed_area_three( e->p, e->other->p, p );
+
+        if( fabs( area ) <= DBL_EPSILON || area < 0 )
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    area = signed_area_three( e->other->p, e->p, p );
+
+    if( fabs( area ) <= DBL_EPSILON || area < 0 )
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool sweep_event_above( struct sweep_event * e, Point * p )
+{
+    return !sweep_event_below( e, p );
+}
+
+bool sweep_event_comp( struct sweep_event * e1, struct sweep_event * e2 )
+{
+    if( e1->p->x < e2->p->x )
+    {
+        return true;
+    }
+
+    if( e2->p->x < e1->p->x )
+    {
+        return false;
+    }
+
+    if( e1->p != e2->p )
+    {
+        return e1->p->y < e2->p->y;
+    }
+
+    if( e1->left != e2->left )
+    {
+        return !e1->left;
+    }
+
+    return sweep_event_below( e1, e2->other->p );
+}
+
+bool sweep_event_segment_comp( struct sweep_event * e0, struct sweep_event * e1 )
+{
+    if( e0 == e1 )
+    {
+        return false;
+    }
+
+    if(
+            fabs( signed_area_three( e0->p, e0->other->p, e1->p ) ) > DBL_EPSILON
+         || fabs( signed_area_three( e0->p, e0->other->p, e1->other->p ) ) > DBL_EPSILON
+      )
+    {
+        if(
+              fabs( e0->p->x - e1->p->x ) <= DBL_EPSILON
+           && fabs( e0->p->y - e1->p->y ) <= DBL_EPSILON
+          )
+        {
+            return sweep_event_below( e0, e1->other->p );
+        }
+
+        if( sweep_event_comp( e0, e1 ) )
+        {
+            return sweep_event_below( e0, e1->p );
+        }
+
+        return sweep_event_above( e1, e0->p );
+    }
+
+    if(
+          fabs( e0->p->x - e1->p->x ) <= DBL_EPSILON
+       && fabs( e0->p->y - e1->p->y ) <= DBL_EPSILON
+      )
+    {
+        return false; // ?
+    }
+
+    return sweep_event_comp( e0, e1 );
+}
+
+struct sweep_event * new_sweep_event( void )
+{
+    struct sweep_event * s;
+    s = ( struct sweep_event * ) palloc0( sizeof( struct sweep_event ) );
+    s->p = ( Point * ) palloc0( sizeof( Point ) );
+    s->left = false;
+    s->polygon = 0;
+    s->in_out = false;
+    s->position = 0;
+    return s;
+}
+
+void free_sweep_event( struct sweep_event * s )
+{
+    if( s == NULL )
+    {
+        return;
+    }
+
+    if( s->p != NULL )
+    {
+        pfree( s->p );
+    }
+
+    pfree( s );
+
+    return;
+}
+
+struct sweep_event ** _manage_ev_buffer( struct sweep_event ** ev, int ev_index )
+{
+    // Handles extending sweep event buffer by SE_BUFFER_LENGTH
+    // based on index.
+    if( ( ev_index + 1 ) % SE_BUFFER_LENGTH == 0 )
+    {
+        if( ev == NULL )
+        {
+            ev = ( struct sweep_event ** ) palloc0(
+                sizeof( struct sweep_event * )
+              * SE_BUFFER_LENGTH
+            );
+        }
+        else
+        {
+            ev = ( struct sweep_event ** ) repalloc(
+                ev,
+                sizeof( struct sweep_event * )
+              * SE_BUFFER_LENGTH
+              * ( (int) ( ( ev_index + 1 ) / SE_BUFFER_LENGTH ) + 1 )
+            );
+        }
+    }
+
+    return ev;
+}
+
+void _sort_ev_buffer( struct sweep_event ** ev, int start_ind, int end_ind )
+{
+    int i   = 0;
+    struct sweep_event * key = NULL;
+    int j   = 0;
+    int k   = 0;
+    struct sweep_event * temp = NULL;
+
+    if( start_ind < end_ind )
+    {
+        k     = (int) ( end_ind ) / 2;
+        temp  = ev[0];
+        ev[0] = ev[k];
+        ev[k] = temp;
+        key   = ev[start_ind];
+        i = start_ind + 1;
+        j = end_ind;
+
+        while( i <= j )
+        {
+            while( i <= end_ind && sweep_event_comp( ev[i], key ) )
+            {
+                i++;
+            }
+
+            while( j >= start_ind && !sweep_event_comp( ev[j], key ) )
+            {
+                j--;
+            }
+
+            if( i < j )
+            {
+                temp  = ev[i];
+                ev[i] = ev[j];
+                ev[j] = temp;
+            }
+        }
+
+        temp  = ev[start_ind];
+        ev[start_ind] = ev[j];
+        ev[j] = temp;
+
+        _sort_ev_buffer( ev, start_ind, j - 1 );
+        _sort_ev_buffer( ev, j + 1, end_ind );
+    }
+
+    return;
+}
+
+/*
+ *  Maintains a unique, sorted set of sweep_events
+ *   Each element of the ev_set contains its own position.
+ *   unlike the previous quick sort, this uses segment_comp as the comparison function
+ */
+int _se_set_insert( struct sweep_event *** set, struct sweep_event * se, int len )
+{
+    struct sweep_event ** temp = NULL;
+    int i = 0;
+    int j = 0;
+    int ind_offset = 0;
+
+    if( (*set) == NULL || se == NULL )
+    {
+        return -1;
+    }
+
+    for( i = 0; i < len; i++ )
+    {
+        if( !sweep_event_segment_comp( (*set)[i], se ) )
+        {
+            // First time we hit this, (*set)[last_ind] < se <= (*set)[i]
+            if( (*set)[i] == se )
+            { // probably need to find a better equality function
+                return -1;
+            }
+            else
+            {
+                (*set) = ( struct sweep_event ** ) repalloc(
+                    (*set),
+                    sizeof( struct sweep_event * ) * len + 1
+                );
+
+                temp = ( struct sweep_event ** ) palloc0(
+                    sizeof( struct sweep_event * ) * ( len + 1 - i )
+                );
+
+                temp[0] = se;
+                se->position = i;
+                // Iterate with respect to the temp (the elements in set following the insertion point)
+                for( j = 1; j < ( len + 1 - i ); j++ )
+                {
+                    temp[j] = (*set)[j + i - 1];
+                }
+
+                ind_offset = i;
+                // Iterate with respect to set, copy over (starting at i) with the elements in temp
+                for( j = i; i < ( len + 1 ); j++ )
+                {
+                    (*set)[j] = temp[j - ind_offset];
+                    (*set)[j]->position = j;
+                }
+
+                pfree( temp );
+                return i;
+            }
+        }
+
+        (*set)[i]->position = i;
+    }
+
+    return -1;
+}
+
+// constrict ev buffer to exact fit, clear processed bit and set position index for usage as set
+struct sweep_event ** _process_ev_buffer( struct sweep_event ** ev, int ev_index )
+{
+    struct sweep_event ** new_ev = NULL;
+    int i = 0;
+
+    new_ev = ( struct sweep_event ** ) palloc0( sizeof( struct sweep_event * ) * ev_index );
+    for( i = 0; i < ev_index; i++ )
+    {
+        new_ev[i] = ev[i];
+        new_ev[i]->position = i;
+    }
+
+    pfree( ev );
+    return new_ev;
+}
+
+void _se_set_remove( struct sweep_event *** set, int position, int ev_index )
+{
+    struct sweep_event ** ev_set_temp = NULL;
+    int i = 0;
+    int ind_offset = 0;
+
+    if( (*set) == NULL || position >= ev_index )
+    {
+        return;
+    }
+
+    ev_set_temp = ( struct sweep_event ** ) palloc0( sizeof( struct sweep_event * ) * ( ev_index - 1 ) );
+
+    for( i = 0; i < ev_index - 1; i++ )
+    {
+        if( i == position )
+        {
+            ind_offset++;
+        }
+
+        ev_set_temp[i] = (*set)[i + ind_offset];
+    }
+
+    pfree( (*set) );
+    (*set) = ev_set_temp;
+
+    return;
+}
+
+void polygon_compute_holes( struct polygon * p )
+{
+    struct sweep_event **  ev            = NULL;
+    struct sweep_event **  ev_set        = NULL;
+    struct sweep_event *   se_last       = NULL;
+    struct sweep_event *   se            = NULL;
+    struct segment *       seg           = NULL;
+    int                    i             = 0;
+    int                    j             = 0;
+    int                    ev_index      = 0;
+//    int                    ev_set_index  = 0;
+    int                    num_processed = 0;
+    bool *                 processed     = NULL;
+    int *                  hole_of       = NULL;
+    int                    insertion_ind = 0;
+
+    if( p == NULL )
+    {
+        return;
+    }
+
+    if( p->num_contours < 2 )
+    {
+        if( p->num_contours == 1 && contour_clockwise( p->contours[0] ) )
+        {
+            contour_change_orientation( p->contours[0] );
+        }
+
+        return;
+    }
+
+    for( i = 0; i < p->num_contours; i++ )
+    {
+        contour_set_counterclockwise( p->contours[i] );
+
+        for( j = 0; j < p->contours[i]->num_points; j++ )
+        {
+            seg = contour_get_segment( p->contours[i], j );
+
+            // Do not process vertical segments
+            if( seg->p1->x == seg->p2->x )
+            {
+                continue;
+            }
+
+            se          = new_sweep_event();
+            se->p       = seg->p1;
+            se->left    = true;
+            se->polygon = i;
+
+            ev = _manage_ev_buffer( ev, ev_index );
+            ev[ev_index] = se;
+            ev_index++;
+
+            se_last = se;
+
+            se          = new_sweep_event();
+            se->p       = seg->p2;
+            se->left    = true;
+            se->polygon = i;
+
+            se->other      = se_last;
+            se_last->other = se;
+
+            ev = _manage_ev_buffer( ev, ev_index );
+            ev[ev_index] = se;
+            ev_index++;
+
+            if( se_last->p->x < se->p->x )
+            {
+                se->left        = false;
+                se_last->in_out = false;
+            }
+            else
+            {
+                se_last->left = false;
+                se->in_out    = true;
+            }
+
+            se      = NULL;
+            se_last = NULL;
+        }
+    }
+
+    // Sort SEs in place
+    _sort_ev_buffer( ev, 0, ev_index - 1 );
+
+    processed = ( bool * ) palloc0( sizeof( bool ) * p->num_contours );
+    hole_of   = ( int * ) palloc0( sizeof( int ) * p->num_contours );
+    // may need to init ev_set with ev prior to entry
+
+    ev_set = _process_ev_buffer( ev, ev_index );
+
+    for( i = 0; i < ev_index && num_processed < p->num_contours; i++ )
+    {
+        se = ev[i];
+
+        if( se->left )
+        {
+            insertion_ind = _se_set_insert( &ev_set, se, ev_index );
+            if( insertion_ind > 0 )
+            {
+                ev_index++;
+            }
+
+            if( !processed[se->polygon] )
+            {
+                processed[se->polygon] = true;
+                num_processed++;
+
+                if( insertion_ind == 0 )
+                {
+                    contour_set_counterclockwise( p->contours[se->polygon] );
+                }
+                else
+                {
+                    insertion_ind--;
+                    se_last = ev_set[insertion_ind];
+                    if( !( se_last->in_out) )
+                    {
+                        hole_of[se->polygon] = se_last->polygon;
+                        p->contours[se->polygon]->_external = false;
+                        contour_add_hole(
+                            p->contours[se_last->polygon],
+                            se->polygon
+                        );
+
+                        if( contour_counterclockwise( p->contours[se_last->polygon] ) )
+                        {
+                            contour_set_clockwise( p->contours[se->polygon] );
+                        }
+                        else
+                        {
+                            contour_set_counterclockwise( p->contours[se->polygon] );
+                        }
+                    }
+                    else if( hole_of[se->polygon] == hole_of[se_last->polygon] )
+                    {
+                        hole_of[se->polygon] = hole_of[se_last->polygon];
+                        p->contours[se->polygon]->_external = false;
+                        contour_add_hole( p->contours[hole_of[se->polygon]], se->polygon );
+
+                        if( contour_counterclockwise( p->contours[hole_of[se->polygon]] ) )
+                        {
+                            contour_set_clockwise( p->contours[se->polygon] );
+                        }
+                        else
+                        {
+                            contour_set_counterclockwise( p->contours[se->polygon] );
+                        }
+                    }
+                    else
+                    {
+                        contour_set_counterclockwise( p->contours[se->polygon] );
+                    }
+                }
+            }
+        }
+        else
+        {
+            _se_set_remove( &ev_set, se->other->position, ev_index );
+        }
+    }
+
+    for( i = 0; i < ev_index; i++ )
+    {
+        free_sweep_event( ev[i] );
+        free_sweep_event( ev_set[i] );
+    }
+
+    pfree( ev );
+    pfree( ev_set );
+    pfree( processed );
+    pfree( hole_of );
+
+    return;
+}
