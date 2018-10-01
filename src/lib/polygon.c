@@ -362,10 +362,11 @@ struct sweep_event ** _manage_ev_buffer( struct sweep_event ** ev, int ev_index 
 {
     // Handles extending sweep event buffer by SE_BUFFER_LENGTH
     // based on index.
-    if( ( ev_index + 1 ) % SE_BUFFER_LENGTH == 0 )
+    if( ( ( ev_index + 1 ) % SE_BUFFER_LENGTH ) == 0 )
     {
         if( ev == NULL )
         {
+            elog( DEBUG1, " === made initial ev palloc, size %d == ", SE_BUFFER_LENGTH );
             ev = ( struct sweep_event ** ) palloc0(
                 sizeof( struct sweep_event * )
               * SE_BUFFER_LENGTH
@@ -373,6 +374,7 @@ struct sweep_event ** _manage_ev_buffer( struct sweep_event ** ev, int ev_index 
         }
         else
         {
+            elog( DEBUG1, " === extended ev, size %d == ", SE_BUFFER_LENGTH * ( (int) ( ev_index + 1 / SE_BUFFER_LENGTH ) + 1 ) );
             ev = ( struct sweep_event ** ) repalloc(
                 ev,
                 sizeof( struct sweep_event * )
@@ -381,17 +383,21 @@ struct sweep_event ** _manage_ev_buffer( struct sweep_event ** ev, int ev_index 
             );
         }
     }
+    else
+    {
+        elog( DEBUG1, "EV not extended :(" );
+    }
 
     return ev;
 }
 
 void _sort_ev_buffer( struct sweep_event ** ev, int start_ind, int end_ind )
 {
-    int i   = 0;
     struct sweep_event * key = NULL;
+    struct sweep_event * temp = NULL;
+    int i   = 0;
     int j   = 0;
     int k   = 0;
-    struct sweep_event * temp = NULL;
 
     if( start_ind < end_ind )
     {
@@ -439,24 +445,40 @@ void _sort_ev_buffer( struct sweep_event ** ev, int start_ind, int end_ind )
  *   Each element of the ev_set contains its own position.
  *   unlike the previous quick sort, this uses segment_comp as the comparison function
  */
-int _se_set_insert( struct sweep_event *** set, struct sweep_event * se, int len )
+int _se_set_insert( struct sweep_event *** set, struct sweep_event * se, int * len )
 {
-    struct sweep_event ** temp = NULL;
+    //struct sweep_event ** temp = NULL;
     int i = 0;
     int j = 0;
     int ind_offset = 0;
 
-    if( (*set) == NULL || se == NULL )
+    elog( DEBUG1, "------------------ SE INSERT --------------------" );
+    if( se == NULL )
     {
         return -1;
     }
 
-    for( i = 0; i < len; i++ )
+    elog( DEBUG1, "Adding SE %p to SET: %p", se, (*set) );
+    _dump_sweep_event( se );
+    if( set == NULL || (*set) == NULL )
     {
+        (*set) = ( struct sweep_event ** ) palloc0( sizeof( struct sweep_event * ) );
+        (*set)[0] = se;
+        se->position = 0;
+        elog( DEBUG1, "Dumping new SET" );
+        _dump_se_set( set, 1 );
+        (*len)++;
+        return 1;
+    }
+    //elog( DEBUG1, "Dumping SET" );
+    //_dump_se_set( set, (*len) );
+    for( i = 0; i < (*len); i++ )
+    {
+        // scan for insertion point
         if( !sweep_event_segment_comp( (*set)[i], se ) )
         {
             // First time we hit this, (*set)[last_ind] < se <= (*set)[i]
-            if( (*set)[i] == se )
+            if( sweep_event_equal( (*set)[i], se ) )
             { // probably need to find a better equality function
                 return -1;
             }
@@ -464,30 +486,26 @@ int _se_set_insert( struct sweep_event *** set, struct sweep_event * se, int len
             {
                 (*set) = ( struct sweep_event ** ) repalloc(
                     (*set),
-                    sizeof( struct sweep_event * ) * len + 1
+                    sizeof( struct sweep_event * ) * ( (*len) + 1 )
                 );
 
-                temp = ( struct sweep_event ** ) palloc0(
-                    sizeof( struct sweep_event * ) * ( len + 1 - i )
-                );
-
-                temp[0] = se;
-                se->position = i;
-                // Iterate with respect to the temp (the elements in set following the insertion point)
-                for( j = 1; j < ( len + 1 - i ); j++ )
+                ind_offset = 1;
+                for( j = (*len); j >= i; j-- )
                 {
-                    temp[j] = (*set)[j + i - 1];
-                }
-
-                ind_offset = i;
-                // Iterate with respect to set, copy over (starting at i) with the elements in temp
-                for( j = i; i < ( len + 1 ); j++ )
-                {
-                    (*set)[j] = temp[j - ind_offset];
+                    if( j == i )
+                    {
+                        (*set)[j] = se;
+                        ind_offset = 0;
+                    }
+                    else
+                    {
+                        (*set)[j] = (*set)[j-ind_offset];
+                    }
+                    
                     (*set)[j]->position = j;
                 }
 
-                pfree( temp );
+                (*len)++;
                 return i;
             }
         }
@@ -536,6 +554,7 @@ void _se_set_remove( struct sweep_event *** set, int position, int ev_index )
         }
 
         ev_set_temp[i] = (*set)[i + ind_offset];
+        ev_set_temp[i]->position = i;
     }
 
     pfree( (*set) );
@@ -643,7 +662,7 @@ void polygon_compute_holes( struct polygon * p )
 
         if( se->left )
         {
-            insertion_ind = _se_set_insert( &ev_set, se, ev_index );
+            insertion_ind = _se_set_insert( &ev_set, se, &ev_index );
             if( insertion_ind > 0 )
             {
                 ev_index++;
@@ -720,4 +739,111 @@ void polygon_compute_holes( struct polygon * p )
     pfree( hole_of );
 
     return;
+}
+
+void _dump_polygon( struct polygon * p )
+{
+    int i = 0;
+    struct contour * c = NULL;
+
+    if( p == NULL )
+    {
+        elog( DEBUG1, "Polygon is NULL" );
+        return;
+    }
+
+    elog( DEBUG1, "Polygon dump (%p):\n num_contours: %d, contours %p", p, p->num_contours, p->contours );
+    for( i = 0; i < p->num_contours; i++ )
+    {
+        c = p->contours[i];
+        _dump_contour( c );
+    }
+
+    return;
+}
+
+void _dump_sweep_event( struct sweep_event * e )
+{
+    elog( DEBUG1, "Dumping sweep_event %p", e );
+    if( e == NULL )
+    {
+        return;
+    }
+    elog(
+        DEBUG1,
+        "p: (%f,%f)\nleft: %s\ninside: %s\npolygon %d\nother: %p\n"\
+        "in_out: %s\nposition: %d\nedge_type: %d\npolygon_type: %d",
+        e->p->x, e->p->y, e->left ? "true" : "false", e->inside ? "true" : "false",
+        e->polygon, e->other, e->in_out ? "true" : "false", e->position, e->edge_type, e->polygon_type
+    );
+    return;
+}
+
+void _dump_se_set( struct sweep_event *** ev_set, int ev_index )
+{
+    struct sweep_event * e = NULL;
+    int i = 0;
+
+    elog( DEBUG1, "Dumping SE Set: %p Len: %d", (*ev_set), ev_index );
+
+    for( i = 0; i < ev_index; i ++ )
+    {
+        e = (*ev_set)[i];
+        if( e == NULL )
+        {
+            elog( DEBUG1, "SES[%d]: NULL", i );
+        }
+        else
+        {
+            elog( DEBUG1, "SES[%d]: %p", i, e );
+            _dump_sweep_event( e );
+        }
+    }
+    
+    return;
+}
+
+bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
+{
+    if( e0 == NULL || e1 == NULL )
+    {
+        if( e0 == NULL && e1 == NULL )
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    if( !points_equal( e0->p, e1->p ) )
+    {
+        return false;
+    }
+
+    if( !points_equal( e0->other->p, e1->other->p ) )
+    {
+        return false;
+    }
+
+    if( e0->left != e1->left || e0->inside != e1->inside )
+    {
+        return false;
+    }
+
+    if( e0->polygon != e1->polygon )
+    {
+        return false;
+    }
+
+    if( e0->in_out != e1->in_out )
+    {
+        return false;
+    }
+
+    if( e0->edge_type != e1->edge_type )
+    {
+        return false;
+    }
+
+    return true;
 }

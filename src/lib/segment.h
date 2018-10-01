@@ -9,10 +9,10 @@ struct segment {
     Point * p2; // end
 };
 
-void segment_set_begin( struct segment *, Point * p );
-void segment_set_end( struct segment *, Point * p );
-void segment_change_orientation( struct segment * );
-struct segment * new_segment( void );
-void free_segment( struct segment * );
+extern void segment_set_begin( struct segment *, Point * p );
+extern void segment_set_end( struct segment *, Point * p );
+extern void segment_change_orientation( struct segment * );
+extern struct segment * new_segment( void );
+extern void free_segment( struct segment * );
 
 #endif

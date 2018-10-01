@@ -8,9 +8,6 @@
 
 #define ZOOM_RATE 1.04
 
-// Main Routines
-POLYGON * polygon_clip( POLYGON *, POLYGON *, bool, bool );
-
 // Helper Routines
 POLYGON ** poly_preprocessing( ArrayType *, bool, bool, int * );
 POLYGON * poly_postprocessing( POLYGON *, bool );
@@ -34,6 +31,9 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
     int        i            = 0;
     POLYGON ** sorted_polys = NULL;
     POLYGON *  new_polygon  = NULL;
+    struct polygon * mp_subj = NULL;
+    struct polygon * mp_clip = NULL;
+    struct polygon * mp_result = NULL;
 
     if( PG_ARGISNULL(0) )
     {
@@ -73,12 +73,16 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
         dump_polygon( sorted_polys[0] );
         dump_polygon( sorted_polys[i] );
 #endif
-        new_polygon = polygon_clip(
-            sorted_polys[0],
-            sorted_polys[i],
-            true,
-            false
+        mp_subj = poly_to_mpoly( sorted_polys[0] );
+        mp_clip = poly_to_mpoly( sorted_polys[i] );
+        compute(
+            mp_subj,
+            mp_clip,
+            OP_DIFFERENCE,
+            mp_result
         );
+
+        new_polygon = mpoly_to_poly( mp_result );
 
         if( new_polygon == NULL )
         {
@@ -114,6 +118,9 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
     int        i            = 0;
     POLYGON ** sorted_polys = NULL;
     POLYGON *  new_polygon  = NULL;
+    struct polygon * mp_subj = NULL;
+    struct polygon * mp_clip = NULL;
+    struct polygon * mp_result = NULL;
 
     if( PG_ARGISNULL(0) )
     {
@@ -126,7 +133,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
         false,
         &num_poly
     );
-    
+
     if( num_poly == 1 )
     {
         elog( DEBUG1, "Only 1 poly passed :|" );
@@ -153,12 +160,16 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
         dump_polygon( sorted_polys[0] );
         dump_polygon( sorted_polys[i] );
 #endif
-        new_polygon = polygon_clip(
-            sorted_polys[0],
-            sorted_polys[i],
-            true,
-            true
+        mp_subj = poly_to_mpoly( sorted_polys[0] );
+        mp_clip = poly_to_mpoly( sorted_polys[i] );
+        compute(
+            mp_subj,
+            mp_clip,
+            OP_INTERSECTION,
+            mp_result
         );
+
+        new_polygon = mpoly_to_poly( mp_result );
 
         if( new_polygon == NULL )
         {
@@ -190,12 +201,12 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
 Datum fn_union_polygons( PG_FUNCTION_ARGS )
 {
-    int        num_poly     = 0;
-    int        i            = 0;
-    POLYGON ** sorted_polys = NULL;
-    POLYGON *  new_polygon  = NULL;
-    struct polygon * mp_subj = NULL;
-    struct polygon * mp_clip = NULL;
+    int        num_poly        = 0;
+    int        i               = 0;
+    POLYGON ** sorted_polys    = NULL;
+    POLYGON *  new_polygon     = NULL;
+    struct polygon * mp_subj   = NULL;
+    struct polygon * mp_clip   = NULL;
     struct polygon * mp_result = NULL;
 
     if( PG_ARGISNULL(0) )
@@ -238,13 +249,15 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 #endif
         mp_subj = poly_to_mpoly( sorted_polys[0] );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
+        elog( DEBUG1, "Entering compute with OP_UNION" );
         compute(
             mp_subj,
             mp_clip,
             OP_UNION,
             mp_result
         );
-
+        elog( DEBUG1, "Compute with OP_UNION done" );
+        _dump_polygon( mp_result );
         new_polygon = mpoly_to_poly( mp_result );
         if( new_polygon == NULL )
         {

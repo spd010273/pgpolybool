@@ -21,11 +21,13 @@ struct sweep_event * pqueue_pop( struct pqueue_node ** head )
 {
     struct sweep_event * data = NULL;
     struct pqueue_node * temp = NULL;
-
-    temp    = *head;
-    (*head) = (*head)->next;
+    elog( DEBUG1, "(*head) %p", (*head) );
+    temp    = (*head);
+    elog( DEBUG1, "temp %p (*head) %p", temp, (*head) );
     data    = temp->element;
-
+    elog( DEBUG1, "data: %p, temp->element %p", data, temp->element );
+    (*head) = (*head)->next;
+    elog( DEBUG1, "(*head) %p, (*head)->next %p", (*head), (*head)->next );
     pfree( temp );
 
     return data;
@@ -60,6 +62,8 @@ void pqueue_push( struct pqueue_node ** head, struct sweep_event * data )
 
 bool pqueue_empty( struct pqueue_node ** head )
 {
+    //elog( DEBUG1, "Checking pqueue empty: ** is %p", head );
+    //elog( DEBUG1, "Checking pqueue empty: * is %p", (*head) );
     return (*head) == NULL;
 }
 
@@ -78,9 +82,35 @@ int pqueue_size( struct pqueue_node ** head )
     while( temp->next != NULL )
     {
         ret++;
+        temp = temp->next;
     }
 
     return ret;
+}
+
+void _dump_pqueue( struct pqueue_node ** head )
+{
+    struct pqueue_node * temp = NULL;
+    int node_num = 0;
+
+    if( pqueue_empty( head ) )
+    {
+        elog( DEBUG1, "Pqueue is empty" );
+        return;
+    }
+
+    temp = (*head);
+    elog( DEBUG1, "Head (%p) is at %p", head, temp );
+
+    while( temp != NULL )
+    {
+        elog( DEBUG1, "Node %d (%p): elem: %p, next %p", node_num, temp, temp->element, temp->next );
+        //_dump_sweep_event( temp->element );
+        node_num++;
+        temp = temp->next;
+    }
+
+    return;
 }
 
 struct deque_head * new_deque( struct sweep_event * data )

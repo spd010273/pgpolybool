@@ -1,6 +1,6 @@
 #include "martinez.h"
 
-void process_segment( struct segment * s, int poly_type, struct pqueue_node ** phead )
+void process_segment( struct segment * s, int poly_type, struct pqueue_node ** phead, struct sweep_event *** ev_set, int * ev_index )
 {
     struct sweep_event * e1 = NULL;
     struct sweep_event * e2 = NULL;
@@ -13,14 +13,15 @@ void process_segment( struct segment * s, int poly_type, struct pqueue_node ** p
         return;
     }
 
+    elog( DEBUG1, "Processing segment" );
     e1 = new_sweep_event();
     e2 = new_sweep_event();
-    
+
     e1->p            = s->p1;
     e1->left         = true;
     e1->edge_type    = EDGE_TYPE_NORMAL;
     e1->polygon_type = poly_type;
-    e1->other        = e2; 
+    e1->other        = e2;
 
     e2->p            = s->p2;
     e2->left         = true;
@@ -28,6 +29,7 @@ void process_segment( struct segment * s, int poly_type, struct pqueue_node ** p
     e2->polygon_type = poly_type;
     e2->other        = e1;
 
+    elog( DEBUG1, "New sweep events setup" );
     if( e1->p->x < e2->p->x )
     {
         e2->left = false;
@@ -45,17 +47,24 @@ void process_segment( struct segment * s, int poly_type, struct pqueue_node ** p
         e1->left = false;
     }
 
-    if( pqueue_empty( phead ) )
+    elog( DEBUG1, "segments setup, adding sweep event(s) to pqueue" );
+    if( phead == NULL || pqueue_empty( phead ) )
     {
+        elog( DEBUG1, "setting up new pqueue" );
+
         (*phead) = new_pqueue( e1 );
     }
     else
     {
+        elog( DEBUG1, "Pushing 1st event to pqueue %p", (*phead) );
         pqueue_push( phead, e1 );
     }
 
+    elog( DEBUG1, "Pushing 2nd event to pqueue %p", (*phead) );
     pqueue_push( phead, e2 );
 
+    _se_set_insert( ev_set, e1, ev_index );
+    _se_set_insert( ev_set, e2, ev_index );
     return;
 }
 
@@ -102,12 +111,13 @@ void possible_intersection( struct sweep_event * e0, struct sweep_event * e1, in
     struct sweep_event ** ev = NULL;
     int ev_index = 0;
 
+    elog( DEBUG1, "Getting segments fron sweep_event e0: %p e1: %p", e0, e1 );
     seg0 = sweep_event_get_segment( e0 );
     seg1 = sweep_event_get_segment( e1 );
-    
+
     isect_p0 = ( Point * ) palloc0( sizeof( Point ) );
     isect_p1 = ( Point * ) palloc0( sizeof( Point ) );
-     
+    elog( DEBUG1, "Looking for explicit intersection between segments" );
     num_intersections = find_intersection( seg0, seg1, isect_p0, isect_p1 );
 
     if( num_intersections != 0 )
@@ -133,7 +143,7 @@ void possible_intersection( struct sweep_event * e0, struct sweep_event * e1, in
     if( num_intersections == 1 )
     {
         if(
-               !points_equal( e0->p, isect_p0 ) 
+               !points_equal( e0->p, isect_p0 )
             && !points_equal( e0->other->p, isect_p0 )
           )
         {
@@ -151,7 +161,9 @@ void possible_intersection( struct sweep_event * e0, struct sweep_event * e1, in
         return;
     }
 
-    ev = _manage_ev_buffer( ev, 0 ); // allocate 10 slots, we'll only use at mode 4
+    elog( DEBUG1, "Pallocing EV Buffer" );
+    ev = _manage_ev_buffer( ev, -1 ); // allocate 10 slots, we'll only use at mode 4
+
     if( points_equal( e0->p, e1->p ) )
     {
         ev[ev_index] = NULL;
@@ -188,11 +200,12 @@ void possible_intersection( struct sweep_event * e0, struct sweep_event * e1, in
         ev[ev_index - 1] = e1->other;
     }
 
+    elog( DEBUG1, "Post scan logic, ev_index: %d", ev_index );
     if( ev_index == 2 )
     {
         e0->edge_type = EDGE_TYPE_NON_CONTRIBUTING;
         e0->other->edge_type = EDGE_TYPE_NON_CONTRIBUTING;
-        
+
         if( e0->in_out == e1->in_out )
         {
             e1->edge_type = EDGE_TYPE_SAME_TRANSITION;
@@ -295,7 +308,7 @@ void compute(
 )
 {
     int                        i              = 0;
-    int                        j              = 0;    
+    int                        j              = 0;
     int                        event_position = 0;
     int                        previous_event = 0;
     int                        next_event     = 0;
@@ -306,6 +319,7 @@ void compute(
     Point *                    min_clip       = NULL;
     Point *                    max_clip       = NULL;
     struct pqueue_node **      phead          = NULL;
+    struct pqueue_node *       dummy          = NULL;
     struct polygon_connector * pc             = NULL;
 //    struct connector *         conn           = NULL;
     struct sweep_event *       event          = NULL;
@@ -319,6 +333,8 @@ void compute(
     {
         return;
     }
+
+    phead = &dummy;
 
     if( subject->num_contours * clipping->num_contours == 0 )
     {
@@ -335,6 +351,7 @@ void compute(
         return;
     }
 
+    elog( DEBUG1, "Eliminating trivial cases" );
     min_subj = ( Point * ) palloc0( sizeof( Point ) );
     max_subj = ( Point * ) palloc0( sizeof( Point ) );
     min_clip = ( Point * ) palloc0( sizeof( Point ) );
@@ -354,7 +371,7 @@ void compute(
         {
             result = subject;
         }
-        
+
         if( op == OP_UNION )
         {
             result = subject;
@@ -372,43 +389,67 @@ void compute(
         return;
     }
 
+    elog( DEBUG1, "============================== PHEAD: %p", phead );
     // Generate priority queue
-
+    elog( DEBUG1, "Subject has %d contours", subject->num_contours );
+    elog( DEBUG1, "Generating pqueue (subject)" );
     for( i = 0; i < subject->num_contours; i++ )
     {
+        elog( DEBUG1, "Contour %d has %d points", i, subject->contours[i]->num_points );
         for( j = 0; j < subject->contours[i]->num_points; j++ )
         {
             seg = contour_get_segment( subject->contours[i], j );
-            process_segment( seg, POLY_TYPE_SUBJECT, phead );
+            elog( DEBUG1, "Got segment: (%f,%f),(%f,%f)", seg->p1->x, seg->p1->y, seg->p2->x, seg->p2->y );
+            process_segment( seg, POLY_TYPE_SUBJECT, phead, &ev_set, &ev_length );
         }
     }
 
+    elog( DEBUG1, "============================== PHEAD: %p", phead );
+    elog( DEBUG1, "Clipping has %d contours", clipping->num_contours );
+    elog( DEBUG1, "Generating pqueue (clipping)" );
     for( i = 0; i < clipping->num_contours; i++ )
     {
+        elog( DEBUG1, "Contour %d has %d points", i, clipping->contours[i]->num_points );
         for( j = 0; j < clipping->contours[i]->num_points; j++ )
         {
             seg = contour_get_segment( clipping->contours[i], j );
-            process_segment( seg, POLY_TYPE_CLIPPING, phead );
+            elog( DEBUG1, "Got segment: (%f,%f),(%f,%f)", seg->p1->x, seg->p1->y, seg->p2->x, seg->p2->y );
+            process_segment( seg, POLY_TYPE_CLIPPING, phead, &ev_set, &ev_length );
         }
     }
 
     min_max_x = ( max_subj->x > max_clip->x ) ? max_clip->x : max_subj->x;
 
+    elog( DEBUG1, "============================== PHEAD: %p", phead );
+    elog( DEBUG1, "===Entering main loop==" );
+    //elog( DEBUG1, "================== PQUEUE: ======================" );
+    //_dump_pqueue( phead );
+    //elog( DEBUG1, "================== SE SET: ======================" );
+    //_dump_se_set( &ev_set, ev_length );
     while( !pqueue_empty( phead ) )
     {
+        //elog( DEBUG1, "popping event from priority queue" );
+        //elog( DEBUG1, "Phead: ** %p, * %p", phead, (*phead) );
+        //_dump_pqueue( phead );
         event = pqueue_pop( phead );
+        //elog( DEBUG1, "Phead: ** %p, * %p", phead, (*phead) );
+        //_dump_pqueue( phead );
+        //_dump_sweep_event( event );
+        elog( DEBUG1, "Got event %p, checking basic cases", event );
 
         if(
                 ( op = OP_INTERSECTION && ( event->p->x > min_max_x ) )
              || ( op = OP_DIFFERENCE && event->p->x > max_subj->x )
           )
         {
-            result = polygon_connector_to_polygon( pc ); 
+            result = polygon_connector_to_polygon( pc );
             return;
         }
 
+        elog( DEBUG1, "Checking union case" );
         if( op == OP_UNION && event->p->x > min_max_x )
         {
+            elog( DEBUG1, "Early exit for union case" );
             if( !event->left )
             {
                 seg = sweep_event_get_segment( event );
@@ -421,7 +462,7 @@ void compute(
                 if( !event->left )
                 {
                     seg = sweep_event_get_segment( event );
-                    polygon_connector_add_segment( pc, seg ); 
+                    polygon_connector_add_segment( pc, seg );
                 }
             }
 
@@ -429,9 +470,12 @@ void compute(
             return;
         }
 
+        elog( DEBUG1, "Checking handedness of event" );
         if( event->left )
         {
-            _se_set_insert( &ev_set, event, ev_length );
+            elog( DEBUG1, "Adding event to SE set" );
+            _se_set_insert( &ev_set, event, &ev_length );
+            //_dump_se_set( &ev_set, ev_length );
             event_position = ev_set[0]->position;
 
             next_event = event_position;
@@ -446,7 +490,7 @@ void compute(
                 previous_event = ev_length;
             }
 
-
+            elog( DEBUG1, "event in/out & inside logic" );
             if( previous_event == ev_length )
             {
                 event->inside = false;
@@ -463,7 +507,7 @@ void compute(
                 {
                     colinear_event = previous_event;
                     colinear_event--;
-                    
+
                     if( ev_set[previous_event]->polygon_type == event->polygon_type )
                     {
                         event->in_out = !(ev_set[previous_event]->in_out);
@@ -487,18 +531,22 @@ void compute(
                 event->in_out = ev_set[previous_event]->inside;
             }
 
-            if( ++next_event != ev_length )
+            elog( DEBUG1, "Checking possible intersections" );
+            if( ++next_event < ev_length )
             {
+                elog( DEBUG1, "Calling first pi" );
                 possible_intersection( event, ev_set[next_event], &num_int, phead );
             }
-            
-            if( previous_event != ev_length )
+
+            if( previous_event < ev_length )
             {
                 possible_intersection( ev_set[previous_event], event, &num_int, phead );
             }
+            elog( DEBUG1, "Post possible intersection" );
         }
         else
         {
+            elog( DEBUG1, "colinear & edge logic" );
             colinear_event = event->other->position;
             previous_event = event->other->position;
             next_event = event->other->position;
@@ -567,7 +615,7 @@ void compute(
             _se_set_remove( &ev_set, colinear_event, ev_index );
             ev_index--;
 
-            if( next_event != ev_index && previous_event != ev_index )
+            if( next_event < ev_index && previous_event < ev_index )
             {
                 possible_intersection( ev_set[previous_event], ev_set[next_event], &num_int, phead );
             }
@@ -611,7 +659,7 @@ struct polygon * poly_to_mpoly( POLYGON * p )
         point->y = p->p[i].y;
         contour_add_point( c, point );
     }
-    
+
     polygon_add_contour( mpoly, c );
     free_pgpoly( p );
 

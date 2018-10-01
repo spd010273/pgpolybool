@@ -141,14 +141,14 @@ void contour_change_orientation( struct contour * c )
     int end_i    = 0;
     int j        = 0;
     Point * temp = NULL;
- 
+
     if( c == NULL )
     {
         return;
     }
-    
+
     end_i = c->num_points;
-   
+
     while( start_i < end_i )
     {
         for( j = 0; j < c->num_holes; j++ )
@@ -205,7 +205,7 @@ void contour_erase_point( struct contour * c, int i )
             c_i++;
         }
     }
-    
+
     c->num_points = c->num_points - 1;
     pfree( c->points );
     c->points = temp_points;
@@ -216,7 +216,7 @@ void contour_erase_point( struct contour * c, int i )
         if( c->holes[j] == i )
         {
             temp_holes = ( int * ) palloc0( sizeof( int ) * c->num_holes - 1 );
-            
+
             for( h = 0; h < c->num_holes; h++ )
             {
                 if( h != j )
@@ -254,7 +254,7 @@ void contour_add_hole( struct contour * c, int index )
     }
     else
     {
-        c->holes = ( int * ) repalloc( c->holes, c->num_holes + 1 );
+        c->holes = ( int * ) repalloc( c->holes, sizeof( int ) * ( c->num_holes + 1 ) );
         c->holes[c->num_holes] = index;
         c->num_holes = c->num_holes + 1;
     }
@@ -285,14 +285,14 @@ void contour_add_point( struct contour * c, Point * p )
         {
             return;
         }
-       
+
         c->points = ( Point ** ) palloc0( sizeof( Point * ) );
         c->num_points = 1;
         c->points[0] = p;
     }
     else
     {
-        c->points = ( Point ** ) repalloc( c->points, sizeof( Point * ) * c->num_points + 1 );
+        c->points = ( Point ** ) repalloc( c->points, sizeof( Point * ) * ( c->num_points + 1 ) );
         c->points[c->num_points] = p;
         c->num_points = c->num_points + 1;
     }
@@ -314,7 +314,7 @@ struct segment * contour_get_segment( struct contour * c, int index )
     if( index == ( c->num_points - 1 ) )
     {
         segment_set_begin( s, c->points[c->num_points - 1] );
-        segment_set_end( s, c->points[0] ); 
+        segment_set_end( s, c->points[0] );
     }
     else
     {
@@ -387,4 +387,47 @@ double contour_area( struct contour * c )
 
     area = area / 2;
     return area;
+}
+
+void _dump_contour( struct contour * c )
+{
+    int i = 0;
+    elog( DEBUG1, "Dumping contour %p", c );
+
+    if( c == NULL )
+    {
+        return;
+    }
+
+    elog(
+        DEBUG1,
+        "points: %p\nnum_points: %d\nholes: %p\nnum_holes: %d\n_external: %s\n"\
+        "_precompiled_cc: %s\n_cc: %s",
+        c->points,
+        c->num_points,
+        c->holes,
+        c->num_holes,
+        c->_external ? "true" : "false",
+        c->_precomputed_cc ? "true" : "false",
+        c->_cc ? "true" : "false"
+    );
+
+    for( i = 0; i < c->num_points; i++ )
+    {
+        if( c->points[i] == NULL )
+        {
+            elog( DEBUG1, "points[%d]: NULL", i );
+        }
+        else
+        {
+            elog( DEBUG1, "points[%d]: (%f,%f) ADDR %p", i, c->points[i]->x, c->points[i]->y, c->points[i] );
+        }
+    }
+
+    for( i = 0; i < c->num_holes; i++ )
+    {
+        elog( DEBUG1, "holes[%d]: %d", i, c->holes[i] );
+    }
+
+    return;
 }

@@ -21,13 +21,13 @@
 #define POLY_TYPE_SUBJECT 0
 #define POLY_TYPE_CLIPPING 1
 
-void process_segment( struct segment *, int, struct pqueue_node ** );
-void compute( struct polygon *, struct polygon *, int, struct polygon * );
-void possible_intersection( struct sweep_event *, struct sweep_event *, int *, struct pqueue_node ** );
-void divide_segment( struct sweep_event *, Point *, struct pqueue_node ** );
+extern void process_segment( struct segment *, int, struct pqueue_node **, struct sweep_event ***, int * );
+extern void compute( struct polygon *, struct polygon *, int, struct polygon * );
+extern void possible_intersection( struct sweep_event *, struct sweep_event *, int *, struct pqueue_node ** );
+extern void divide_segment( struct sweep_event *, Point *, struct pqueue_node ** );
 
-POLYGON * mpoly_to_poly( struct polygon * );
-struct polygon * poly_to_mpoly( POLYGON * );
-void free_pgpoly( POLYGON * );
+extern POLYGON * mpoly_to_poly( struct polygon * );
+extern struct polygon * poly_to_mpoly( POLYGON * );
+extern void free_pgpoly( POLYGON * );
 
 #endif

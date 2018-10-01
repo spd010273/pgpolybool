@@ -75,8 +75,8 @@ double distance( Point * a, Point * b )
     }
 
     dx = a->x - b->x;
-    dy = a->y - b->y;   
-    
+    dy = a->y - b->y;
+
     distance = sqrt( dx * dx + dy * dy );
 
     return distance;
@@ -104,6 +104,12 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
     int     imax       = 0;
 
     sq_epsilon = 0.0000001;
+
+    if( s0 == NULL || s1 == NULL )
+    {
+        return 0;
+    }
+
     isect_s0   = s0->p1;
     isect_s1   = s1->p1;
 
@@ -173,7 +179,7 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
         {
             p0 = s1->p2;
         }
-        
+
         return 1;
     }
 
@@ -191,7 +197,7 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
 
     // Segments are colinear but we need to test for an overlap of the segments
     s_0 = ( d0->x * E->x + d0->y * E->y ) / sq_len0;
-    s_1 = s_0 + ( d0->x * d1->x + d0->y * d1->y ) / sq_len0; 
+    s_1 = s_0 + ( d0->x * d1->x + d0->y * d1->y ) / sq_len0;
 
     s_min = ( s_0 < s_1 ) ? s_0 : s_1;
     s_max = ( s_0 > s_1 ) ? s_0 : s_1;
@@ -224,7 +230,7 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
     {
         p0->x = isect_s0->x + w[0] * d0->x;
         p0->y = isect_s1->x + w[0] * d0->y;
-        
+
         if( distance( p0, s0->p1 ) < sq_epsilon )
         {
             p0 = s0->p1;
@@ -270,7 +276,7 @@ bool points_equal( Point * a, Point * b )
 
     dx = fabs( a->x - b->x );
     dy = fabs( a->y - b->y );
-    
+
     if( dx <= DBL_EPSILON && dy <= DBL_EPSILON )
     {
         return true;

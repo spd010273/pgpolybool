@@ -16,19 +16,19 @@ struct contour {
     bool _cc;
 };
 
-void contour_change_orientation( struct contour * );
-void contour_erase_point( struct contour *, int );
-void contour_set_clockwise( struct contour * );
-void contour_set_counterclockwise( struct contour * );
-bool contour_counterclockwise( struct contour * );
-bool contour_clockwise( struct contour * );
-void contour_bounding_box( struct contour *, Point *, Point * );
-void contour_add_hole( struct contour *, int );
-void contour_add_point( struct contour *, Point * );
-void contour_set_external( struct contour *, bool );
-struct segment * contour_get_segment( struct contour *, int );
-struct contour * new_contour( void );
-void free_contour( struct contour * );
-double contour_area( struct contour * );
-
+extern void contour_change_orientation( struct contour * );
+extern void contour_erase_point( struct contour *, int );
+extern void contour_set_clockwise( struct contour * );
+extern void contour_set_counterclockwise( struct contour * );
+extern bool contour_counterclockwise( struct contour * );
+extern bool contour_clockwise( struct contour * );
+extern void contour_bounding_box( struct contour *, Point *, Point * );
+extern void contour_add_hole( struct contour *, int );
+extern void contour_add_point( struct contour *, Point * );
+extern void contour_set_external( struct contour *, bool );
+extern struct segment * contour_get_segment( struct contour *, int );
+extern struct contour * new_contour( void );
+extern void free_contour( struct contour * );
+extern double contour_area( struct contour * );
+extern void _dump_contour( struct contour * );
 #endif
