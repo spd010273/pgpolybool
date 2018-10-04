@@ -37,10 +37,12 @@ extern void _dump_polygon( struct polygon * );
 
 // Sweep event functions
 extern struct segment * sweep_event_get_segment( struct sweep_event * );
-extern bool sweep_event_comp( struct sweep_event *, struct sweep_event * );
+extern bool sweep_event_ev_comp( struct sweep_event *, struct sweep_event * );
+extern bool sweep_event_sl_comp( struct sweep_event *, struct sweep_event * );
 extern bool sweep_event_below( struct sweep_event *, Point * );
 extern bool sweep_event_above( struct sweep_event *, Point * );
-extern bool sweep_event_segment_comp( struct sweep_event *, struct sweep_event * );
+extern bool sweep_event_ev_segment_comp( struct sweep_event *, struct sweep_event * );
+extern bool sweep_event_sl_segment_comp( struct sweep_event *, struct sweep_event * );
 extern struct sweep_event * new_sweep_event( void );
 extern void free_sweep_event( struct sweep_event * );
 extern void _dump_sweep_event( struct sweep_event * );
@@ -50,8 +52,8 @@ extern bool sweep_event_equal( struct sweep_event *, struct sweep_event * );
 extern struct sweep_event ** _manage_ev_buffer( struct sweep_event **, int );
 extern void _sort_ev_buffer( struct sweep_event **, int, int );
 extern struct sweep_event ** _process_ev_buffer( struct sweep_event **, int );
-extern int _se_set_insert( struct sweep_event ***, struct sweep_event *, int * );
-extern void _se_set_remove( struct sweep_event ***, int, int );
+extern int _se_set_insert( struct sweep_event ***, struct sweep_event *, int *, bool (*)( struct sweep_event *, struct sweep_event * ) );
+extern void _se_set_remove( struct sweep_event ***, int, int * );
 extern void _dump_se_set( struct sweep_event ***, int );
 //void _se_push_front( struct sweep_event ***, int *, struct sweep_event * );
 

@@ -50,22 +50,22 @@ void polygon_boundingbox( struct polygon * p, Point * min, Point * max )
 
         contour_bounding_box( p->contours[i], &min_temp, &max_temp );
 
-        if( min_temp.x < min_x )
+        if( _fp_lt( min_temp.x, min_x ) )
         {
             min_x = min_temp.x;
         }
 
-        if( min_temp.y < min_y )
+        if( _fp_lt( min_temp.y, min_y ) )
         {
             min_y = min_temp.y;
         }
 
-        if( max_temp.x > max_x )
+        if( _fp_gt( max_temp.x, max_x ) )
         {
             max_x = max_temp.x;
         }
 
-        if( max_temp.y > max_y )
+        if( _fp_gt( max_temp.y, max_y ) )
         {
             max_y = max_temp.y;
         }
@@ -222,7 +222,7 @@ void free_polygon( struct polygon * p )
 
 struct segment * sweep_event_get_segment( struct sweep_event * se )
 {
-    struct segment * s;
+    struct segment * s = NULL;
 
     if( se == NULL )
     {
@@ -237,27 +237,27 @@ struct segment * sweep_event_get_segment( struct sweep_event * se )
 
 bool sweep_event_below( struct sweep_event * e, Point * p )
 {
-    double area = 0;
+    double area = 0.0;
     if( e->left )
     {
         area = signed_area_three( e->p, e->other->p, p );
 
-        if( fabs( area ) <= DBL_EPSILON || area < 0 )
+        if( _fp_gt( area, 0.0 ) )
         {
-            return false;
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     area = signed_area_three( e->other->p, e->p, p );
 
-    if( fabs( area ) <= DBL_EPSILON || area < 0 )
+    if( _fp_gt( area, 0.0 ) )
     {
-        return false;
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 bool sweep_event_above( struct sweep_event * e, Point * p )
@@ -265,21 +265,68 @@ bool sweep_event_above( struct sweep_event * e, Point * p )
     return !sweep_event_below( e, p );
 }
 
-bool sweep_event_comp( struct sweep_event * e1, struct sweep_event * e2 )
+bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 ) //SweepEventComp
 {
-    if( e1->p->x < e2->p->x )
+    if( _fp_gt( e1->p->x, e2->p->x ) )
     {
+        elog( DEBUG1, "E1: %p, E2: %p 1st cond", e1, e2 );
         return true;
     }
 
-    if( e2->p->x < e1->p->x )
+    if( _fp_gt( e2->p->x, e1->p->x ) )
+    {
+        elog( DEBUG1, "E1: %p, E2: %p 2nd cond", e1, e2 );
+        return false;
+    }
+
+    if( !points_equal( e1->p, e2->p ) )
+    {
+        if( _fp_gt( e1->p->y, e2->p->y ) )
+        {
+            elog( DEBUG1, "E1: %p, E2: %p 3rd cond inner", e1, e2 );
+            return true;
+        }
+
+        elog( DEBUG1, "E1: %p, E2: %p 3rd cond outer", e1, e2 );
+        return false;
+    }
+
+    if( e1->left != e2->left )
+    {
+        elog( DEBUG1, "E1: %p, E2: %p 4th cond", e1, e2 );
+        return e1->left;
+    }
+
+    if( sweep_event_above( e1, e2->other->p ) )
+    {
+        elog( DEBUG1, "E1: %p, E2: %p 5th cond", e1, e2 );
+        return true;
+    }
+     
+    elog( DEBUG1, "E1: %p, E2: %p fallthrough", e1, e2 );
+    return false;
+}
+
+bool sweep_event_ev_comp( struct sweep_event * e1, struct sweep_event * e2 ) // SEComp
+{
+    // returns true if e1 is to the 'left' of e2
+    //
+    //  left is considered
+    //      - strictly to the left of
+    //      - directly below if they lie on the same x coordinates
+    if( _fp_lt( e1->p->x, e2->p->x ) )
+    {
+        return true;
+    }
+    
+    if( _fp_lt( e2->p->x, e1->p->x ) )
     {
         return false;
     }
 
-    if( e1->p != e2->p )
+    if( !points_equal( e1->p, e2->p ) )
     {
-        return e1->p->y < e2->p->y;
+        return _fp_lt( e1->p->y, e2->p->y );
     }
 
     if( e1->left != e2->left )
@@ -290,27 +337,57 @@ bool sweep_event_comp( struct sweep_event * e1, struct sweep_event * e2 )
     return sweep_event_below( e1, e2->other->p );
 }
 
-bool sweep_event_segment_comp( struct sweep_event * e0, struct sweep_event * e1 )
+bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * e1 ) //SegmentComp
 {
-    if( e0 == e1 )
+    if( sweep_event_equal( e0, e1 ) )
     {
         return false;
     }
 
     if(
-            fabs( signed_area_three( e0->p, e0->other->p, e1->p ) ) > DBL_EPSILON
-         || fabs( signed_area_three( e0->p, e0->other->p, e1->other->p ) ) > DBL_EPSILON
+            !_fp_eq( signed_area_three( e0->p, e0->other->p, e1->p ), 0.0 )
+         || !_fp_eq( signed_area_three( e0->p, e0->other->p, e1->other->p ), 0.0 )
       )
     {
-        if(
-              fabs( e0->p->x - e1->p->x ) <= DBL_EPSILON
-           && fabs( e0->p->y - e1->p->y ) <= DBL_EPSILON
-          )
+        if( points_equal( e0->p, e1->p ) )
         {
             return sweep_event_below( e0, e1->other->p );
         }
 
-        if( sweep_event_comp( e0, e1 ) )
+        if( sweep_event_sl_comp( e0, e1 ) )
+        {
+            return sweep_event_above( e1, e0->p );
+        }
+
+        return sweep_event_below( e0, e1->p );
+    }
+
+    if( points_equal( e0->p, e1->p ) )
+    {
+        return sweep_event_sl_comp( e0, e1 );
+    }
+
+    return sweep_event_sl_comp( e0, e1 );
+}
+
+bool sweep_event_ev_segment_comp( struct sweep_event * e0, struct sweep_event * e1 ) //SegmentsComp
+{
+    if( sweep_event_equal( e0, e1 ) )
+    {
+        return false;
+    }
+
+    if(
+            !_fp_eq( signed_area_three( e0->p, e0->other->p, e1->p ), 0.0 )
+         || !_fp_eq( signed_area_three( e0->p, e0->other->p, e1->other->p ), 0.0 )
+      )
+    {
+        if( points_equal( e0->p, e1->p ) )
+        {
+            return sweep_event_below( e0, e1->other->p );
+        }
+
+        if( sweep_event_ev_comp( e0, e1 ) )
         {
             return sweep_event_below( e0, e1->p );
         }
@@ -318,15 +395,12 @@ bool sweep_event_segment_comp( struct sweep_event * e0, struct sweep_event * e1 
         return sweep_event_above( e1, e0->p );
     }
 
-    if(
-          fabs( e0->p->x - e1->p->x ) <= DBL_EPSILON
-       && fabs( e0->p->y - e1->p->y ) <= DBL_EPSILON
-      )
+    if( points_equal( e0->p, e1->p ) )
     {
-        return false; // ?
+        return sweep_event_ev_comp( e0, e1 );
     }
 
-    return sweep_event_comp( e0, e1 );
+    return sweep_event_ev_comp( e0, e1 );
 }
 
 struct sweep_event * new_sweep_event( void )
@@ -411,12 +485,12 @@ void _sort_ev_buffer( struct sweep_event ** ev, int start_ind, int end_ind )
 
         while( i <= j )
         {
-            while( i <= end_ind && sweep_event_comp( ev[i], key ) )
+            while( i <= end_ind && sweep_event_ev_comp( ev[i], key ) )
             {
                 i++;
             }
 
-            while( j >= start_ind && !sweep_event_comp( ev[j], key ) )
+            while( j >= start_ind && !sweep_event_ev_comp( ev[j], key ) )
             {
                 j--;
             }
@@ -445,29 +519,45 @@ void _sort_ev_buffer( struct sweep_event ** ev, int start_ind, int end_ind )
  *   Each element of the ev_set contains its own position.
  *   unlike the previous quick sort, this uses segment_comp as the comparison function
  */
-int _se_set_insert( struct sweep_event *** set, struct sweep_event * se, int * len )
+int _se_set_insert(
+    struct sweep_event *** set,
+    struct sweep_event * se,
+    int * len,
+    bool (*sort_function)( struct sweep_event *, struct sweep_event * ) // pointer to sorting function
+)
 {
     //struct sweep_event ** temp = NULL;
     int i = 0;
     int j = 0;
     int ind_offset = 0;
 
-    elog( DEBUG1, "------------------ SE INSERT --------------------" );
     if( se == NULL )
     {
         return -1;
     }
 
-    elog( DEBUG1, "Adding SE %p to SET: %p", se, (*set) );
-    _dump_sweep_event( se );
+    //_dump_sweep_event( se );
     if( set == NULL || (*set) == NULL )
     {
         (*set) = ( struct sweep_event ** ) palloc0( sizeof( struct sweep_event * ) );
         (*set)[0] = se;
         se->position = 0;
-        elog( DEBUG1, "Dumping new SET" );
-        _dump_se_set( set, 1 );
-        (*len)++;
+        //elog( DEBUG1, "Dumping new SET" );
+        //_dump_se_set( set, 1 );
+        (*len) = 1;
+        /*
+        elog(
+            DEBUG1,
+            "Adding SE %p p(%f,%f) op(%f,%f) left: %s to SET: %p",
+            se,
+            se->p->x,
+            se->p->y,
+            se->other->p->x,
+            se->other->p->y,
+            se->left?"true":"false",
+            (*set)
+        );
+        */
         return 1;
     }
     //elog( DEBUG1, "Dumping SET" );
@@ -475,7 +565,7 @@ int _se_set_insert( struct sweep_event *** set, struct sweep_event * se, int * l
     for( i = 0; i < (*len); i++ )
     {
         // scan for insertion point
-        if( !sweep_event_segment_comp( (*set)[i], se ) )
+        if( !(*sort_function)( (*set)[i], se ) )
         {
             // First time we hit this, (*set)[last_ind] < se <= (*set)[i]
             if( sweep_event_equal( (*set)[i], se ) )
@@ -501,19 +591,52 @@ int _se_set_insert( struct sweep_event *** set, struct sweep_event * se, int * l
                     {
                         (*set)[j] = (*set)[j-ind_offset];
                     }
-                    
+
                     (*set)[j]->position = j;
                 }
 
                 (*len)++;
+/*
+                elog(
+                    DEBUG1,
+                    "Adding SE %p p(%f,%f) op(%f,%f) left: %s to SET: %p",
+                    se,
+                    se->p->x,
+                    se->p->y,
+                    se->other->p->x,
+                    se->other->p->y,
+                    se->left?"true":"false",
+                    (*set)
+                );
+*/
                 return i;
             }
         }
 
         (*set)[i]->position = i;
     }
-
-    return -1;
+    
+    (*set) = ( struct sweep_event ** ) repalloc(
+        (*set),
+        sizeof( struct sweep_event * ) * ( (*len) + 1 )
+    );
+    (*set)[*len] = se;
+    se->position = (*len);
+    (*len)++;
+/*
+    elog(
+        DEBUG1,
+        "Adding SE %p p(%f,%f) op(%f,%f) left: %s to SET: %p",
+        se,
+        se->p->x,
+        se->p->y,
+        se->other->p->x,
+        se->other->p->y,
+        se->left?"true":"false",
+        (*set)
+    );
+*/
+    return 1;
 }
 
 // constrict ev buffer to exact fit, clear processed bit and set position index for usage as set
@@ -533,20 +656,20 @@ struct sweep_event ** _process_ev_buffer( struct sweep_event ** ev, int ev_index
     return new_ev;
 }
 
-void _se_set_remove( struct sweep_event *** set, int position, int ev_index )
+void _se_set_remove( struct sweep_event *** set, int position, int * ev_index )
 {
     struct sweep_event ** ev_set_temp = NULL;
     int i = 0;
     int ind_offset = 0;
 
-    if( (*set) == NULL || position >= ev_index )
+    if( (*set) == NULL || position >= (*ev_index) )
     {
         return;
     }
 
-    ev_set_temp = ( struct sweep_event ** ) palloc0( sizeof( struct sweep_event * ) * ( ev_index - 1 ) );
+    ev_set_temp = ( struct sweep_event ** ) palloc0( sizeof( struct sweep_event * ) * ( (*ev_index) - 1 ) );
 
-    for( i = 0; i < ev_index - 1; i++ )
+    for( i = 0; i < (*ev_index) - 1; i++ )
     {
         if( i == position )
         {
@@ -559,7 +682,7 @@ void _se_set_remove( struct sweep_event *** set, int position, int ev_index )
 
     pfree( (*set) );
     (*set) = ev_set_temp;
-
+    (*ev_index)--;
     return;
 }
 
@@ -603,7 +726,7 @@ void polygon_compute_holes( struct polygon * p )
             seg = contour_get_segment( p->contours[i], j );
 
             // Do not process vertical segments
-            if( seg->p1->x == seg->p2->x )
+            if( _fp_eq( seg->p1->x, seg->p2->x ) )
             {
                 continue;
             }
@@ -631,7 +754,7 @@ void polygon_compute_holes( struct polygon * p )
             ev[ev_index] = se;
             ev_index++;
 
-            if( se_last->p->x < se->p->x )
+            if( _fp_lt( se_last->p->x, se->p->x ) )
             {
                 se->left        = false;
                 se_last->in_out = false;
@@ -662,7 +785,7 @@ void polygon_compute_holes( struct polygon * p )
 
         if( se->left )
         {
-            insertion_ind = _se_set_insert( &ev_set, se, &ev_index );
+            insertion_ind = _se_set_insert( &ev_set, se, &ev_index, &sweep_event_ev_segment_comp );
             if( insertion_ind > 0 )
             {
                 ev_index++;
@@ -723,7 +846,7 @@ void polygon_compute_holes( struct polygon * p )
         }
         else
         {
-            _se_set_remove( &ev_set, se->other->position, ev_index );
+            _se_set_remove( &ev_set, se->other->position, &ev_index );
         }
     }
 
@@ -769,13 +892,16 @@ void _dump_sweep_event( struct sweep_event * e )
     {
         return;
     }
-    elog(
-        DEBUG1,
-        "p: (%f,%f)\nleft: %s\ninside: %s\npolygon %d\nother: %p\n"\
-        "in_out: %s\nposition: %d\nedge_type: %d\npolygon_type: %d",
-        e->p->x, e->p->y, e->left ? "true" : "false", e->inside ? "true" : "false",
-        e->polygon, e->other, e->in_out ? "true" : "false", e->position, e->edge_type, e->polygon_type
-    );
+    
+    elog( DEBUG1, "left: %s", e->left? "t":"f" );
+    elog( DEBUG1, "inside: %s", e->inside?"t":"f" );
+    elog( DEBUG1, "polygon %d", e->polygon );
+    elog( DEBUG1, "other: %p", e->other );
+    elog( DEBUG1, "in_out: %s", e->in_out? "t":"f" );
+    elog( DEBUG1, "position: %d", e->position );
+    elog( DEBUG1, "edge_type: %d", e->edge_type );
+    elog( DEBUG1, "polygon_type: %d", e->polygon_type );
+    elog( DEBUG1, "p: (%f,%f)", e->p->x, e->p->y );
     return;
 }
 
@@ -795,11 +921,11 @@ void _dump_se_set( struct sweep_event *** ev_set, int ev_index )
         }
         else
         {
-            elog( DEBUG1, "SES[%d]: %p", i, e );
-            _dump_sweep_event( e );
+            elog( DEBUG1, "SES[%d]: %p (%f,%f) (%f,%f) %s", i, e, e->p->x, e->p->y, e->other->p->x, e->other->p->y, e->left?"L":"R" );
+            //_dump_sweep_event( e );
         }
     }
-    
+
     return;
 }
 
@@ -813,6 +939,11 @@ bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
         }
 
         return false;
+    }
+
+    if( e0 == e1 )
+    {
+        return true;
     }
 
     if( !points_equal( e0->p, e1->p ) )

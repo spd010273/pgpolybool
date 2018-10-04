@@ -20,22 +20,22 @@ void contour_bounding_box( struct contour * c, Point * min, Point * max )
 
     for( i = 0; i < c->num_points; i++ )
     {
-        if( c->points[i]->x < min_x )
+        if( _fp_lt( c->points[i]->x, min_x ) )
         {
             min_x = c->points[i]->x;
         }
 
-        if( c->points[i]->x > max_x )
+        if( _fp_gt( c->points[i]->x, max_x ) )
         {
             max_x = c->points[i]->x;
         }
 
-        if( c->points[i]->y < min_y )
+        if( _fp_lt( c->points[i]->y, min_y ) )
         {
             min_y = c->points[i]->y;
         }
 
-        if( c->points[i]->y > max_y )
+        if( _fp_gt( c->points[i]->y, max_y ) )
         {
             max_y = c->points[i]->y;
         }
@@ -215,7 +215,7 @@ void contour_erase_point( struct contour * c, int i )
     {
         if( c->holes[j] == i )
         {
-            temp_holes = ( int * ) palloc0( sizeof( int ) * c->num_holes - 1 );
+            temp_holes = ( int * ) palloc0( sizeof( int ) * ( c->num_holes - 1 ) );
 
             for( h = 0; h < c->num_holes; h++ )
             {
@@ -270,6 +270,8 @@ void contour_set_external( struct contour * c, bool ext )
     }
 
     c->_external = ext;
+
+    return;
 }
 
 void contour_add_point( struct contour * c, Point * p )

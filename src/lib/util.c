@@ -31,17 +31,17 @@ int sign( Point * a, Point * b, Point * c )
 
     determinant = signed_area_three( a, b, c );
 
-    if( fabs( determinant ) <= DBL_EPSILON )
+    if( _fp_lt( determinant, 0.0 ) )
     {
-        return 0;
+        return -1;
     }
 
-    if( determinant > 0 )
+    if( _fp_gt( determinant, 0.0 ) )
     {
         return 1;
     }
 
-    return -1;
+    return 0;
 }
 
 bool point_in_triangle( struct segment * s, Point * a, Point * b )
@@ -123,19 +123,19 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
     d1->x = s1->p2->x - s1->p1->x;
     d1->y = s1->p2->y - s1->p1->y;
 
-    E->x = isect_s1->x * isect_s0->x;
-    E->y = isect_s1->y * isect_s0->y;
+    E->x = isect_s1->x - isect_s0->x;
+    E->y = isect_s1->y - isect_s0->y;
 
     cross_prod = d0->x * d1->y - d0->y * d1->x;
     sq_len0    = d0->x * d0->x + d0->y * d0->y;
     sq_len1    = d1->x * d1->x + d1->y * d1->y;
 
     // Handle the non-parallel case
-    if( ( cross_prod * cross_prod ) > ( sq_epsilon * sq_len0 * sq_len1 ) )
+    if( _fp_gt( ( cross_prod * cross_prod ), ( sq_epsilon * sq_len0 * sq_len1 ) ) )
     {
         s = ( E->x * d1->y - E->y * d1->x ) / cross_prod;
 
-        if( s < 0 || s > 1 )
+        if( _fp_lt( s, 0 ) || _fp_gt( s, 1 ) )
         {
             pfree( d0 );
             pfree( d1 );
@@ -145,7 +145,7 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
 
         t = ( E->x * d0->y - E->y * d0->x ) / cross_prod;
 
-        if( t < 0 || t > 1 )
+        if( _fp_lt( t, 0.0 ) || _fp_gt( t, 1.0 ) )
         {
             pfree( d0 );
             pfree( d1 );
@@ -160,22 +160,22 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
         pfree( d1 );
         pfree( E );
 
-        if( distance( p0, s0->p1 ) < sq_epsilon )
+        if( _fp_lt( distance( p0, s0->p1 ), sq_epsilon ) )
         {
             p0 = s0->p1;
         }
 
-        if( distance( p0, s0->p2 ) < sq_epsilon )
+        if( _fp_lt( distance( p0, s0->p2 ), sq_epsilon ) )
         {
             p0 = s0->p2;
         }
 
-        if( distance( p0, s1->p1 ) < sq_epsilon )
+        if( _fp_lt( distance( p0, s1->p1 ), sq_epsilon ) )
         {
             p0 = s1->p1;
         }
 
-        if( distance( p0, s1->p2 ) < sq_epsilon )
+        if( _fp_lt( distance( p0, s1->p2 ), sq_epsilon ) )
         {
             p0 = s1->p2;
         }
@@ -187,7 +187,7 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
     sq_len_E = E->x * E->x + E->y * E->y;
     cross_prod = E->x * d0->y - E->y * d0->x;
 
-    if( ( cross_prod * cross_prod ) > ( sq_epsilon * sq_len0 * sq_len_E ) )
+    if( _fp_gt( ( cross_prod * cross_prod ), ( sq_epsilon * sq_len0 * sq_len_E ) ) )
     {
         pfree( d0 );
         pfree( d1 );
@@ -199,31 +199,53 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
     s_0 = ( d0->x * E->x + d0->y * E->y ) / sq_len0;
     s_1 = s_0 + ( d0->x * d1->x + d0->y * d1->y ) / sq_len0;
 
-    s_min = ( s_0 < s_1 ) ? s_0 : s_1;
-    s_max = ( s_0 > s_1 ) ? s_0 : s_1;
+    s_min = _fp_lt( s_0, s_1 ) ? s_0 : s_1;
+    s_max = _fp_gt( s_0, s_1 ) ? s_0 : s_1;
 
-    if( ( s_min > 1.0 ) || ( s_min < 0.0 ) )
+    if(
+          _fp_lt( 1.0, s_min )
+       || _fp_gt( 0.0, s_max )
+      )
     {
-        imax = 0;
-    }
-    else if( s_min < 1.0 )
-    {
-        if( s_max > 0.0 )
-        {
-            w[0] = ( s_min > 0.0 ) ? s_min : 0.0;
-            w[1] = ( s_max < 1.0 ) ? s_max : 1.0;
-            imax = 2;
-        }
-        else
-        {
-            w[0] = 0.0;
-            imax = 1;
-        }
+        return 0;
     }
     else
     {
-        w[0] = 1.0;
-        imax = 1;
+        if( _fp_gt( 1.0, s_min ) )
+        {
+            if( _fp_lt( 0.0, s_max ) )
+            {
+                if( _fp_lt( 0.0, s_min ) )
+                {
+                    w[0] = s_min;
+                }
+                else
+                {
+                    w[0] = 0.0;
+                }
+
+                if( _fp_gt( 1.0, s_max ) )
+                {
+                    w[1] = s_max;
+                }
+                else
+                {
+                    w[1] = 1.0;
+                }
+
+                imax = 2;
+            }
+            else
+            {
+                w[0] = 0.0;
+                imax = 1;
+            }
+        }
+        else
+        {
+            w[0] = 1.0;
+            imax = 1;
+        }
     }
 
     if( imax > 0 )
@@ -231,22 +253,22 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
         p0->x = isect_s0->x + w[0] * d0->x;
         p0->y = isect_s1->x + w[0] * d0->y;
 
-        if( distance( p0, s0->p1 ) < sq_epsilon )
+        if( _fp_lt( distance( p0, s0->p1 ), sq_epsilon ) )
         {
             p0 = s0->p1;
         }
 
-        if( distance( p0, s0->p2 ) < sq_epsilon )
+        if( _fp_lt( distance( p0, s0->p2 ), sq_epsilon ) )
         {
             p0 = s0->p2;
         }
 
-        if( distance( p0, s1->p1 ) < sq_epsilon )
+        if( _fp_lt( distance( p0, s1->p1 ), sq_epsilon ) )
         {
             p0 = s1->p1;
         }
 
-        if( distance( p0, s1->p2 ) < sq_epsilon )
+        if( _fp_lt( distance( p0, s1->p2 ), sq_epsilon ) )
         {
             p0 = s1->p2;
         }
@@ -266,18 +288,92 @@ int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Poi
 
 bool points_equal( Point * a, Point * b )
 {
-    double dx = 0.0;
-    double dy = 0.0;
-
     if( a == NULL || b == NULL )
+    {
+        elog( DEBUG, "points eq got NULL pointers" );
+        return false;
+    }
+
+    if( _fp_eq( a->x, b->x ) && _fp_eq( a->y, b->y ) )
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool _fp_gte( double a, double b )
+{
+    if( a < b )
     {
         return false;
     }
 
-    dx = fabs( a->x - b->x );
-    dy = fabs( a->y - b->y );
+    return true;
+}
 
-    if( dx <= DBL_EPSILON && dy <= DBL_EPSILON )
+bool _fp_gt( double a, double b )
+{
+    if( a > b && !_fp_eq( a, b ) )
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool _fp_lte( double a, double b )
+{
+    if( a > b )
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool _fp_lt( double a, double b )
+{
+    if( a < b && !_fp_eq( a, b ) )
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool _fp_eq( double a, double b )
+{
+    double diff = 0.0;
+    double min  = 0.0;
+    double a_a  = 0.0;
+    double a_b  = 0.0;
+
+    if( a == b )
+    {
+        return true;
+    }
+
+    diff = fabs( a - b );
+
+    if( a == 0 || b == 0 || diff <= DBL_EPSILON )
+    {
+        return true;
+    }
+
+    a_a = fabs( a );
+    a_b = fabs( b );
+
+    if( ( a_a + a_b ) > DBL_MAX )
+    {
+        min = DBL_MAX;
+    }
+    else
+    {
+        min = a_a + a_b;
+    }
+
+    if( ( diff / min ) < DBL_EPSILON )
     {
         return true;
     }

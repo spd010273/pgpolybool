@@ -23,8 +23,8 @@
 
 extern void process_segment( struct segment *, int, struct pqueue_node **, struct sweep_event ***, int * );
 extern void compute( struct polygon *, struct polygon *, int, struct polygon * );
-extern void possible_intersection( struct sweep_event *, struct sweep_event *, int *, struct pqueue_node ** );
-extern void divide_segment( struct sweep_event *, Point *, struct pqueue_node ** );
+extern void possible_intersection( struct sweep_event *, struct sweep_event *, int *, struct pqueue_node **, struct sweep_event ***, int * );
+extern void divide_segment( struct sweep_event *, Point *, struct pqueue_node **, struct sweep_event ***, int * );
 
 extern POLYGON * mpoly_to_poly( struct polygon * );
 extern struct polygon * poly_to_mpoly( POLYGON * );

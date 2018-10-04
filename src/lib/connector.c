@@ -13,6 +13,7 @@ struct connector * new_connector( Point * p )
     list = ( Point ** ) palloc0( sizeof( Point * ) );
 
     c->list = list;
+    c->list[0] = p;
 
     return c;
 }
@@ -40,16 +41,13 @@ void connector_add_point( struct connector * c, Point * p )
         return;
     }
 
-    if( c == NULL || c->list == NULL )
-    {
-        c = new_connector( p );
-    }
-    else
-    {
-        c->list = ( Point ** ) repalloc( c->list, sizeof( Point * ) * ( c->length + 1 ) );
-        c->list[c->length] = p;
-        c->length++;
-    }
+    c->list = ( Point ** ) repalloc(
+        c->list,
+        sizeof( Point * )
+      * ( c->length + 1 )
+    );
+    c->list[c->length] = p;
+    c->length++;
 
     return;
 }
@@ -88,9 +86,15 @@ bool connector_link_segment( struct connector * c, struct segment * s )
         return false;
     }
 
-    if( c->length > 0 && points_equal( s->p1, c->list[0] ) )
+    if( c->length == 0 || c->list == NULL )
     {
-        if( points_equal( s->p2, c->list[c->length-1] ) )
+        elog( DEBUG1, "Could not link segment: point list is uninitialized" );
+        return false;
+    }
+
+    if( points_equal( s->p1, c->list[0] ) )
+    {
+        if( points_equal( s->p2, c->list[c->length - 1] ) )
         {
             c->_closed = true;
         }
@@ -102,7 +106,7 @@ bool connector_link_segment( struct connector * c, struct segment * s )
         return true;
     }
 
-    if( points_equal( s->p2, c->list[c->length-1] ) )
+    if( points_equal( s->p2, c->list[c->length - 1] ) )
     {
         if( points_equal( s->p1, c->list[0] ) )
         {
@@ -154,6 +158,8 @@ bool connector_link_chain( struct connector * c0, struct connector * c1 )
         return false;
     }
 
+    _dump_connector( c0 );
+    _dump_connector( c1 );
     if( points_equal( c1->list[0], c0->list[c0->length - 1] ) )
     {
         connector_pop_front( c1 );
@@ -237,7 +243,7 @@ void connector_splice( struct connector * c_to, int ins_index, struct connector 
             c_to->list[to_ind] = list_temp[i];
             to_ind++;
         }
-        
+
         pfree( list_temp );
     }
 
@@ -334,7 +340,7 @@ void connector_pop( struct connector * c )
     }
 
     list_temp = ( Point ** ) palloc0( sizeof( Point * ) * ( c->length - 1 ) );
-    
+
     for( i = 0; i < c->length - 1; i++ )
     {
         list_temp[i] = c->list[i];
@@ -350,12 +356,9 @@ struct polygon_connector * new_polygon_connector( struct connector * open, struc
 {
     struct polygon_connector * new_pc = NULL;
 
-    if( open == NULL && closed == NULL )
-    {
-        return NULL;
-    }
-
     new_pc = ( struct polygon_connector * ) palloc0( sizeof( struct polygon_connector ) );
+    new_pc->open_length = 0;
+    new_pc->closed_length = 0;
 
     if( open != NULL )
     {
@@ -363,7 +366,7 @@ struct polygon_connector * new_polygon_connector( struct connector * open, struc
         new_pc->open[0] = open;
         new_pc->open_length = 1;
     }
-    
+
     if( closed != NULL )
     {
         new_pc->closed = ( struct connector ** ) palloc0( sizeof( struct connector * ) );
@@ -376,7 +379,7 @@ struct polygon_connector * new_polygon_connector( struct connector * open, struc
 
 void free_polygon_connector( struct polygon_connector * pc )
 {
-    if( pc == NULL ) 
+    if( pc == NULL )
     {
         return;
     }
@@ -402,9 +405,25 @@ void polygon_connector_add_open_connector( struct polygon_connector * pc, struct
         return;
     }
 
-    pc->open = ( struct connector ** ) repalloc( pc->open, sizeof( struct connector * ) * ( pc->open_length + 1 ) ); 
-    pc->open[pc->open_length] = c;
-    pc->open_length++;
+    if( pc->open == NULL )
+    {
+        pc->open = ( struct connector ** ) palloc0(
+            sizeof( struct connector * )
+        );
+        pc->open[0] = c;
+        pc->open_length = 1;
+    }
+    else
+    {
+        pc->open = ( struct connector ** ) repalloc(
+            pc->open,
+            sizeof( struct connector * )
+          * ( pc->open_length + 1 )
+        );
+        pc->open[pc->open_length] = c;
+        pc->open_length++;
+    }
+
     return;
 }
 
@@ -415,9 +434,24 @@ void polygon_connector_add_closed_connector( struct polygon_connector * pc, stru
         return;
     }
 
-    pc->closed = ( struct connector ** ) repalloc( pc->closed, sizeof( struct connector * ) * ( pc->closed_length + 1 ) ); 
-    pc->closed[pc->closed_length] = c;
-    pc->closed_length++;
+    if( pc->closed == NULL )
+    {
+        pc->closed = ( struct connector ** ) palloc0(
+            sizeof( struct connector * )
+        );
+        pc->closed[0] = c;
+        pc->closed_length = 1;
+    }
+    else
+    {
+        pc->closed = ( struct connector ** ) repalloc(
+            pc->closed,
+            sizeof( struct connector * )
+          * ( pc->closed_length + 1 )
+        );
+        pc->closed[pc->closed_length] = c;
+        pc->closed_length++;
+    }
     return;
 }
 
@@ -427,14 +461,17 @@ void polygon_connector_remove_open_connector( struct polygon_connector * pc, int
     int i = 0;
     int ind_offset = 0;
 
-    if( pc == NULL || index >= pc->open_length )
+    if( pc == NULL || index >= pc->open_length || index < 0 )
     {
         return;
     }
 
-    list_temp = ( struct connector ** ) palloc0( sizeof( struct connector * ) * ( pc->open_length - 1 ) );
+    list_temp = ( struct connector ** ) palloc0(
+        sizeof( struct connector * )
+      * ( pc->open_length - 1 )
+    );
 
-    for( i = 0; i < pc->open_length; i++ )
+    for( i = 0; i < pc->open_length - 1; i++ )
     {
         if( i == index )
         {
@@ -456,14 +493,17 @@ void polygon_connector_remove_closed_connector( struct polygon_connector * pc, i
     int i = 0;
     int ind_offset = 0;
 
-    if( pc == NULL || index >= pc->closed_length )
+    if( pc == NULL || index >= pc->closed_length || index < 0 )
     {
         return;
     }
 
-    list_temp = ( struct connector ** ) palloc0( sizeof( struct connector * ) * ( pc->closed_length - 1 ) );
+    list_temp = ( struct connector ** ) palloc0(
+        sizeof( struct connector * )
+      * ( pc->closed_length - 1 )
+    );
 
-    for( i = 0; i < pc->closed_length; i++ )
+    for( i = 0; i < pc->closed_length - 1; i++ )
     {
         if( i == index )
         {
@@ -488,10 +528,11 @@ void polygon_connector_add_segment( struct polygon_connector * pc, struct segmen
 
     if( pc == NULL || s == NULL )
     {
+        elog( DEBUG1, "Could not add segment: pc %p, s %p", pc, s );
         return;
     }
 
-    while( i < pc->open_length )
+    while( i != pc->open_length )
     {
         if( connector_link_segment( pc->open[i], s ) )
         {
@@ -502,7 +543,9 @@ void polygon_connector_add_segment( struct polygon_connector * pc, struct segmen
             }
             else
             {
-                for( ++k; k != pc->open_length; k++ )
+                k = i;
+
+                for( ++k; k < pc->open_length; k++ )
                 {
                     if( connector_link_chain( pc->open[i], pc->open[k] ) )
                     {
@@ -521,6 +564,7 @@ void polygon_connector_add_segment( struct polygon_connector * pc, struct segmen
     temp = new_connector( s->p1 );
     connector_add_point( temp, s->p2 );
     polygon_connector_add_open_connector( pc, temp );
+    return;
 }
 
 struct polygon * polygon_connector_to_polygon( struct polygon_connector * pc )
@@ -530,6 +574,7 @@ struct polygon * polygon_connector_to_polygon( struct polygon_connector * pc )
     int i = 0;
     int j = 0;
 
+    elog( DEBUG1, "Entry, polygon_connector_to_polygon" );
     if( pc == NULL || pc->closed_length == 0 )
     {
         return NULL;
@@ -553,4 +598,134 @@ struct polygon * polygon_connector_to_polygon( struct polygon_connector * pc )
     }
 
     return p;
+}
+
+void _dump_connector( struct connector * c )
+{
+    int i = 0;
+
+    if( c == NULL )
+    {
+        elog( DEBUG1, "Connector is null!" );
+        return;
+    }
+
+    elog(
+        DEBUG1,
+        "Connector: %p\n    list: %p\n    _closed: %s\n    length: %d",
+        c,
+        c->list,
+        c->_closed ? "true" : "false",
+        c->length
+    );
+
+    if( c->list == NULL )
+    {
+        return;
+    }
+
+    for( i = 0; i < c->length; i++ )
+    {
+        elog( DEBUG1, "list[%d]: (%f, %f)", i, c->list[i]->x, c->list[i]->y );
+    }
+
+    return;
+}
+
+void _dump_polygon_connector( struct polygon_connector * pc )
+{
+    int i = 0;
+    int j = 0;
+    struct connector * c = NULL;
+
+    if( pc == NULL )
+    {
+        elog( DEBUG1, "Polygon connector is null" );
+        return;
+    }
+
+    elog( DEBUG1, "Polygon connector ADDR %p", ( void * ) pc );
+    elog( DEBUG1, "pc->open_length: %d", pc->open_length );
+    elog( DEBUG1, "pc->open: %p", pc->open );
+    for( i = 0; i < pc->open_length; i++ )
+    {
+        c = pc->open[i];
+
+        if( c == NULL )
+        {
+            elog( DEBUG1, "pc->open[%d] NULL", i );
+        }
+        else
+        {
+            elog(
+                DEBUG1,
+                "pc->open[%d] %p\n" \
+                "            list: %p\n" \
+                "            _closed: %s\n" \
+                "            length: %d",
+                i,
+                c,
+                c->list,
+                c->_closed?"true":"false",
+                c->length
+            );
+
+            if( c->list != NULL )
+            {
+                for( j = 0; j < c->length; j++ )
+                {
+                    elog(
+                        DEBUG1,
+                        "                [%d] ( %f, %f )",
+                        j,
+                        c->list[j]->x,
+                        c->list[j]->y
+                    );
+                }
+            }
+        }
+    }
+    
+    elog( DEBUG1, "pc->closed_length: %d", pc->closed_length );
+    elog( DEBUG1, "pc->closed %p", pc->closed );
+
+    for( i = 0; i < pc->closed_length; i++ )
+    {
+        c = pc->closed[i];
+
+        if( c == NULL )
+        {
+            elog( DEBUG1, "pc->closed[%d] NULL", i );
+        }
+        else
+        {
+            elog(
+                DEBUG1,
+                "pc->closed[%d] %p\n" \
+                "            list: %p\n" \
+                "            _closed: %s\n" \
+                "            length: %d",
+                i,
+                c,
+                c->list,
+                c->_closed?"true":"false",
+                c->length
+            );
+
+            if( c->list != NULL )
+            {
+                for( j = 0; j < c->length; j++ )
+                {
+                    elog(
+                        DEBUG1,
+                        "                [%d] ( %f, %f )",
+                        j,
+                        c->list[j]->x,
+                        c->list[j]->y
+                    );
+                }
+            }
+        }
+    }
+    return;
 }

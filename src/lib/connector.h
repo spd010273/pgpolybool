@@ -31,6 +31,7 @@ extern void connector_splice( struct connector *, int, struct connector *, int )
 extern void connector_reverse( struct connector * );
 extern void connector_pop_front( struct connector * );
 extern void connector_pop( struct connector * );
+extern void _dump_connector( struct connector * );
 
 extern struct polygon_connector * new_polygon_connector( struct connector *, struct connector * );
 extern void free_polygon_connector( struct polygon_connector * );
@@ -40,5 +41,5 @@ extern void polygon_connector_add_segment( struct polygon_connector *, struct se
 extern void polygon_connector_remove_closed_connector( struct polygon_connector *, int );
 extern void polygon_connector_remove_open_connector( struct polygon_connector *, int );
 extern struct polygon * polygon_connector_to_polygon( struct polygon_connector * );
-
+extern void _dump_polygon_connector( struct polygon_connector * );
 #endif
