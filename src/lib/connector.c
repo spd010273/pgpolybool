@@ -522,8 +522,8 @@ void polygon_connector_remove_closed_connector( struct polygon_connector * pc, i
 
 void polygon_connector_add_segment( struct polygon_connector * pc, struct segment * s )
 {
-    int i = 0;
-    int k = 0;
+    int i                   = 0;
+    int k                   = 0;
     struct connector * temp = NULL;
 
     if( pc == NULL || s == NULL )
@@ -571,8 +571,8 @@ struct polygon * polygon_connector_to_polygon( struct polygon_connector * pc )
 {
     struct polygon * p = NULL;
     struct contour * c = NULL;
-    int i = 0;
-    int j = 0;
+    int              i = 0;
+    int              j = 0;
 
     elog( DEBUG1, "Entry, polygon_connector_to_polygon" );
     if( pc == NULL || pc->closed_length == 0 )

@@ -265,17 +265,22 @@ bool sweep_event_above( struct sweep_event * e, Point * p )
     return !sweep_event_below( e, p );
 }
 
+bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
+{
+    return sweep_event_sl_comp( ( struct sweep_event * ) e1, ( struct sweep_event * ) e2 );
+}
+
 bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 ) //SweepEventComp
 {
     if( _fp_gt( e1->p->x, e2->p->x ) )
     {
-        elog( DEBUG1, "E1: %p, E2: %p 1st cond", e1, e2 );
+        //elog( DEBUG1, "E1: %p, E2: %p 1st cond", e1, e2 );
         return true;
     }
 
     if( _fp_gt( e2->p->x, e1->p->x ) )
     {
-        elog( DEBUG1, "E1: %p, E2: %p 2nd cond", e1, e2 );
+        //elog( DEBUG1, "E1: %p, E2: %p 2nd cond", e1, e2 );
         return false;
     }
 
@@ -283,28 +288,33 @@ bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 ) //S
     {
         if( _fp_gt( e1->p->y, e2->p->y ) )
         {
-            elog( DEBUG1, "E1: %p, E2: %p 3rd cond inner", e1, e2 );
+            //elog( DEBUG1, "E1: %p, E2: %p 3rd cond inner", e1, e2 );
             return true;
         }
 
-        elog( DEBUG1, "E1: %p, E2: %p 3rd cond outer", e1, e2 );
+        //elog( DEBUG1, "E1: %p, E2: %p 3rd cond outer", e1, e2 );
         return false;
     }
 
     if( e1->left != e2->left )
     {
-        elog( DEBUG1, "E1: %p, E2: %p 4th cond", e1, e2 );
+        //elog( DEBUG1, "E1: %p, E2: %p 4th cond", e1, e2 );
         return e1->left;
     }
 
     if( sweep_event_above( e1, e2->other->p ) )
     {
-        elog( DEBUG1, "E1: %p, E2: %p 5th cond", e1, e2 );
+        //elog( DEBUG1, "E1: %p, E2: %p 5th cond", e1, e2 );
         return true;
     }
      
-    elog( DEBUG1, "E1: %p, E2: %p fallthrough", e1, e2 );
+    //elog( DEBUG1, "E1: %p, E2: %p fallthrough", e1, e2 );
     return false;
+}
+
+bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
+{
+    return sweep_event_ev_comp( ( struct sweep_event * ) e1, ( struct sweep_event * ) e2 );
 }
 
 bool sweep_event_ev_comp( struct sweep_event * e1, struct sweep_event * e2 ) // SEComp
@@ -335,6 +345,11 @@ bool sweep_event_ev_comp( struct sweep_event * e1, struct sweep_event * e2 ) // 
     }
 
     return sweep_event_below( e1, e2->other->p );
+}
+
+bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
+{
+    return sweep_event_sl_segment_comp( ( struct sweep_event * ) e0, ( struct sweep_event * ) e1 );
 }
 
 bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * e1 ) //SegmentComp
@@ -885,6 +900,12 @@ void _dump_polygon( struct polygon * p )
     return;
 }
 
+void _dump_sweep_event_dlpq_wrapper( void * event )
+{
+    _dump_sweep_event( ( struct sweep_event * ) event );
+    return;
+}
+
 void _dump_sweep_event( struct sweep_event * e )
 {
     elog( DEBUG1, "Dumping sweep_event %p", e );
@@ -892,7 +913,9 @@ void _dump_sweep_event( struct sweep_event * e )
     {
         return;
     }
-    
+
+    elog( DEBUG1, "L %s p (%f, %f) o ( %f, %f )", e->left ? "T" : "F", e->p->x, e->p->y, e->other->p->x, e->other->p->y );
+    /*
     elog( DEBUG1, "left: %s", e->left? "t":"f" );
     elog( DEBUG1, "inside: %s", e->inside?"t":"f" );
     elog( DEBUG1, "polygon %d", e->polygon );
@@ -902,6 +925,7 @@ void _dump_sweep_event( struct sweep_event * e )
     elog( DEBUG1, "edge_type: %d", e->edge_type );
     elog( DEBUG1, "polygon_type: %d", e->polygon_type );
     elog( DEBUG1, "p: (%f,%f)", e->p->x, e->p->y );
+    */
     return;
 }
 

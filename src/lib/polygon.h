@@ -39,13 +39,17 @@ extern void _dump_polygon( struct polygon * );
 extern struct segment * sweep_event_get_segment( struct sweep_event * );
 extern bool sweep_event_ev_comp( struct sweep_event *, struct sweep_event * );
 extern bool sweep_event_sl_comp( struct sweep_event *, struct sweep_event * );
+extern bool sweep_event_ev_comp_wrapper( void *, void * );
+extern bool sweep_event_sl_comp_wrapper( void *, void * );
 extern bool sweep_event_below( struct sweep_event *, Point * );
 extern bool sweep_event_above( struct sweep_event *, Point * );
 extern bool sweep_event_ev_segment_comp( struct sweep_event *, struct sweep_event * );
+extern bool sweep_event_sl_segment_comp_wrapper( void *, void * );
 extern bool sweep_event_sl_segment_comp( struct sweep_event *, struct sweep_event * );
 extern struct sweep_event * new_sweep_event( void );
 extern void free_sweep_event( struct sweep_event * );
 extern void _dump_sweep_event( struct sweep_event * );
+extern void _dump_sweep_event_dlpq_wrapper( void * );
 extern bool sweep_event_equal( struct sweep_event *, struct sweep_event * );
 
 // Set and Buffer maintenance functions
