@@ -24,23 +24,28 @@ void process_segment( struct segment * s, int poly_type, struct dlpq * phead, st
     e1->edge_type    = EDGE_TYPE_NORMAL;
     e1->polygon_type = poly_type;
     e1->other        = e2;
+    e1->in_out       = true;
 
     e2->p            = s->p2;
     e2->left         = true;
     e2->edge_type    = EDGE_TYPE_NORMAL;
     e2->polygon_type = poly_type;
     e2->other        = e1;
+    e2->in_out       = true;
 
     //elog( DEBUG1, "New sweep events setup" );
-    if( _fp_lt( e1->p->x, e2->p->x ) )
+    //if( _fp_lt( e1->p->x, e2->p->x ) )
+    if( e1->p->x < e2->p->x )
     {
         e2->left = false;
     }
-    else if( _fp_gt( e1->p->x, e2->p->x ) )
+    //else if( _fp_gt( e1->p->x, e2->p->x ) )
+    else if( e1->p->x > e2->p->x )
     {
         e1->left = false;
     }
-    else if( _fp_lt( e1->p->y, e2->p->y ) )
+    //else if( _fp_lt( e1->p->y, e2->p->y ) )
+    else if( e1->p->y < e2->p->y )
     {
         e2->left = false;
     }
@@ -127,7 +132,6 @@ void possible_intersection(
     struct sweep_event ** ev = NULL;
     int ev_index = 0;
 
-    elog( DEBUG1, "POSSIBLE INTERSECTION" );
     //elog( DEBUG1, "Getting segments fron sweep_event e0: %p e1: %p", e0, e1 );
     seg0 = sweep_event_get_segment( e0 );
     seg1 = sweep_event_get_segment( e1 );
@@ -136,8 +140,8 @@ void possible_intersection(
     isect_p1 = ( Point * ) palloc0( sizeof( Point ) );
     //elog( DEBUG1, "Looking for explicit intersection between segments" );
     num_intersections = find_intersection( seg0, seg1, isect_p0, isect_p1 );
-
-    if( num_intersections != 0 )
+    elog( DEBUG1, "Find intersections %d, %f,%f %f,%f", num_intersections, isect_p0->x, isect_p0->y, isect_p1->x, isect_p1->y );
+    if( num_intersections == 0 )
     {
         return;
     }
@@ -326,26 +330,23 @@ void compute(
 {
     int                        i              = 0;
     int                        j              = 0;
+    int                        num_int        = 0;
+    int                        ev_length      = 0;
     unsigned int               event_position = 0;
     unsigned int               previous_event = 0;
     unsigned int               next_event     = 0;
-    int                        ev_length      = 0;
     unsigned int               colinear_event = 0;
+    double                     min_max_x      = 0.0;
     Point *                    min_subj       = NULL;
     Point *                    max_subj       = NULL;
     Point *                    min_clip       = NULL;
     Point *                    max_clip       = NULL;
     struct dlpq *              phead          = NULL;
-    struct dlpq *              sl_head        = NULL; // New Status line
+    struct dlpq *              sl_head        = NULL; // Status line
+    struct segment *           seg            = NULL;
     struct polygon_connector * pc             = NULL;
     struct sweep_event *       event          = NULL;
-    struct segment *           seg            = NULL;
     struct sweep_event **      ev_set         = NULL;
-    struct sweep_event **      sl_set         = NULL; // Status Line (S)
-    int                        sl_index       = 0;
-    int                        ev_index       = 0;
-    int                        num_int        = 0;
-    double                     min_max_x      = 0.0;
 
     if( subject == NULL || clipping == NULL )
     {
@@ -407,8 +408,8 @@ void compute(
     }
 
     // Generate priority queue
-    _dump_polygon( subject );
-    _dump_polygon( clipping );
+    //_dump_polygon( subject );
+    //_dump_polygon( clipping );
     for( i = 0; i < subject->num_contours; i++ )
     {
         for( j = 0; j < subject->contours[i]->num_points; j++ )
@@ -454,15 +455,15 @@ void compute(
     elog( DEBUG1, " =========== Entering Main Loop ===========\nmin_max_x: %f", min_max_x );
     _dlpq_debug( phead );
     sl_head = new_dlpq( &sweep_event_sl_segment_comp_wrapper );
-     _dlpq_setup_debug( sl_head, &_dump_sweep_event_dlpq_wrapper );
+    _dlpq_setup_debug( sl_head, &_dump_sweep_event_dlpq_wrapper );
     pc = new_polygon_connector( NULL, NULL );
 
     while( !dlpq_empty( phead ) )
     {
         elog( DEBUG1, "================================ LOOP");
-        event = ( struct sweep_event * ) dlpq_unshift( phead );
-        elog( DEBUG1, "Got event %p (%f, %f), checking basic cases", event, event->p->x, event->p->y );
-
+        event = ( struct sweep_event * ) dlpq_pop( phead );
+        elog( DEBUG1, "Got event %p :", event );
+        _dump_sweep_event( event );
         if(
                 ( op == OP_INTERSECTION && _fp_gt( event->p->x, min_max_x ) )
              || ( op == OP_DIFFERENCE && _fp_gt( event->p->x, max_subj->x ) )
@@ -490,8 +491,8 @@ void compute(
 
             while( !dlpq_empty( phead ) )
             {
-                event = ( struct sweep_event * ) dlpq_unshift( phead );
-                elog( DEBUG1, "Got event %p from dlpq_unshift of %p", event, phead );
+                event = ( struct sweep_event * ) dlpq_pop( phead );
+                elog( DEBUG1, "Got event %p from dlpq_pop of %p", event, phead );
                 if( !event->left )
                 {
                     seg = sweep_event_get_segment( event );
@@ -508,63 +509,46 @@ void compute(
         elog( DEBUG1, "Checking handedness of event" );
         if( event->left )
         {
+            elog(
+                DEBUG1,
+                "LS: P %d, N %d, ep %d S: %d",
+                previous_event,
+                next_event,
+                event_position,
+                sl_head->size
+            );
+
             elog( DEBUG1, "Adding event to SE set" );
-            //_se_set_insert( &ev_set, event, &ev_length );
             dlpq_push( sl_head, event );
-            //_se_set_insert( &sl_set, event, &sl_index, &sweep_event_sl_segment_comp );
-            //_dump_se_set( &ev_set, ev_length );
+            //event_position = 0;
             event_position = dlpq_get_position( sl_head, event );
-            //event_position = sl_set[0]->position;
 
             next_event = event_position;
             previous_event = event_position;
-
-            //if( !sweep_event_equal( sl_set[previous_event], sl_set[0] ) )
-            if(
-                !sweep_event_equal(
-                    (struct sweep_event *) dlpq_peek_position(
-                        sl_head,
-                        previous_event
-                    ),
-                    (struct sweep_event *) dlpq_peek_position(
-                        sl_head,
-                        0
-                    )
-                )
-              )
+            if( previous_event != 0 )
             {
-                --previous_event;
-                if( previous_event < 0 )
-                {
-                    //previous_event = sl_index - 1;
-                    previous_event = sl_head->size - 1;
-                }
+                previous_event--;
             }
             else
             {
-                //previous_event = sl_index - 1;
-                previous_event = sl_head->size - 1;
+                previous_event = sl_head->size;
             }
 
             elog( DEBUG1, "event in/out & inside logic" );
-            //if(
-            //        previous_event >= 0
-            //     && sweep_event_equal( sl_set[previous_event], sl_set[sl_index - 1] )
-            //  )
-            if(
-                    previous_event >= 0 // TODO add overflow detection/handling
-                 && sweep_event_equal(
-                        (struct sweep_event *) dlpq_peek_position(
-                            sl_head,
-                            previous_event
-                        ),
-                        (struct sweep_event *) dlpq_peek_position(
-                            sl_head,
-                            sl_head->size - 1
-                        )
-                    )
-              )
+            elog( DEBUG1, "status line state:" );
+            _dlpq_debug( sl_head );
+            elog(
+                DEBUG1,
+                "P %d, N %d, ep %d S: %d",
+                previous_event,
+                next_event,
+                event_position,
+                sl_head->size
+            );
+
+            if( sl_head->size == previous_event )
             {
+                elog( DEBUG1, "Event is not inside not inout" );
                 event->inside = false;
                 event->in_out = false;
             }
@@ -573,39 +557,29 @@ void compute(
                         (struct sweep_event *) dlpq_peek_position(
                             sl_head,
                             previous_event
-                         )
-                        )->edge_type != EDGE_TYPE_NORMAL
-                   )
-            //else if( sl_set[previous_event]->edge_type != EDGE_TYPE_NORMAL )
-            {
-                //if( sweep_event_equal( sl_set[previous_event], sl_set[0] ) )
-                if(
-                    sweep_event_equal(
-                        (struct sweep_event *) dlpq_peek_position(
-                            sl_head,
-                            previous_event
-                        ),
-                        (struct sweep_event *) dlpq_peek_position(
-                            sl_head,
-                            0
                         )
-                    )
-                  )
+                     )->edge_type != EDGE_TYPE_NORMAL
+                   )
+            {
+                if( previous_event == 0 )
                 {
+                    elog( DEBUG1, "Event is inside, not inout" );
                     event->inside = true;
                     event->in_out = false;
                 }
                 else
                 {
                     colinear_event = previous_event;
-                    colinear_event--;
-                    if( colinear_event < 0 )
+
+                    if( colinear_event == 0 )
                     {
-                        //colinear_event = sl_index - 1;
-                        colinear_event = sl_head->size - 1;
+                        colinear_event = 0;
+                    }
+                    else
+                    {
+                        colinear_event--;
                     }
 
-                    //if( sl_set[previous_event]->polygon_type == event->polygon_type )
                     if(
                         (
                          (struct sweep_event *) dlpq_peek_position(
@@ -615,8 +589,6 @@ void compute(
                         )->polygon_type == event->polygon_type
                       )
                     {
-                        //event->in_out = !(sl_set[previous_event]->in_out);
-                        //event->inside = !(sl_set[colinear_event]->in_out);
                         event->in_out = !(
                             (
                              (struct sweep_event *) dlpq_peek_position(
@@ -633,11 +605,10 @@ void compute(
                              )
                             )->in_out
                         );
+                        elog( DEBUG1, "Event is in first colinear cond" );
                     }
                     else
                     {
-                        //event->in_out = !(sl_set[colinear_event]->in_out);
-                        //event->inside = !(sl_set[previous_event]->in_out);
                         event->in_out = !(
                             (
                              (struct sweep_event *) dlpq_peek_position(
@@ -654,10 +625,10 @@ void compute(
                              )
                             )->in_out
                         );
+                        elog( DEBUG1, "Event is in second colinear cond" );
                     }
                 }
             }
-            //else if( event->polygon_type == sl_set[previous_event]->polygon_type )
             else if(
                         (
                          (struct sweep_event *) dlpq_peek_position(
@@ -667,8 +638,6 @@ void compute(
                         )->polygon_type == event->polygon_type
                    )
             {
-                //event->inside = sl_set[previous_event]->inside;
-                //event->in_out = !(sl_set[previous_event]->in_out);
                 event->inside = (
                  (struct sweep_event *) dlpq_peek_position(
                      sl_head,
@@ -681,11 +650,10 @@ void compute(
                      previous_event
                  )
                 )->in_out;
+                elog( DEBUG1, "Event is in first polytype check cond" );
             }
             else
             {
-                //event->inside = !(sl_set[previous_event]->in_out);
-                //event->in_out = sl_set[previous_event]->inside;
                 event->inside = !(
                  (struct sweep_event *) dlpq_peek_position(
                      sl_head,
@@ -698,35 +666,25 @@ void compute(
                      previous_event
                  )
                 )->inside;
+                elog( DEBUG1, "Event is in second polytype check cond" );
             }
 
             elog( DEBUG1, "Checking possible intersections" );
-            ++next_event;
 
-            //if( next_event > (sl_index - 1 ) )
-            if( next_event > sl_head->size - 1 )
+            if( ( next_event + 1 ) >= sl_head->size  )
             {
-                next_event = 0;
+                next_event = sl_head->size;
+            }
+            else
+            {
+                next_event++;
             }
 
-            //if( !sweep_event_equal( sl_set[next_event], sl_set[sl_index - 1] ) )
-            if(
-                !sweep_event_equal(
-                    (struct sweep_event *) dlpq_peek_position(
-                        sl_head,
-                        next_event
-                    ),
-                    (struct sweep_event *) dlpq_peek_position(
-                        sl_head,
-                        sl_head->size - 1
-                    )
-                )
-              )
+            if( next_event != sl_head->size )
             {
                 elog( DEBUG1, "Calling first pi" );
                 possible_intersection(
                     event,
-                    //sl_set[next_event],
                     (struct sweep_event *) dlpq_peek_position(
                         sl_head,
                         next_event
@@ -736,24 +694,14 @@ void compute(
                     &ev_set,
                     &ev_length
                 );
+                elog( DEBUG1, "=============== 1 POST POSSIBLE INTERSECTION ==============" );
+                _dlpq_debug( phead );
+                elog( DEBUG1, "=========================================================" );
             }
 
-            //if( !sweep_event_equal( sl_set[previous_event], sl_set[sl_index - 1] ) )
-            if(
-                !sweep_event_equal(
-                    (struct sweep_event *) dlpq_peek_position(
-                        sl_head,
-                        previous_event
-                    ),
-                    (struct sweep_event *) dlpq_peek_position(
-                        sl_head,
-                        sl_head->size - 1
-                    )
-                )
-              )
+            if( previous_event != sl_head->size )
             {
                 possible_intersection(
-                    //sl_set[previous_event],
                     (struct sweep_event *) dlpq_peek_position(
                         sl_head,
                         previous_event
@@ -764,27 +712,35 @@ void compute(
                     &ev_set,
                     &ev_length
                 );
+                elog( DEBUG1, "=============== 2 POST POSSIBLE INTERSECTION ==============" );
+                _dlpq_debug( phead );
+                elog( DEBUG1, "=========================================================" );
             }
             elog( DEBUG1, "Post possible intersection" );
         }
         else
         {
             elog( DEBUG1, "colinear & edge logic" );
-            //colinear_event = event->other->position;
-            //previous_event = event->other->position;
-            //next_event = event->other->position;
             colinear_event = dlpq_get_position( sl_head, event->other );
             previous_event = colinear_event;
             next_event     = colinear_event;
-            ++next_event;
 
-            if( previous_event != 0 )
+            if( next_event >= sl_head->size )
             {
-                --previous_event;
+                next_event = sl_head->size;
             }
             else
             {
-                previous_event = sl_head->size - 1;
+                next_event++;
+            }
+
+            if( previous_event > 0 )
+            {
+                previous_event = 0;
+            }
+            else
+            {
+                previous_event = sl_head->size;
             }
 
             switch( event->edge_type )
@@ -839,18 +795,15 @@ void compute(
             }
 
             
-            //_se_set_remove( &sl_set, colinear_event, &sl_index );
             dlpq_remove( sl_head, dlpq_peek_position( sl_head, colinear_event ) );
-            //if( next_event < sl_index && previous_event < sl_index )
+
             if( next_event < sl_head->size - 1 && previous_event < sl_head->size -1 )
             {
                 possible_intersection(
-                    //sl_set[previous_event],
                     (struct sweep_event *) dlpq_peek_position(
                         sl_head,
                         previous_event
                     ),
-                    //sl_set[next_event],
                     (struct sweep_event *) dlpq_peek_position(
                         sl_head,
                         next_event

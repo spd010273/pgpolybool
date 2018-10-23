@@ -2,10 +2,10 @@
 
 double signed_area_three( Point * a, Point * b, Point * c )
 {
-    if( a == NULL || b == NULL || c == NULL )
-    {
-        return 0;
-    }
+    //if( a == NULL || b == NULL || c == NULL )
+    //{
+    //    return 0;
+    //}
 
     return ( a->x - c->x ) * ( b->y - c->y ) - ( b->x - c->x ) * ( a->y - c->y );
 }
@@ -294,7 +294,8 @@ bool points_equal( Point * a, Point * b )
         return false;
     }
 
-    if( _fp_eq( a->x, b->x ) && _fp_eq( a->y, b->y ) )
+    if( a->x == b->x && a->y == b->y )
+    //if( _fp_eq( a->x, b->x ) && _fp_eq( a->y, b->y ) )
     {
         return true;
     }
@@ -361,6 +362,8 @@ bool _fp_eq( double a, double b )
         return true;
     }
 
+    return false;
+    /*
     a_a = fabs( a );
     a_b = fabs( b );
 
@@ -379,4 +382,5 @@ bool _fp_eq( double a, double b )
     }
 
     return false;
+    */
 }

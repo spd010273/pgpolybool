@@ -65,7 +65,7 @@ unsigned int dlpq_get_position( struct dlpq * head, void * data )
         return 0;
     }
 
-    node = head->first;
+    node = head->last;
 
     while( node != NULL )
     {
@@ -74,7 +74,7 @@ unsigned int dlpq_get_position( struct dlpq * head, void * data )
             return position;
         }
 
-        node = node->next;
+        node = node->prev;
         position++;
     }
 
@@ -96,11 +96,11 @@ void * dlpq_peek_position( struct dlpq * head, unsigned int position )
         return NULL;
     }
 
-    node = head->first;
+    node = head->last;
 
     for( i = 0; i < position; i++ )
     {
-        node = node->next;
+        node = node->prev;
     }
 
     return node->value;
@@ -116,10 +116,18 @@ void dlpq_remove( struct dlpq * head, void * data )
         return;
     }
 
+    if( dlpq_empty( head ) )
+    {
+        _LOG( "dlpq_remove: Head %p is empty!", head );
+        return;
+    }
+
     if( head->size == 1 )
     {
         _FREE( head->first );
         head->size = 0;
+        head->first = NULL;
+        head->last = NULL;
         return;
     }
 
@@ -127,6 +135,8 @@ void dlpq_remove( struct dlpq * head, void * data )
     {
         node = head->first;
         head->first = node->next;
+        head->first->prev = NULL;
+
         _FREE( node );
         head->size--;
         return;
@@ -135,6 +145,7 @@ void dlpq_remove( struct dlpq * head, void * data )
     {
         node = head->last;
         head->last = node->prev;
+        head->last->next = NULL;
         _FREE( node );
         head->size--;
         return;
@@ -172,7 +183,13 @@ void dlpq_push( struct dlpq * head, void * data )
         return;
     }
 
-    new_node = _ALLOC( sizeof( struct dlpq_node ) );
+    if( data == NULL )
+    {
+        _LOG( "Passed data is %p", data );
+        return;
+    }
+
+    new_node = ( struct dlpq_node * ) _ALLOC( sizeof( struct dlpq_node ) );
 
     if( new_node == NULL )
     {
@@ -189,19 +206,17 @@ void dlpq_push( struct dlpq * head, void * data )
         head->first = new_node;
         head->last  = new_node;
         head->size  = 1;
-        _LOG( "DLPQ new node added at first position %p", new_node );
         return;
     }
 
     start_node = head->first;
     last_node  = start_node;
     head->size++;
-
     // Handle possible head replacement
     if( head->compare( data, start_node->value ) )
     {
-        head->first = new_node;
-        new_node->next = start_node;
+        head->first      = new_node;
+        new_node->next   = start_node;
         start_node->prev = new_node;
     }
     else
@@ -250,13 +265,13 @@ inline void * dlpq_pop( struct dlpq * head )
 
     head->size--;
 
-    temp        = head->first;
-    data        = temp->value;
-    head->first = temp->next;
+    temp       = head->last;
+    data       = temp->value;
+    head->last = temp->prev;
 
-    if( head->first != NULL )
+    if( head->last != NULL )
     {
-        head->first->prev = NULL;
+        head->last->next = NULL;
     }
 
     _FREE( temp );
@@ -277,13 +292,13 @@ inline void * dlpq_unshift( struct dlpq * head )
 
     head->size--;
 
-    temp             = head->last;
+    temp             = head->first;
     data             = temp->value;
-    head->last       = temp->prev;
+    head->first      = temp->next;
 
-    if( head->last != NULL )
+    if( head->first != NULL )
     {
-        head->last->next = NULL;
+        head->first->prev = NULL;
     }
 
     _FREE( temp );
@@ -348,32 +363,30 @@ void _dlpq_debug( struct dlpq * head )
         _LOG( "dlpq head is %p\n", head );
     }
 
-    temp = head->first;
-
+    temp = head->last;
     _LOG(
-        "HEAD: %p, first: %p last: %p size: %u\n",
+        "HEAD: %p, first: %p last: %p size: %u",
         head,
-        head->last,
         head->first,
+        head->last,
         head->size
     );
-
     while( temp != NULL )
     {
         _LOG(
-            "Node #%u: %p prev %p next %p\n",
+            "Node #%u: %p prev %p next %p DATA: %p",
             index,
             temp,
             temp->prev,
-            temp->next
+            temp->next,
+            temp->value
         );
-
         if( head->__dump_function != NULL )
         {
             head->__dump_function( temp->value );
         }
 
-        temp = temp->next;
+        temp = temp->prev;
         index++;
     }
 

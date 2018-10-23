@@ -242,7 +242,8 @@ bool sweep_event_below( struct sweep_event * e, Point * p )
     {
         area = signed_area_three( e->p, e->other->p, p );
 
-        if( _fp_gt( area, 0.0 ) )
+        //if( _fp_gt( area, 0.0 ) )
+        if( area > 0.0 )
         {
             return true;
         }
@@ -252,7 +253,8 @@ bool sweep_event_below( struct sweep_event * e, Point * p )
 
     area = signed_area_three( e->other->p, e->p, p );
 
-    if( _fp_gt( area, 0.0 ) )
+    //if( _fp_gt( area, 0.0 ) )
+    if( area > 0.0 )
     {
         return true;
     }
@@ -272,13 +274,15 @@ bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
 
 bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 ) //SweepEventComp
 {
-    if( _fp_gt( e1->p->x, e2->p->x ) )
+    //if( _fp_gt( e1->p->x, e2->p->x ) )
+    if( e1->p->x > e2->p->x )
     {
         //elog( DEBUG1, "E1: %p, E2: %p 1st cond", e1, e2 );
         return true;
     }
 
-    if( _fp_gt( e2->p->x, e1->p->x ) )
+    //if( _fp_gt( e2->p->x, e1->p->x ) )
+    if( e2->p->x > e1->p->x )
     {
         //elog( DEBUG1, "E1: %p, E2: %p 2nd cond", e1, e2 );
         return false;
@@ -286,7 +290,8 @@ bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 ) //S
 
     if( !points_equal( e1->p, e2->p ) )
     {
-        if( _fp_gt( e1->p->y, e2->p->y ) )
+        //if( _fp_gt( e1->p->y, e2->p->y ) )
+        if( e1->p->y > e2->p->y )
         {
             //elog( DEBUG1, "E1: %p, E2: %p 3rd cond inner", e1, e2 );
             return true;
@@ -354,35 +359,107 @@ bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
 
 bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * e1 ) //SegmentComp
 {
-    if( sweep_event_equal( e0, e1 ) )
+    bool result = false;
+    if( e0 == e1 )
     {
+        elog(
+            DEBUG1,
+            "1st case: (%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
+            e0->p->x, e0->p->y,
+            e0->other->p->x, e0->other->p->y,
+            e1->p->x, e1->p->y,
+            e1->other->p->x, e1->other->p->y,
+            result?"T":"F"
+        );
         return false;
     }
 
     if(
-            !_fp_eq( signed_area_three( e0->p, e0->other->p, e1->p ), 0.0 )
-         || !_fp_eq( signed_area_three( e0->p, e0->other->p, e1->other->p ), 0.0 )
+          signed_area_three( e0->p, e0->other->p, e1->p ) != 0
+       || signed_area_three( e0->p, e0->other->p, e1->other->p ) != 0
+//            !_fp_eq( signed_area_three( e0->p, e0->other->p, e1->p ), 0.0 )
+//         || !_fp_eq( signed_area_three( e0->p, e0->other->p, e1->other->p ), 0.0 )
       )
     {
+        elog(
+            DEBUG1,
+            "2nd cond (%f,%f)(%f,%f) SA (%f,%f)(%f,%f)",
+            e0->p->x, e0->p->y,
+            e0->other->p->x, e0->other->p->y,
+            e1->p->x, e1->p->y,
+            e1->other->p->x, e1->other->p->y
+        );
         if( points_equal( e0->p, e1->p ) )
         {
-            return sweep_event_below( e0, e1->other->p );
+            result = sweep_event_below( e0, e1->other->p );
+
+            elog(
+                DEBUG1,
+                "2.1 comp: (%f,%f)(%f,%f) ==  (%f,%f)(%f,%f) result: %s",
+                e0->p->x, e0->p->y,
+                e0->other->p->x, e0->other->p->y,
+                e1->p->x, e1->p->y,
+                e1->other->p->x, e1->other->p->y,
+                result?"T":"F"
+            );
+            return result;
         }
 
         if( sweep_event_sl_comp( e0, e1 ) )
         {
-            return sweep_event_above( e1, e0->p );
+            result = sweep_event_above( e1, e0->p );
+
+            elog(
+                DEBUG1,
+                "2.2 comp: (%f,%f)(%f,%f) == (%f,%f)(%f,%f) result: %s",
+                e0->p->x, e0->p->y,
+                e0->other->p->x, e0->other->p->y,
+                e1->p->x, e1->p->y,
+                e1->other->p->x, e1->other->p->y,
+                result?"T":"F"
+            );
+            return result;
         }
 
-        return sweep_event_below( e0, e1->p );
+        result = sweep_event_below( e0, e1->p );
+        elog(
+            DEBUG1,
+            "2nd cond catchall: (%f,%f)(%f,%f) bl (%f,%f)(%f,%f) result: %s",
+            e0->p->x, e0->p->y,
+            e0->other->p->x, e0->other->p->y,
+            e1->p->x, e1->p->y,
+            e1->other->p->x, e1->other->p->y,
+            result?"T":"F"
+        );
+        return result;
     }
 
     if( points_equal( e0->p, e1->p ) )
     {
-        return sweep_event_sl_comp( e0, e1 );
+        result = sweep_event_sl_comp( e0, e1 );
+        elog(
+            DEBUG1,
+            "Weird case in segments comp: (%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
+            e0->p->x, e0->p->y,
+            e0->other->p->x, e0->other->p->y,
+            e1->p->x, e1->p->y,
+            e1->other->p->x, e1->other->p->y,
+            result?"T":"F"
+        );
+        return result;
     }
 
-    return sweep_event_sl_comp( e0, e1 );
+    result = sweep_event_sl_comp( e0, e1 );
+    elog(
+        DEBUG1,
+        "Weird case in segments comp: (%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
+        e0->p->x, e0->p->y,
+        e0->other->p->x, e0->other->p->y,
+        e1->p->x, e1->p->y,
+        e1->other->p->x, e1->other->p->y,
+        result?"T":"F"
+    );
+    return result;
 }
 
 bool sweep_event_ev_segment_comp( struct sweep_event * e0, struct sweep_event * e1 ) //SegmentsComp
@@ -908,13 +985,24 @@ void _dump_sweep_event_dlpq_wrapper( void * event )
 
 void _dump_sweep_event( struct sweep_event * e )
 {
-    elog( DEBUG1, "Dumping sweep_event %p", e );
+    //elog( DEBUG1, "Dumping sweep_event %p", e );
     if( e == NULL )
     {
         return;
     }
 
-    elog( DEBUG1, "L %s p (%f, %f) o ( %f, %f )", e->left ? "T" : "F", e->p->x, e->p->y, e->other->p->x, e->other->p->y );
+    elog(
+        DEBUG1,"p (%f, %f) o ( %f, %f ) L %s, I %s, I/O %s ET: %s PT: %s",
+        e->p->x,
+        e->p->y,
+        e->other->p->x,
+        e->other->p->y,
+        e->left ? "L":"R",
+        e->inside?"I":"O",
+        e->in_out?"IO":"OI",
+        e->edge_type == 0 ? "N" : e->edge_type == 1 ? "NC" : e->edge_type == 2 ? "ST" : "DT",
+        e->polygon_type == 0 ? "S" : "C"
+    );
     /*
     elog( DEBUG1, "left: %s", e->left? "t":"f" );
     elog( DEBUG1, "inside: %s", e->inside?"t":"f" );

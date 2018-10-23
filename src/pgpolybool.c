@@ -4,7 +4,7 @@
 #include "catalog/pg_type.h"
 #include "fmgr.h"
 
-#include "lib/martinez.h"
+#include "martinez.h"
 
 #define ZOOM_RATE 1.04
 
