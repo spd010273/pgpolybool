@@ -328,11 +328,10 @@ void possible_intersection(
     return;
 }
 
-void compute(
+struct polygon * compute(
     struct polygon * subject,
     struct polygon * clipping,
-    short int op,
-    struct polygon * result
+    short int op
 )
 {
     unsigned int               i              = 0;
@@ -354,14 +353,13 @@ void compute(
     struct polygon_connector * pc             = NULL;
     struct sweep_event *       event          = NULL;
     struct sweep_event **      ev_set         = NULL;
+    struct polygon *           result         = NULL;
 
     if( subject == NULL || clipping == NULL )
     {
-        return;
+        return NULL;
     }
 
-    phead = new_dlpq( &sweep_event_sl_comp_wrapper );
-    _dlpq_setup_debug( phead, &_dump_sweep_event_dlpq_wrapper );
     if( subject->num_contours * clipping->num_contours == 0 )
     {
         if( op == OP_DIFFERENCE )
@@ -374,8 +372,11 @@ void compute(
             result = ( subject->num_contours ) ? clipping : subject;
         }
 
-        return;
+        return result;
     }
+
+    phead = new_dlpq( &sweep_event_sl_comp_wrapper );
+    _dlpq_setup_debug( phead, &_dump_sweep_event_dlpq_wrapper );
 
     min_subj = ( Point * ) palloc0( sizeof( Point ) );
     max_subj = ( Point * ) palloc0( sizeof( Point ) );
@@ -411,7 +412,7 @@ void compute(
         pfree( max_subj );
         pfree( min_clip );
         pfree( max_clip );
-        return;
+        return result;
     }
 
     // Generate priority queue
@@ -479,10 +480,15 @@ void compute(
         {
             elog( DEBUG1, "Early exit for OP_INTERSECTION / OP_DIFFERENCE case" );
             result = polygon_connector_to_polygon( pc );
+            pfree( min_subj );
+            pfree( max_subj );
+            pfree( min_clip );
+            pfree( max_clip );
             free_polygon_connector( pc );
+            //free_queues( sl_head, phead );
             free_dlpq( &sl_head );
             free_dlpq( &phead );
-            return;
+            return result;
         }
 
         elog( DEBUG1, "Checking union case" );
@@ -514,9 +520,14 @@ void compute(
             result = polygon_connector_to_polygon( pc );
             _dump_polygon( result );
             free_polygon_connector( pc );
+            //free_queues( sl_head, phead );
             free_dlpq( &sl_head );
             free_dlpq( &phead );
-            return;
+            pfree( min_subj );
+            pfree( max_subj );
+            pfree( min_clip );
+            pfree( max_clip );
+            return result;
         }
 
         elog( DEBUG1, "Checking handedness of event" );
@@ -846,9 +857,14 @@ void compute(
     }
 
     free_polygon_connector( pc );
+    //free_queues( sl_head, phead );
     free_dlpq( &sl_head );
     free_dlpq( &phead );
-    return;
+    pfree( min_subj );
+    pfree( max_subj );
+    pfree( min_clip );
+    pfree( max_clip );
+    return result;
 }
 
 struct polygon * poly_to_mpoly( POLYGON * p )
@@ -926,6 +942,8 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
                 p->p[i].x = mpoly->contours[c]->points[i]->x;
                 p->p[i].y = mpoly->contours[c]->points[i]->y;
             }
+
+            p->npts = mpoly->contours[c]->num_points;
         }
 
         if( mpoly->num_contours == 1 )
@@ -944,7 +962,6 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
         }
     }
 
-
     p = arr[max_area_ind];
 
     for( i = 0; i < mpoly->num_contours; i++ )
@@ -959,4 +976,99 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
     free_polygon( mpoly );
 
     return p;
+}
+
+void free_queues( struct dlpq * a, struct dlpq * b )
+{
+    // Objective: Free sweep_events from two queues without double freeing
+    struct sweep_event ** unique_se = NULL;
+    struct sweep_event *  temp      = NULL;
+    unsigned int          u_i       = 0;
+    unsigned int          i         = 0;
+    unsigned int          j         = 0;
+    bool                  match     = false;
+
+    if( a == NULL || b == NULL )
+    {
+        return;
+    }
+
+    unique_se = ( struct sweep_event ** ) palloc0(
+        sizeof( struct sweep_event * )
+      * ( a->size + b->size )
+    );
+
+    for( i = 0; i < a->size; i++ )
+    {
+        temp = ( struct sweep_event * ) dlpq_peek_position( a, i );
+
+        if( u_i == 0 )
+        {
+            unique_se[u_i] = temp;
+            u_i++;
+        }
+        else
+        {
+            match = false;
+
+            for( j = 0; j < u_i; j++ )
+            {
+                if( unique_se[j] == temp )
+                {
+                    elog( DEBUG1, "a unique[%u] matches %p", j, temp );
+                    match = true;
+                    break;
+                }
+            }
+
+            if( !match )
+            {
+                unique_se[u_i] = temp;
+                elog( DEBUG1, "Added a %p to unique at %u", temp, u_i );
+                u_i++;
+            }
+        }
+    }
+
+    for( i = 0; i < b->size; i++ )
+    {
+        temp = ( struct sweep_event * ) dlpq_peek_position( b, i );
+
+        if( u_i == 0 )
+        {
+            unique_se[u_i] = temp;
+            u_i++;
+        }
+        else
+        {
+            match = false;
+
+            for( j = 0; j < u_i; j++ )
+            {
+                if( unique_se[j] == temp )
+                {
+                    elog( DEBUG1, "b unique[%u] matches %p", j, temp );
+                    match = true;
+                    break;
+                }
+            }
+
+            if( !match )
+            {
+                unique_se[u_i] = temp;
+                elog( DEBUG1, "Added b %p to unique at %u", temp, u_i );
+                u_i++;
+            }
+        }
+    }
+
+    for( i = 0; i < u_i; i++ )
+    {
+        elog( DEBUG1, "Freeing SE: %p", unique_se[u_i] );
+        free_sweep_event( unique_se[u_i] );
+    }
+
+    pfree( unique_se );
+
+    return;
 }

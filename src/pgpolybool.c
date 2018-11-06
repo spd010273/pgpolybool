@@ -9,7 +9,7 @@
 #define ZOOM_RATE 1.04
 
 // Helper Routines
-POLYGON ** poly_preprocessing( ArrayType *, bool, bool, int * );
+POLYGON ** poly_preprocessing( ArrayType *, bool, bool, unsigned int * );
 POLYGON * poly_postprocessing( POLYGON *, bool );
 
 // Debug Routines
@@ -21,19 +21,20 @@ static void dump_polygon( POLYGON * );
 PG_MODULE_MAGIC;
 #endif
 
-PG_FUNCTION_INFO_V1(fn_union_polygons);
 PG_FUNCTION_INFO_V1(fn_intersect_polygons);
 PG_FUNCTION_INFO_V1(fn_subtract_polygons);
+PG_FUNCTION_INFO_V1(fn_union_polygons);
+PG_FUNCTION_INFO_V1(fn_xor_polygons);
 
 Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 {
-    int        num_poly     = 0;
-    int        i            = 0;
-    POLYGON ** sorted_polys = NULL;
-    POLYGON *  new_polygon  = NULL;
-    struct polygon * mp_subj = NULL;
-    struct polygon * mp_clip = NULL;
-    struct polygon * mp_result = NULL;
+    POLYGON **       sorted_polys = NULL;
+    POLYGON *        new_polygon  = NULL;
+    struct polygon * mp_subj      = NULL;
+    struct polygon * mp_clip      = NULL;
+    struct polygon * mp_result    = NULL;
+    unsigned int     num_poly     = 0;
+    unsigned int     i            = 0;
 
     if( PG_ARGISNULL(0) )
     {
@@ -67,19 +68,20 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_POLYGON_P( new_polygon );
     }
 
+    new_polygon = sorted_polys[0];
+
     for( i = 1; i < num_poly; i++ )
     {
 #ifdef DEBUG
-        dump_polygon( sorted_polys[0] );
+        dump_polygon( new_polygon );
         dump_polygon( sorted_polys[i] );
 #endif
-        mp_subj = poly_to_mpoly( sorted_polys[0] );
+        mp_subj = poly_to_mpoly( new_polygon );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
-        compute(
+        mp_result = compute(
             mp_subj,
             mp_clip,
-            OP_DIFFERENCE,
-            mp_result
+            OP_DIFFERENCE
         );
 
         new_polygon = mpoly_to_poly( mp_result );
@@ -89,14 +91,6 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
             elog( WARNING, "polygons have no intersections" );
             PG_RETURN_NULL();
         }
-
-        pfree( sorted_polys[0] );
-        sorted_polys[0] = new_polygon;
-    }
-
-    for( i = 0; i < num_poly; i++ )
-    {
-        pfree( sorted_polys[i] );
     }
 
     pfree( sorted_polys );
@@ -109,18 +103,24 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+    SET_VARSIZE(
+        new_polygon,
+        offsetof( POLYGON, p )
+      + ( new_polygon->npts * sizeof( Point ) )
+    );
+
     PG_RETURN_POLYGON_P( new_polygon );
 }
 
 Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 {
-    int        num_poly     = 0;
-    int        i            = 0;
-    POLYGON ** sorted_polys = NULL;
-    POLYGON *  new_polygon  = NULL;
-    struct polygon * mp_subj = NULL;
-    struct polygon * mp_clip = NULL;
-    struct polygon * mp_result = NULL;
+    POLYGON **       sorted_polys = NULL;
+    POLYGON *        new_polygon  = NULL;
+    struct polygon * mp_subj      = NULL;
+    struct polygon * mp_clip      = NULL;
+    struct polygon * mp_result    = NULL;
+    unsigned int     num_poly     = 0;
+    unsigned int     i            = 0;
 
     if( PG_ARGISNULL(0) )
     {
@@ -154,19 +154,20 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    new_polygon = sorted_polys[0];
+
     for( i = 1; i < num_poly; i++ )
     {
 #ifdef DEBUG
-        dump_polygon( sorted_polys[0] );
+        dump_polygon( new_polygon );
         dump_polygon( sorted_polys[i] );
 #endif
         mp_subj = poly_to_mpoly( sorted_polys[0] );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
-        compute(
+        mp_result = compute(
             mp_subj,
             mp_clip,
-            OP_INTERSECTION,
-            mp_result
+            OP_INTERSECTION
         );
 
         new_polygon = mpoly_to_poly( mp_result );
@@ -176,14 +177,6 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
             elog( WARNING, "polygons have no intersections" );
             PG_RETURN_NULL();
         }
-
-        pfree( sorted_polys[0] );
-        sorted_polys[0] = new_polygon;
-    }
-
-    for( i = 0; i < num_poly; i++ )
-    {
-        pfree( sorted_polys[i] );
     }
 
     pfree( sorted_polys );
@@ -196,18 +189,24 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+    SET_VARSIZE(
+        new_polygon,
+        offsetof( POLYGON, p )
+      + ( new_polygon->npts * sizeof( Point ) )
+    );
+
     PG_RETURN_POLYGON_P( new_polygon );
 }
 
 Datum fn_union_polygons( PG_FUNCTION_ARGS )
 {
-    int        num_poly        = 0;
-    int        i               = 0;
-    POLYGON ** sorted_polys    = NULL;
-    POLYGON *  new_polygon     = NULL;
-    struct polygon * mp_subj   = NULL;
-    struct polygon * mp_clip   = NULL;
-    struct polygon * mp_result = NULL;
+    POLYGON **       sorted_polys = NULL;
+    POLYGON *        new_polygon  = NULL;
+    struct polygon * mp_subj      = NULL;
+    struct polygon * mp_clip      = NULL;
+    struct polygon * mp_result    = NULL;
+    unsigned int     num_poly     = 0;
+    unsigned int     i            = 0;
 
     if( PG_ARGISNULL(0) )
     {
@@ -241,40 +240,35 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_POLYGON_P( new_polygon );
     }
 
+    new_polygon = sorted_polys[0];
+
     for( i = 1; i < num_poly; i++ )
     {
 #ifdef DEBUG
-        dump_polygon( sorted_polys[0] );
+        dump_polygon( new_polygon );
         dump_polygon( sorted_polys[i] );
 #endif
-        mp_subj = poly_to_mpoly( sorted_polys[0] );
+        mp_subj = poly_to_mpoly( new_polygon );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
+
         elog( DEBUG1, "Entering compute with OP_UNION" );
-        compute(
+
+        mp_result = compute(
             mp_subj,
             mp_clip,
-            OP_UNION,
-            mp_result
+            OP_UNION
         );
+
         elog( DEBUG1, "Compute with OP_UNION done" );
         _dump_polygon( mp_result );
         new_polygon = mpoly_to_poly( mp_result );
+
         if( new_polygon == NULL )
         {
             elog( WARNING, "polygons have no intersections" );
             PG_RETURN_NULL();
         }
-
-        pfree( sorted_polys[0] );
-        sorted_polys[0] = new_polygon;
     }
-
-    for( i = 1; i < num_poly; i++ )
-    {
-        pfree( sorted_polys[i] );
-    }
-
-    new_polygon = sorted_polys[0];
 
     pfree( sorted_polys );
 
@@ -287,6 +281,106 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+
+    SET_VARSIZE(
+        new_polygon,
+        offsetof( POLYGON, p )
+      + ( new_polygon->npts * sizeof( Point ) )
+    );
+
+    PG_RETURN_POLYGON_P( new_polygon );
+}
+
+Datum fn_xor_polygons( PG_FUNCTION_ARGS )
+{
+    POLYGON **       sorted_polys = NULL;
+    POLYGON *        new_polygon  = NULL;
+    struct polygon * mp_subj      = NULL;
+    struct polygon * mp_clip      = NULL;
+    struct polygon * mp_result    = NULL;
+    unsigned int     num_poly     = 0;
+    unsigned int     i            = 0;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    sorted_polys = poly_preprocessing(
+        PG_GETARG_ARRAYTYPE_P(0),
+        true,
+        true,
+        &num_poly
+    );
+
+    if( sorted_polys == NULL )
+    {
+        elog( WARNING, "poly preprocessing failure" );
+        PG_RETURN_NULL();
+    }
+
+    if( num_poly == 1 )
+    {
+        elog( DEBUG1, "Only 1 poly passed :|" );
+        new_polygon = sorted_polys[0];
+        pfree( sorted_polys );
+
+        if( new_polygon == NULL )
+        {
+            PG_RETURN_NULL();
+        }
+
+        PG_RETURN_POLYGON_P( new_polygon );
+    }
+
+    new_polygon = sorted_polys[0];
+
+    for( i = 1; i < num_poly; i++ )
+    {
+#ifdef DEBUG
+        dump_polygon( new_polygon );
+        dump_polygon( sorted_polys[i] );
+#endif
+        mp_subj = poly_to_mpoly( new_polygon );
+        mp_clip = poly_to_mpoly( sorted_polys[i] );
+
+        elog( DEBUG1, "Entering compute with OP_XOR" );
+
+        mp_result = compute(
+            mp_subj,
+            mp_clip,
+            OP_XOR
+        );
+
+        elog( DEBUG1, "Compute with OP_XOR done" );
+        _dump_polygon( mp_result );
+        new_polygon = mpoly_to_poly( mp_result );
+
+        if( new_polygon == NULL )
+        {
+            elog( WARNING, "polygons have no intersections" );
+            PG_RETURN_NULL();
+        }
+    }
+
+    pfree( sorted_polys );
+
+    if( new_polygon == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    new_polygon = poly_postprocessing( new_polygon, true );
+#ifdef DEBUG
+    dump_polygon( new_polygon );
+#endif
+
+    SET_VARSIZE(
+        new_polygon,
+        offsetof( POLYGON, p )
+      + ( new_polygon->npts * sizeof( Point ) )
+    );
+
     PG_RETURN_POLYGON_P( new_polygon );
 }
 
@@ -299,28 +393,28 @@ POLYGON ** poly_preprocessing(
     ArrayType * polyarray,
     bool sort,
     bool scale,
-    int * num_poly
+    unsigned int * num_poly
 )
 {
-    POLYGON ** ret               = NULL;
-    Datum *    dpoly             = NULL;
-    bool *     nulls             = NULL;
-    int        i                 = 0;
-    int        j                 = 0;
-    double     sum_x             = 0;
-    double     sum_y             = 0;
-    Point   ** centers           = NULL;
-    Point    * center            = NULL;
-    int        npoints           = 0;
-    POLYGON ** buff_polys        = NULL;
-    POLYGON ** buff_polys_sorted = NULL;
-    POLYGON  * buff_poly         = NULL;
-    int        palloc_sz         = 0;
-    int        remaining         = 0;
-    double     last_dist         = 0;
-    double     min_dist          = 0;
-    int        last_dist_ind     = 0;
-    int        sort_ind          = 0;
+    Datum *      dpoly             = NULL;
+    Point **     centers           = NULL;
+    Point *      center            = NULL;
+    POLYGON **   ret               = NULL;
+    POLYGON **   buff_polys        = NULL;
+    POLYGON **   buff_polys_sorted = NULL;
+    POLYGON *    buff_poly         = NULL;
+    bool *       nulls             = NULL;
+    double       last_dist         = 0.0;
+    double       min_dist          = 0.0;
+    double       sum_x             = 0.0;
+    double       sum_y             = 0.0;
+    unsigned int i                 = 0;
+    unsigned int j                 = 0;
+    unsigned int npoints           = 0;
+    unsigned int palloc_sz         = 0;
+    unsigned int remaining         = 0;
+    unsigned int last_dist_ind     = 0;
+    unsigned int sort_ind          = 0;
 
     // Values for POLYGON type taken from pg_catalog.pg_type
     deconstruct_array(
@@ -331,7 +425,7 @@ POLYGON ** poly_preprocessing(
         'd',
         &dpoly,
         &nulls,
-        num_poly
+        (int *) num_poly
     );
 
     if( (*num_poly) <= 1 )
@@ -463,10 +557,10 @@ POLYGON ** poly_preprocessing(
 
 POLYGON * poly_postprocessing( POLYGON * poly, bool scale )
 {
-    int     i      = 0;
-    Point * center = NULL;
-    double  sum_x  = 0;
-    double  sum_y  = 0;
+    Point *      center = NULL;
+    double       sum_x  = 0.0;
+    double       sum_y  = 0.0;
+    unsigned int i      = 0;
 
     if( poly == NULL )
     {
@@ -502,7 +596,7 @@ POLYGON * poly_postprocessing( POLYGON * poly, bool scale )
 
 static void dump_polygon( POLYGON * p )
 {
-    int i;
+    unsigned int i = 0;
 
     elog( DEBUG1,
         "\nDumping POLYGON======================== ADDR: %9p\n"\
