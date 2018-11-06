@@ -1,5 +1,6 @@
 /*
  *    Copyright 2018 Chris Autry
+ *    Copyright 2018 Nead Werx Inc
  *
  *    Permission is hereby granted, free of charge, to any person obtaining a copy of
  *    this software and associated documentation files (the "Software"), to deal in
@@ -21,26 +22,82 @@
 
 #include "dlpq.h"
 
+/*
+ * Queue structure is as follows
+ *
+ *                 data n        data n-1      data n-2          data 0
+ *                   ^             ^             ^                 ^
+ *                   |             |             |                 |
+ *                 value         value         value             value
+ *                   |             |             |                 |
+ *                 ------        ------        ------            ------
+ * <-dlpq_unshift- |Node|-next-> |Node|-next-> |Node|-next-> ... |Node| -next-> NULL
+ *    NULL <- prev-|  n | <-prev-| n-1| <-prev-| n-2| ... <-prev-|zero| -dlpq_pop->
+ *                 ------        ------        ------            ------
+ *                   ^                                              ^
+ *                   |                                              |
+ *                 frist                                           last
+ *                   |                ----------------              |
+ *                   |--------------- | Head         | -------------|
+ *                                    | size = n + 1 |
+ *                                    ----------------
+ *
+ * The constructor takes a function pointer capable of comparing the void * data values of nodes
+ * for example, a simple priority queue could be implemented using the function:
+ *
+ * bool compare( void * a, void * b )
+ * {
+ *     return *((int *) a) < *((int *) b);
+ * }
+ *
+ * Where the elements are int * cast to void * prior to addition to the queue
+ * This would resul in a queue ordered as follows:
+ *
+ *   POS   VAL
+ *  last   0
+ *     1   1
+ *     2   2
+ *     .
+ *     .
+ *     .
+ * first   100000
+ *
+ */
+
+bool default_compare_function( void * a, void * b )
+{
+    if( a < b )
+    {
+        return true;
+    }
+
+    return false;
+}
+
 struct dlpq * new_dlpq( bool (*compare_function)( void *, void * ) )
 {
     struct dlpq * head = NULL;
-
-    if( compare_function == NULL )
-    {
-        return NULL;
-    }
 
     head = ( struct dlpq * ) _ALLOC( sizeof( struct dlpq ) );
 
     if( head == NULL )
     {
+        _LOG( "Failed to allocate memory for DLPQ: head returned %p", head );
         return NULL;
     }
 
     head->first   = NULL;
     head->last    = NULL;
     head->size    = 0;
-    head->compare = compare_function;
+
+    if( compare_function == NULL )
+    {
+        head->compare = &default_compare_function;
+    }
+    else
+    {
+        head->compare = compare_function;
+    }
 
     return head;
 }
@@ -91,7 +148,7 @@ void * dlpq_peek_position( struct dlpq * head, unsigned int position )
         if( head != NULL && position >= head->size )
         {
             _LOG( "position %d is out of bound of dlpq sized %d", position, head->size );
-        } 
+        }
 
         return NULL;
     }
@@ -212,6 +269,7 @@ void dlpq_push( struct dlpq * head, void * data )
     start_node = head->first;
     last_node  = start_node;
     head->size++;
+
     // Handle possible head replacement
     if( head->compare( data, start_node->value ) )
     {
@@ -254,7 +312,7 @@ void dlpq_push( struct dlpq * head, void * data )
 
 inline void * dlpq_pop( struct dlpq * head )
 {
-    // Take an element from head->first
+    // Take an element from head->last (the head of the queue)
     struct dlpq_node * temp = NULL;
     void *             data = NULL;
 
@@ -281,7 +339,7 @@ inline void * dlpq_pop( struct dlpq * head )
 
 inline void * dlpq_unshift( struct dlpq * head )
 {
-    // Take an element head->last;
+    // Take an element head->first ( the tail of the queue )
     struct dlpq_node * temp = NULL;
     void *             data = NULL;
 

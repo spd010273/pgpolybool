@@ -2,11 +2,11 @@
 
 void contour_bounding_box( struct contour * c, Point * min, Point * max )
 {
-    int i = 0;
-    double max_x = 0;
-    double max_y = 0;
-    double min_x = 0;
-    double min_y = 0;
+    unsigned int i     = 0;
+    double       max_x = 0;
+    double       max_y = 0;
+    double       min_x = 0;
+    double       min_y = 0;
 
     if( c == NULL )
     {
@@ -20,22 +20,22 @@ void contour_bounding_box( struct contour * c, Point * min, Point * max )
 
     for( i = 0; i < c->num_points; i++ )
     {
-        if( _fp_lt( c->points[i]->x, min_x ) )
+        if( c->points[i]->x < min_x )
         {
             min_x = c->points[i]->x;
         }
 
-        if( _fp_gt( c->points[i]->x, max_x ) )
+        if( c->points[i]->x > max_x )
         {
             max_x = c->points[i]->x;
         }
 
-        if( _fp_lt( c->points[i]->y, min_y ) )
+        if( c->points[i]->y < min_y )
         {
             min_y = c->points[i]->y;
         }
 
-        if( _fp_gt( c->points[i]->y, max_y ) )
+        if( c->points[i]->y > max_y )
         {
             max_y = c->points[i]->y;
         }
@@ -61,8 +61,9 @@ void contour_bounding_box( struct contour * c, Point * min, Point * max )
 
 bool contour_counterclockwise( struct contour * c )
 {
-    double area = 0.0;
-    int i = 0;
+    double       area = 0.0;
+    unsigned int i    = 0;
+
     if( c == NULL )
     {
         return false;
@@ -137,10 +138,10 @@ void contour_set_counterclockwise( struct contour * c )
 
 void contour_change_orientation( struct contour * c )
 {
-    int start_i  = 0;
-    int end_i    = 0;
-    int j        = 0;
-    Point * temp = NULL;
+    unsigned int start_i  = 0;
+    unsigned int end_i    = 0;
+    unsigned int j        = 0;
+    Point *      temp     = NULL;
 
     if( c == NULL )
     {
@@ -175,13 +176,13 @@ void contour_change_orientation( struct contour * c )
     return;
 }
 
-void contour_erase_point( struct contour * c, int i )
+void contour_erase_point( struct contour * c, unsigned int i )
 {
-    int j = 0;
-    int h = 0;
-    int c_i = 0;
-    int * temp_holes = NULL;
-    Point ** temp_points = NULL;
+    unsigned int   j           = 0;
+    unsigned int   h           = 0;
+    unsigned int   c_i         = 0;
+    unsigned int * temp_holes  = NULL;
+    Point **       temp_points = NULL;
 
     if( c == NULL )
     {
@@ -197,6 +198,7 @@ void contour_erase_point( struct contour * c, int i )
     c->points[i] = NULL;
 
     temp_points = ( Point ** ) palloc0( sizeof( Point * ) * ( c->num_points - 1 ) );
+
     for( j = 0; j < c->num_points; j++ )
     {
         if( c->points[j] != NULL )
@@ -215,7 +217,7 @@ void contour_erase_point( struct contour * c, int i )
     {
         if( c->holes[j] == i )
         {
-            temp_holes = ( int * ) palloc0( sizeof( int ) * ( c->num_holes - 1 ) );
+            temp_holes = ( unsigned int * ) palloc0( sizeof( unsigned int ) * ( c->num_holes - 1 ) );
 
             for( h = 0; h < c->num_holes; h++ )
             {
@@ -234,7 +236,7 @@ void contour_erase_point( struct contour * c, int i )
     return;
 }
 
-void contour_add_hole( struct contour * c, int index )
+void contour_add_hole( struct contour * c, unsigned int index )
 {
     if( c == NULL )
     {
@@ -248,13 +250,13 @@ void contour_add_hole( struct contour * c, int index )
             return;
         }
 
-        c->holes = ( int * ) palloc0( sizeof( int ) );
+        c->holes = ( unsigned int * ) palloc0( sizeof( unsigned int ) );
         c->num_holes = 1;
         c->holes[0] = index;
     }
     else
     {
-        c->holes = ( int * ) repalloc( c->holes, sizeof( int ) * ( c->num_holes + 1 ) );
+        c->holes = ( unsigned int * ) repalloc( c->holes, sizeof( unsigned int ) * ( c->num_holes + 1 ) );
         c->holes[c->num_holes] = index;
         c->num_holes = c->num_holes + 1;
     }
@@ -302,7 +304,7 @@ void contour_add_point( struct contour * c, Point * p )
     return;
 }
 
-struct segment * contour_get_segment( struct contour * c, int index )
+struct segment * contour_get_segment( struct contour * c, unsigned int index )
 {
     struct segment * s = NULL;
 
@@ -332,11 +334,12 @@ struct contour * new_contour( void )
     struct contour * c = NULL;
 
     c = ( struct contour * ) palloc0( sizeof( struct contour ) );
-    c->num_points = 0;
-    c->num_holes = 0;
-    c->_external = false;
+
+    c->num_points      = 0;
+    c->num_holes       = 0;
+    c->_external       = false;
     c->_precomputed_cc = false;
-    c->_cc = false;
+    c->_cc             = false;
 
     return c;
 }
@@ -365,8 +368,8 @@ void free_contour( struct contour * c )
 
 double contour_area( struct contour * c )
 {
-    double area = 0.0;
-    int i = 0;
+    double       area = 0.0;
+    unsigned int i    = 0;
 
     if( c == NULL )
     {
@@ -393,7 +396,8 @@ double contour_area( struct contour * c )
 
 void _dump_contour( struct contour * c )
 {
-    int i = 0;
+    unsigned int i = 0;
+
     elog( DEBUG1, "Dumping contour %p", c );
 
     if( c == NULL )

@@ -11,14 +11,14 @@
 struct connector {
     Point ** list;
     bool _closed;
-    int length;
+    unsigned int length;
 };
 
 struct polygon_connector {
     struct connector ** open;
-    int open_length;
+    unsigned int open_length;
     struct connector ** closed;
-    int closed_length;
+    unsigned int closed_length;
 };
 
 extern struct connector * new_connector( Point * );

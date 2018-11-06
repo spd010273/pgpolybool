@@ -1,5 +1,6 @@
 /*
  *    Copyright 2018 Chris Autry
+ *    Copyright 2018 Nead Werx Inc
  *
  *    Permission is hereby granted, free of charge, to any person obtaining a copy of
  *    this software and associated documentation files (the "Software"), to deal in
@@ -46,12 +47,13 @@ struct dlpq {
 #endif // DLPQ_DEBUG
 };
 
+extern bool default_compare_function( void *, void * );
 extern struct dlpq * new_dlpq( bool (*)( void *, void * ) );
 extern inline unsigned int dlpq_size( struct dlpq * );
 extern inline bool dlpq_empty( struct dlpq * );
 extern unsigned int dlpq_get_position( struct dlpq *, void * );
-void * dlpq_peek_position( struct dlpq *, unsigned int );
-void dlpq_remove( struct dlpq *, void * );
+extern void * dlpq_peek_position( struct dlpq *, unsigned int );
+extern void dlpq_remove( struct dlpq *, void * );
 extern void dlpq_push( struct dlpq * head, void * data );
 extern inline void * dlpq_pop( struct dlpq * );
 extern inline void * dlpq_unshift( struct dlpq * );

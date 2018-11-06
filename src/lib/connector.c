@@ -379,6 +379,8 @@ struct polygon_connector * new_polygon_connector( struct connector * open, struc
 
 void free_polygon_connector( struct polygon_connector * pc )
 {
+    unsigned int i = 0;
+
     if( pc == NULL )
     {
         return;
@@ -386,11 +388,21 @@ void free_polygon_connector( struct polygon_connector * pc )
 
     if( pc->open != NULL )
     {
+        for( i = 0; i < pc->open_length; i++ )
+        {
+            free_connector( pc->open[i] );
+        }
+
         pfree( pc->open );
     }
 
     if( pc->closed != NULL )
     {
+        for( i = 0; i < pc->closed_length; i++ )
+        {
+            free_connector( pc->closed[i] );
+        }
+
         pfree( pc->closed );
     }
 

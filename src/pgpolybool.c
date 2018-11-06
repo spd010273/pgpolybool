@@ -269,10 +269,12 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
         sorted_polys[0] = new_polygon;
     }
 
-    for( i = 0; i < num_poly; i++ )
+    for( i = 1; i < num_poly; i++ )
     {
         pfree( sorted_polys[i] );
     }
+
+    new_polygon = sorted_polys[0];
 
     pfree( sorted_polys );
 

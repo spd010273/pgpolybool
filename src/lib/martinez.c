@@ -1,6 +1,12 @@
 #include "martinez.h"
 
-void process_segment( struct segment * s, int poly_type, struct dlpq * phead, struct sweep_event *** ev_set, int * ev_index )
+void process_segment(
+    struct segment * s,
+    unsigned int poly_type,
+    struct dlpq * phead,
+    struct sweep_event *** ev_set,
+    unsigned int * ev_index
+)
 {
     struct sweep_event * e1 = NULL;
     struct sweep_event * e2 = NULL;
@@ -34,17 +40,14 @@ void process_segment( struct segment * s, int poly_type, struct dlpq * phead, st
     e2->in_out       = true;
 
     //elog( DEBUG1, "New sweep events setup" );
-    //if( _fp_lt( e1->p->x, e2->p->x ) )
     if( e1->p->x < e2->p->x )
     {
         e2->left = false;
     }
-    //else if( _fp_gt( e1->p->x, e2->p->x ) )
     else if( e1->p->x > e2->p->x )
     {
         e1->left = false;
     }
-    //else if( _fp_lt( e1->p->y, e2->p->y ) )
     else if( e1->p->y < e2->p->y )
     {
         e2->left = false;
@@ -69,7 +72,7 @@ void divide_segment(
     Point * p,
     struct dlpq * phead,
     struct sweep_event *** ev_set,
-    int * ev_index
+    unsigned int * ev_index
 )
 {
     struct sweep_event * e0 = NULL; // right
@@ -84,6 +87,8 @@ void divide_segment(
     e0->polygon_type = e->polygon_type;
     e0->other        = e;
     e0->edge_type    = e->edge_type;
+    e0->inside       = true;
+    e0->in_out       = true;
 
     e1->p->x         = p->x;
     e1->p->y         = p->y;
@@ -91,6 +96,8 @@ void divide_segment(
     e1->polygon_type = e->polygon_type;
     e1->other        = e->other;
     e1->edge_type    = e->other->edge_type;
+    e1->inside       = true;
+    e1->in_out       = true;
 
     // was ev comp
     if( sweep_event_sl_comp( e1, e->other ) )
@@ -105,7 +112,7 @@ void divide_segment(
     _dump_sweep_event( e0 );
     elog( DEBUG1, "Divided left segment" );
     _dump_sweep_event( e1 );
-    
+
     //_dlpq_debug( phead );
     _se_set_insert( ev_set, e1, ev_index, &sweep_event_ev_segment_comp );
     _se_set_insert( ev_set, e0, ev_index, &sweep_event_ev_segment_comp );
@@ -118,19 +125,19 @@ void divide_segment(
 void possible_intersection(
     struct sweep_event * e0,
     struct sweep_event * e1,
-    int * num_int,
+    unsigned int * num_int,
     struct dlpq * phead,
     struct sweep_event *** ev_set,
-    int * ev_length
+    unsigned int * ev_length
 )
 {
-    Point * isect_p0 = NULL;
-    Point * isect_p1 = NULL;
-    struct segment * seg0 = NULL;
-    struct segment * seg1 = NULL;
-    int num_intersections = 0;
-    struct sweep_event ** ev = NULL;
-    int ev_index = 0;
+    struct sweep_event ** ev                = NULL;
+    struct segment *      seg0              = NULL;
+    struct segment *      seg1              = NULL;
+    Point *               isect_p0          = NULL;
+    Point *               isect_p1          = NULL;
+    unsigned int          num_intersections = 0;
+    unsigned int          ev_index          = 0;
 
     //elog( DEBUG1, "Getting segments fron sweep_event e0: %p e1: %p", e0, e1 );
     seg0 = sweep_event_get_segment( e0 );
@@ -183,7 +190,7 @@ void possible_intersection(
     }
 
     //elog( DEBUG1, "Pallocing EV Buffer" );
-    ev = _manage_ev_buffer( ev, -1 ); // allocate 10 slots, we'll only use at mode 4
+    ev = _manage_ev_buffer( ev, 0 ); // allocate 10 slots, we'll only use at mode 4
 
     if( points_equal( e0->p, e1->p ) )
     {
@@ -324,14 +331,14 @@ void possible_intersection(
 void compute(
     struct polygon * subject,
     struct polygon * clipping,
-    int op,
+    short int op,
     struct polygon * result
 )
 {
-    int                        i              = 0;
-    int                        j              = 0;
-    int                        num_int        = 0;
-    int                        ev_length      = 0;
+    unsigned int               i              = 0;
+    unsigned int               j              = 0;
+    unsigned int               num_int        = 0;
+    unsigned int               ev_length      = 0;
     unsigned int               event_position = 0;
     unsigned int               previous_event = 0;
     unsigned int               next_event     = 0;
@@ -378,10 +385,10 @@ void compute(
     polygon_boundingbox( clipping, min_clip, max_clip );
 
     if(
-            _fp_gt( min_subj->x, max_clip->x )
-         || _fp_gt( min_clip->x, max_subj->x )
-         || _fp_gt( min_subj->y, max_clip->y )
-         || _fp_gt( min_clip->y, max_subj->y )
+            min_subj->x > max_clip->x
+         || min_clip->x > max_subj->x
+         || min_subj->y > max_clip->y
+         || min_clip->y > max_subj->y
       )
     {
         // bounding boxes do not overlap
@@ -428,7 +435,7 @@ void compute(
         }
     }
 
-    if( _fp_gt( max_subj->x, max_clip->x ) )
+    if( max_subj->x > max_clip->x )
     {
         min_max_x = max_clip->x;
     }
@@ -454,10 +461,11 @@ void compute(
 
     elog( DEBUG1, " =========== Entering Main Loop ===========\nmin_max_x: %f", min_max_x );
     _dlpq_debug( phead );
-    sl_head = new_dlpq( &sweep_event_sl_segment_comp_wrapper );
+    sl_head = new_dlpq( &sweep_event_sl_segment_comp_wrapper_inverted );
     _dlpq_setup_debug( sl_head, &_dump_sweep_event_dlpq_wrapper );
     pc = new_polygon_connector( NULL, NULL );
 
+    // TODO: verify all events are freed
     while( !dlpq_empty( phead ) )
     {
         elog( DEBUG1, "================================ LOOP");
@@ -465,18 +473,20 @@ void compute(
         elog( DEBUG1, "Got event %p :", event );
         _dump_sweep_event( event );
         if(
-                ( op == OP_INTERSECTION && _fp_gt( event->p->x, min_max_x ) )
-             || ( op == OP_DIFFERENCE && _fp_gt( event->p->x, max_subj->x ) )
+                ( op == OP_INTERSECTION && event->p->x > min_max_x )
+             || ( op == OP_DIFFERENCE && event->p->x > max_subj->x )
           )
         {
             elog( DEBUG1, "Early exit for OP_INTERSECTION / OP_DIFFERENCE case" );
             result = polygon_connector_to_polygon( pc );
             free_polygon_connector( pc );
+            free_dlpq( &sl_head );
+            free_dlpq( &phead );
             return;
         }
 
         elog( DEBUG1, "Checking union case" );
-        if( op == OP_UNION && _fp_gt( event->p->x, min_max_x ) )
+        if( op == OP_UNION && event->p->x > min_max_x )
         {
             elog( DEBUG1, "Early exit for union case e p(%f,%f) o(%f,%f)", event->p->x, event->p->y, event->other->p->x, event->other->p->y );
             elog( DEBUG1, "status line state:" );
@@ -502,7 +512,10 @@ void compute(
 
             _dump_polygon_connector( pc );
             result = polygon_connector_to_polygon( pc );
+            _dump_polygon( result );
             free_polygon_connector( pc );
+            free_dlpq( &sl_head );
+            free_dlpq( &phead );
             return;
         }
 
@@ -794,7 +807,6 @@ void compute(
                     break;
             }
 
-            
             dlpq_remove( sl_head, dlpq_peek_position( sl_head, colinear_event ) );
 
             if( next_event < sl_head->size - 1 && previous_event < sl_head->size -1 )
@@ -834,6 +846,8 @@ void compute(
     }
 
     free_polygon_connector( pc );
+    free_dlpq( &sl_head );
+    free_dlpq( &phead );
     return;
 }
 
@@ -842,7 +856,7 @@ struct polygon * poly_to_mpoly( POLYGON * p )
     struct polygon * mpoly = NULL;
     Point *          point = NULL;
     struct contour * c     = NULL;
-    int              i     = 0;
+    unsigned int     i     = 0;
 
     if( p == NULL )
     {
@@ -880,13 +894,13 @@ void free_pgpoly( POLYGON * p )
 
 POLYGON * mpoly_to_poly( struct polygon * mpoly )
 {
-    int        i            = 0;
-    int        c            = 0;
-    POLYGON *  p            = NULL;
-    POLYGON ** arr          = NULL;
-    double     area         = 0.0;
-    double     max_area     = 0.0;
-    int        max_area_ind = 0;
+    unsigned int i            = 0;
+    unsigned int c            = 0;
+    unsigned int max_area_ind = 0;
+    POLYGON *    p            = NULL;
+    POLYGON **   arr          = NULL;
+    double       area         = 0.0;
+    double       max_area     = 0.0;
 
     if( mpoly == NULL )
     {
@@ -923,7 +937,7 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
         arr[c] = p;
         area   = contour_area( mpoly->contours[c] );
 
-        if( _fp_gt( area, max_area ) )
+        if( area > max_area )
         {
             max_area     = area;
             max_area_ind = i;
