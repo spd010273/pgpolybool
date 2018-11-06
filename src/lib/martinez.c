@@ -1,11 +1,11 @@
 #include "martinez.h"
 
 void process_segment(
-    struct segment * s,
-    unsigned int poly_type,
-    struct dlpq * phead,
+    struct segment *       s,
+    unsigned int           poly_type,
+    struct dlpq *          phead,
     struct sweep_event *** ev_set,
-    unsigned int * ev_index
+    unsigned int *         ev_index
 )
 {
     struct sweep_event * e1 = NULL;
@@ -21,7 +21,6 @@ void process_segment(
         return;
     }
 
-    //elog( DEBUG1, "Processing segment" );
     e1 = new_sweep_event();
     e2 = new_sweep_event();
 
@@ -39,7 +38,6 @@ void process_segment(
     e2->other        = e1;
     e2->in_out       = true;
 
-    //elog( DEBUG1, "New sweep events setup" );
     if( e1->p->x < e2->p->x )
     {
         e2->left = false;
@@ -68,16 +66,20 @@ void process_segment(
 }
 
 void divide_segment(
-    struct sweep_event * e,
-    Point * p,
-    struct dlpq * phead,
+    struct sweep_event *   e,
+    Point *                p,
+    struct dlpq *          phead,
     struct sweep_event *** ev_set,
-    unsigned int * ev_index
+    unsigned int *         ev_index
 )
 {
     struct sweep_event * e0 = NULL; // right
     struct sweep_event * e1 = NULL; // left
+
+#ifdef DEBUG
     elog( DEBUG1, "DIVIDING SEGMENT, E %p, P %p", e, p );
+#endif // DEBUG
+
     e0 = new_sweep_event();
     e1 = new_sweep_event();
 
@@ -108,14 +110,17 @@ void divide_segment(
 
     e->other->other = e1;
     e->other = e0;
+#ifdef DEBUG
     elog( DEBUG1, "Divided right segment" );
     _dump_sweep_event( e0 );
     elog( DEBUG1, "Divided left segment" );
     _dump_sweep_event( e1 );
-
     //_dlpq_debug( phead );
+#endif // DEBUG
+
     _se_set_insert( ev_set, e1, ev_index, &sweep_event_ev_segment_comp );
     _se_set_insert( ev_set, e0, ev_index, &sweep_event_ev_segment_comp );
+
     dlpq_push( phead, ( void * ) e1 );
     dlpq_push( phead, ( void * ) e0 );
 
@@ -139,15 +144,37 @@ void possible_intersection(
     unsigned int          num_intersections = 0;
     unsigned int          ev_index          = 0;
 
-    //elog( DEBUG1, "Getting segments fron sweep_event e0: %p e1: %p", e0, e1 );
     seg0 = sweep_event_get_segment( e0 );
     seg1 = sweep_event_get_segment( e1 );
 
     isect_p0 = ( Point * ) palloc0( sizeof( Point ) );
     isect_p1 = ( Point * ) palloc0( sizeof( Point ) );
-    //elog( DEBUG1, "Looking for explicit intersection between segments" );
+
+    if( isect_p0 == NULL || isect_p1 == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate intersection points" )
+            )
+        );
+    }
+
     num_intersections = find_intersection( seg0, seg1, isect_p0, isect_p1 );
-    elog( DEBUG1, "Find intersections %d, %f,%f %f,%f", num_intersections, isect_p0->x, isect_p0->y, isect_p1->x, isect_p1->y );
+
+#ifdef DEBUG
+    elog(
+        DEBUG1,
+        "Find intersections %d, %f,%f %f,%f",
+        num_intersections,
+        isect_p0->x,
+        isect_p0->y,
+        isect_p1->x,
+        isect_p1->y
+    );
+#endif // DEBUG
+
     if( num_intersections == 0 )
     {
         return;
@@ -155,7 +182,10 @@ void possible_intersection(
 
     if(
             num_intersections == 1
-         && ( points_equal( e0->p, e1->p ) || points_equal( e0->other->p, e1->other->p ) )
+         && (
+                points_equal( e0->p, e1->p )
+             || points_equal( e0->other->p, e1->other->p )
+            )
       )
     {
         return; // same line segment
@@ -189,8 +219,8 @@ void possible_intersection(
         return;
     }
 
-    //elog( DEBUG1, "Pallocing EV Buffer" );
-    ev = _manage_ev_buffer( ev, 0 ); // allocate 10 slots, we'll only use at mode 4
+    // allocate 10 slots, we'll only use at mode 4
+    ev = _manage_ev_buffer( ev, 0 );
 
     if( points_equal( e0->p, e1->p ) )
     {
@@ -228,20 +258,19 @@ void possible_intersection(
         ev[ev_index - 1] = e1->other;
     }
 
-    //elog( DEBUG1, "Post scan logic, ev_index: %d", ev_index );
     if( ev_index == 2 )
     {
-        e0->edge_type = EDGE_TYPE_NON_CONTRIBUTING;
+        e0->edge_type        = EDGE_TYPE_NON_CONTRIBUTING;
         e0->other->edge_type = EDGE_TYPE_NON_CONTRIBUTING;
 
         if( e0->in_out == e1->in_out )
         {
-            e1->edge_type = EDGE_TYPE_SAME_TRANSITION;
+            e1->edge_type        = EDGE_TYPE_SAME_TRANSITION;
             e1->other->edge_type = EDGE_TYPE_SAME_TRANSITION;
         }
         else
         {
-            e1->edge_type = EDGE_TYPE_DIFFERENT_TRANSITION;
+            e1->edge_type        = EDGE_TYPE_DIFFERENT_TRANSITION;
             e1->other->edge_type = EDGE_TYPE_DIFFERENT_TRANSITION;
         }
 
@@ -251,7 +280,7 @@ void possible_intersection(
 
     if( ev_index == 3 )
     {
-        ev[1]->edge_type = EDGE_TYPE_NON_CONTRIBUTING;
+        ev[1]->edge_type        = EDGE_TYPE_NON_CONTRIBUTING;
         ev[1]->other->edge_type = EDGE_TYPE_NON_CONTRIBUTING;
 
         if( ev[0] != NULL )
@@ -305,11 +334,13 @@ void possible_intersection(
 
         divide_segment( ev[0], ev[1]->p, phead, ev_set, ev_length );
         divide_segment( ev[1], ev[2]->p, phead, ev_set, ev_length );
+
         pfree( ev );
+
         return;
     }
 
-    ev[1]->edge_type = EDGE_TYPE_NON_CONTRIBUTING;
+    ev[1]->edge_type        = EDGE_TYPE_NON_CONTRIBUTING;
     ev[1]->other->edge_type = EDGE_TYPE_NON_CONTRIBUTING;
 
     divide_segment( ev[0], ev[1]->p, phead, ev_set, ev_length );
@@ -324,14 +355,16 @@ void possible_intersection(
     }
 
     divide_segment( ev[3]->other, ev[2]->p, phead, ev_set, ev_length );
+
     pfree( ev );
+
     return;
 }
 
 struct polygon * compute(
     struct polygon * subject,
     struct polygon * clipping,
-    short int op
+    short int        op
 )
 {
     unsigned int               i              = 0;
@@ -382,6 +415,27 @@ struct polygon * compute(
     max_subj = ( Point * ) palloc0( sizeof( Point ) );
     min_clip = ( Point * ) palloc0( sizeof( Point ) );
     max_clip = ( Point * ) palloc0( sizeof( Point ) );
+
+    if(
+            min_subj == NULL
+         || max_subj == NULL
+         || min_clip == NULL
+         || max_clip == NULL
+      )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg(
+                    "Could not allocate reference points"\
+                    " for clipping optimization"
+                )
+            )
+        );
+    }
+
+
     polygon_boundingbox( subject, min_subj, max_subj );
     polygon_boundingbox( clipping, min_clip, max_clip );
 
@@ -423,7 +477,13 @@ struct polygon * compute(
         for( j = 0; j < subject->contours[i]->num_points; j++ )
         {
             seg = contour_get_segment( subject->contours[i], j );
-            process_segment( seg, POLY_TYPE_SUBJECT, phead, &ev_set, &ev_length );
+            process_segment(
+                seg,
+                POLY_TYPE_SUBJECT,
+                phead,
+                &ev_set,
+                &ev_length
+            );
         }
     }
 
@@ -432,7 +492,13 @@ struct polygon * compute(
         for( j = 0; j < clipping->contours[i]->num_points; j++ )
         {
             seg = contour_get_segment( clipping->contours[i], j );
-            process_segment( seg, POLY_TYPE_CLIPPING, phead, &ev_set, &ev_length );
+            process_segment(
+                seg,
+                POLY_TYPE_CLIPPING,
+                phead,
+                &ev_set,
+                &ev_length
+            );
         }
     }
 
@@ -445,60 +511,75 @@ struct polygon * compute(
         min_max_x = max_subj->x;
     }
 
-    // test pop logic
-    //struct sweep_event  ** test_set = NULL;
-    //int ts_ind = 0;
-    //_dump_se_set( &ev_set, ev_length );
-    //while( !dlpq_empty( phead ) )
-    //{
-    //    event = ( struct sweep_event * ) dlpq_pop( phead );
-    //    // insert for sl_sort
-    //    _se_set_insert( &test_set, event, &ts_ind, &sweep_event_sl_comp );
-    //    elog( DEBUG1, "P %p (%f,%f) op (%f,%f)", event, event->p->x, event->p->y, event->other->p->x, event->other->p->y );
-    //}
-
-    //_dump_se_set( &test_set, ts_ind );
-    // test sl sort
-
-    elog( DEBUG1, " =========== Entering Main Loop ===========\nmin_max_x: %f", min_max_x );
-    _dlpq_debug( phead );
     sl_head = new_dlpq( &sweep_event_sl_segment_comp_wrapper_inverted );
+
+#ifdef DEBUG
+    elog(
+        DEBUG1,
+        " =========== Entering Main Loop ===========\nmin_max_x: %f",
+        min_max_x
+    );
+    _dlpq_debug( phead );
     _dlpq_setup_debug( sl_head, &_dump_sweep_event_dlpq_wrapper );
+#endif // DEBUG
+
     pc = new_polygon_connector( NULL, NULL );
 
     // TODO: verify all events are freed
     while( !dlpq_empty( phead ) )
     {
-        elog( DEBUG1, "================================ LOOP");
         event = ( struct sweep_event * ) dlpq_pop( phead );
+
+#ifdef DEBUG
+        elog( DEBUG1, "================================ LOOP");
         elog( DEBUG1, "Got event %p :", event );
         _dump_sweep_event( event );
+#endif // DEBUG
+
         if(
-                ( op == OP_INTERSECTION && event->p->x > min_max_x )
-             || ( op == OP_DIFFERENCE && event->p->x > max_subj->x )
+                ( op == OP_INTERSECTION && event->p->x > min_max_x   )
+             || ( op == OP_DIFFERENCE   && event->p->x > max_subj->x )
           )
         {
-            elog( DEBUG1, "Early exit for OP_INTERSECTION / OP_DIFFERENCE case" );
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                "Early exit for OP_INTERSECTION / OP_DIFFERENCE case"
+            );
+#endif // DEBUG
             result = polygon_connector_to_polygon( pc );
             pfree( min_subj );
             pfree( max_subj );
             pfree( min_clip );
             pfree( max_clip );
             free_polygon_connector( pc );
-            //free_queues( sl_head, phead );
             free_dlpq( &sl_head );
             free_dlpq( &phead );
+
             return result;
         }
 
+#ifdef DEBUG
         elog( DEBUG1, "Checking union case" );
+#endif // DEBUG
+
         if( op == OP_UNION && event->p->x > min_max_x )
         {
-            elog( DEBUG1, "Early exit for union case e p(%f,%f) o(%f,%f)", event->p->x, event->p->y, event->other->p->x, event->other->p->y );
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                "Early exit for union case e p(%f,%f) o(%f,%f)",
+                event->p->x,
+                event->p->y,
+                event->other->p->x,
+                event->other->p->y
+            );
             elog( DEBUG1, "status line state:" );
             _dlpq_debug( sl_head );
             elog( DEBUG1, "polygon connector state:" );
             _dump_polygon_connector( pc );
+#endif // DEBUG
+
             if( !event->left )
             {
                 seg = sweep_event_get_segment( event );
@@ -508,7 +589,14 @@ struct polygon * compute(
             while( !dlpq_empty( phead ) )
             {
                 event = ( struct sweep_event * ) dlpq_pop( phead );
-                elog( DEBUG1, "Got event %p from dlpq_pop of %p", event, phead );
+#ifdef DEBUG
+                elog(
+                    DEBUG1,
+                    "Got event %p from dlpq_pop of %p",
+                    event,
+                    phead
+                );
+#endif // DEBUG
                 if( !event->left )
                 {
                     seg = sweep_event_get_segment( event );
@@ -516,11 +604,12 @@ struct polygon * compute(
                 }
             }
 
-            _dump_polygon_connector( pc );
             result = polygon_connector_to_polygon( pc );
+#ifdef DEBUG
+            _dump_polygon_connector( pc );
             _dump_polygon( result );
+#endif // DEBUG
             free_polygon_connector( pc );
-            //free_queues( sl_head, phead );
             free_dlpq( &sl_head );
             free_dlpq( &phead );
             pfree( min_subj );
@@ -529,10 +618,12 @@ struct polygon * compute(
             pfree( max_clip );
             return result;
         }
-
+#ifdef DEBUG
         elog( DEBUG1, "Checking handedness of event" );
+#endif // DEBUG
         if( event->left )
         {
+#ifdef DEBUG
             elog(
                 DEBUG1,
                 "LS: P %d, N %d, ep %d S: %d",
@@ -543,12 +634,13 @@ struct polygon * compute(
             );
 
             elog( DEBUG1, "Adding event to SE set" );
+#endif // DEBUG
             dlpq_push( sl_head, event );
-            //event_position = 0;
-            event_position = dlpq_get_position( sl_head, event );
 
-            next_event = event_position;
+            event_position = dlpq_get_position( sl_head, event );
+            next_event     = event_position;
             previous_event = event_position;
+
             if( previous_event != 0 )
             {
                 previous_event--;
@@ -558,6 +650,7 @@ struct polygon * compute(
                 previous_event = sl_head->size;
             }
 
+#ifdef DEBUG
             elog( DEBUG1, "event in/out & inside logic" );
             elog( DEBUG1, "status line state:" );
             _dlpq_debug( sl_head );
@@ -569,10 +662,13 @@ struct polygon * compute(
                 event_position,
                 sl_head->size
             );
+#endif //DEBUG
 
             if( sl_head->size == previous_event )
             {
+#ifdef DEBUG
                 elog( DEBUG1, "Event is not inside not inout" );
+#endif // DEBUG
                 event->inside = false;
                 event->in_out = false;
             }
@@ -587,7 +683,9 @@ struct polygon * compute(
             {
                 if( previous_event == 0 )
                 {
+#ifdef DEBUG
                     elog( DEBUG1, "Event is inside, not inout" );
+#endif // DEBUG
                     event->inside = true;
                     event->in_out = false;
                 }
@@ -629,7 +727,9 @@ struct polygon * compute(
                              )
                             )->in_out
                         );
+#ifdef DEBUG
                         elog( DEBUG1, "Event is in first colinear cond" );
+#endif // DEBUG
                     }
                     else
                     {
@@ -649,7 +749,9 @@ struct polygon * compute(
                              )
                             )->in_out
                         );
+#ifdef DEBUG
                         elog( DEBUG1, "Event is in second colinear cond" );
+#endif // DEBUG
                     }
                 }
             }
@@ -674,7 +776,9 @@ struct polygon * compute(
                      previous_event
                  )
                 )->in_out;
+#ifdef DEBUG
                 elog( DEBUG1, "Event is in first polytype check cond" );
+#endif // DEBUG
             }
             else
             {
@@ -690,10 +794,14 @@ struct polygon * compute(
                      previous_event
                  )
                 )->inside;
+#ifdef DEBUG
                 elog( DEBUG1, "Event is in second polytype check cond" );
+#endif // DEBUG
             }
 
+#ifdef DEBUG
             elog( DEBUG1, "Checking possible intersections" );
+#endif // DEBUG
 
             if( ( next_event + 1 ) >= sl_head->size  )
             {
@@ -706,7 +814,9 @@ struct polygon * compute(
 
             if( next_event != sl_head->size )
             {
+#ifdef DEBUG
                 elog( DEBUG1, "Calling first pi" );
+#endif // DEBUG
                 possible_intersection(
                     event,
                     (struct sweep_event *) dlpq_peek_position(
@@ -718,9 +828,17 @@ struct polygon * compute(
                     &ev_set,
                     &ev_length
                 );
-                elog( DEBUG1, "=============== 1 POST POSSIBLE INTERSECTION ==============" );
+#ifdef DEBUG
+                elog(
+                    DEBUG1,
+                    "============== 1 POST POSSIBLE INTERSECTION ============="
+                );
                 _dlpq_debug( phead );
-                elog( DEBUG1, "=========================================================" );
+                elog(
+                    DEBUG1,
+                    "========================================================="
+                );
+#endif // DEBUG
             }
 
             if( previous_event != sl_head->size )
@@ -736,15 +854,24 @@ struct polygon * compute(
                     &ev_set,
                     &ev_length
                 );
-                elog( DEBUG1, "=============== 2 POST POSSIBLE INTERSECTION ==============" );
+#ifdef DEBUG
+                elog(
+                    DEBUG1,
+                    "============== 2 POST POSSIBLE INTERSECTION ============="
+                );
                 _dlpq_debug( phead );
-                elog( DEBUG1, "=========================================================" );
+                elog(
+                    DEBUG1,
+                    "========================================================="
+                );
+#endif // DEBUG
             }
-            elog( DEBUG1, "Post possible intersection" );
         }
         else
         {
+#ifdef DEBUG
             elog( DEBUG1, "colinear & edge logic" );
+#endif // DEBUG
             colinear_event = dlpq_get_position( sl_head, event->other );
             previous_event = colinear_event;
             next_event     = colinear_event;
@@ -788,8 +915,14 @@ struct polygon * compute(
                             break;
                         case OP_DIFFERENCE:
                             if(
-                                   ( event->polygon_type == POLY_TYPE_SUBJECT && !event->other->inside )
-                                || ( event->polygon_type == POLY_TYPE_CLIPPING && event->other->inside )
+                                  (
+                                      event->polygon_type == POLY_TYPE_SUBJECT
+                                   && !event->other->inside
+                                  )
+                               || (
+                                      event->polygon_type == POLY_TYPE_CLIPPING
+                                   && event->other->inside
+                                  )
                               )
                             {
                                 seg = sweep_event_get_segment( event );
@@ -818,9 +951,18 @@ struct polygon * compute(
                     break;
             }
 
-            dlpq_remove( sl_head, dlpq_peek_position( sl_head, colinear_event ) );
+            dlpq_remove(
+                sl_head,
+                dlpq_peek_position(
+                    sl_head,
+                    colinear_event
+                )
+            );
 
-            if( next_event < sl_head->size - 1 && previous_event < sl_head->size -1 )
+            if(
+                    next_event < sl_head->size - 1
+                 && previous_event < sl_head->size -1
+              )
             {
                 possible_intersection(
                     (struct sweep_event *) dlpq_peek_position(
@@ -840,9 +982,10 @@ struct polygon * compute(
         }
     }
 
+#ifdef DEBUG
     elog( DEBUG1, "Ended main loop. dlpq:" );
-
     _dump_polygon_connector( pc );
+#endif // DEBUG
 
     result = polygon_connector_to_polygon( pc );
 
@@ -857,13 +1000,13 @@ struct polygon * compute(
     }
 
     free_polygon_connector( pc );
-    //free_queues( sl_head, phead );
     free_dlpq( &sl_head );
     free_dlpq( &phead );
     pfree( min_subj );
     pfree( max_subj );
     pfree( min_clip );
     pfree( max_clip );
+
     return result;
 }
 
@@ -884,7 +1027,21 @@ struct polygon * poly_to_mpoly( POLYGON * p )
 
     for( i = 0; i < p->npts; i++ )
     {
-        point    = ( Point * ) palloc0( sizeof( Point ) );
+        point = ( Point * ) palloc0( sizeof( Point ) );
+
+        if( point == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg(
+                        "Could not allocate point fror polygon conversion"
+                    )
+                )
+            );
+        }
+
         point->x = p->p[i].x;
         point->y = p->p[i].y;
 
@@ -926,6 +1083,17 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
     if( mpoly->num_contours > 1 )
     {
         arr = palloc0( sizeof( POLYGON * ) * mpoly->num_contours );
+
+        if( arr == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not allocate array for polygon contours" )
+                )
+            );
+        }
     }
 
     for( c = 0; c < mpoly->num_contours; c++ )
@@ -934,6 +1102,17 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
             offsetof( POLYGON, p )
           + ( sizeof( Point ) * ( mpoly->contours[c]->num_points ) )
         );
+
+        if( p == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not allocate new output polygon" )
+                )
+            );
+        }
 
         for( i = 0; i < mpoly->contours[c]->num_points; i++ )
         {
@@ -976,99 +1155,4 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
     free_polygon( mpoly );
 
     return p;
-}
-
-void free_queues( struct dlpq * a, struct dlpq * b )
-{
-    // Objective: Free sweep_events from two queues without double freeing
-    struct sweep_event ** unique_se = NULL;
-    struct sweep_event *  temp      = NULL;
-    unsigned int          u_i       = 0;
-    unsigned int          i         = 0;
-    unsigned int          j         = 0;
-    bool                  match     = false;
-
-    if( a == NULL || b == NULL )
-    {
-        return;
-    }
-
-    unique_se = ( struct sweep_event ** ) palloc0(
-        sizeof( struct sweep_event * )
-      * ( a->size + b->size )
-    );
-
-    for( i = 0; i < a->size; i++ )
-    {
-        temp = ( struct sweep_event * ) dlpq_peek_position( a, i );
-
-        if( u_i == 0 )
-        {
-            unique_se[u_i] = temp;
-            u_i++;
-        }
-        else
-        {
-            match = false;
-
-            for( j = 0; j < u_i; j++ )
-            {
-                if( unique_se[j] == temp )
-                {
-                    elog( DEBUG1, "a unique[%u] matches %p", j, temp );
-                    match = true;
-                    break;
-                }
-            }
-
-            if( !match )
-            {
-                unique_se[u_i] = temp;
-                elog( DEBUG1, "Added a %p to unique at %u", temp, u_i );
-                u_i++;
-            }
-        }
-    }
-
-    for( i = 0; i < b->size; i++ )
-    {
-        temp = ( struct sweep_event * ) dlpq_peek_position( b, i );
-
-        if( u_i == 0 )
-        {
-            unique_se[u_i] = temp;
-            u_i++;
-        }
-        else
-        {
-            match = false;
-
-            for( j = 0; j < u_i; j++ )
-            {
-                if( unique_se[j] == temp )
-                {
-                    elog( DEBUG1, "b unique[%u] matches %p", j, temp );
-                    match = true;
-                    break;
-                }
-            }
-
-            if( !match )
-            {
-                unique_se[u_i] = temp;
-                elog( DEBUG1, "Added b %p to unique at %u", temp, u_i );
-                u_i++;
-            }
-        }
-    }
-
-    for( i = 0; i < u_i; i++ )
-    {
-        elog( DEBUG1, "Freeing SE: %p", unique_se[u_i] );
-        free_sweep_event( unique_se[u_i] );
-    }
-
-    pfree( unique_se );
-
-    return;
 }

@@ -2,17 +2,39 @@
 
 struct connector * new_connector( Point * p )
 {
-    struct connector * c = NULL;
-    Point ** list        = NULL;
+    struct connector * c    = NULL;
+    Point **           list = NULL;
 
     c = ( struct connector * ) palloc0( sizeof( struct connector ) );
 
+    if( c == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate polygon connector" )
+            )
+        );
+    }
+
     c->_closed = false;
-    c->length = 1;
+    c->length  = 1;
 
     list = ( Point ** ) palloc0( sizeof( Point * ) );
 
-    c->list = list;
+    if( list == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate polygon connector point list" )
+            )
+        );
+    }
+
+    c->list    = list;
     c->list[0] = p;
 
     return c;
@@ -31,6 +53,7 @@ void free_connector( struct connector * c )
     }
 
     pfree( c );
+
     return;
 }
 
@@ -46,6 +69,18 @@ void connector_add_point( struct connector * c, Point * p )
         sizeof( Point * )
       * ( c->length + 1 )
     );
+
+    if( c->list == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not extend connector point list" )
+            )
+        );
+    }
+
     c->list[c->length] = p;
     c->length++;
 
@@ -54,7 +89,7 @@ void connector_add_point( struct connector * c, Point * p )
 
 void connector_push_front( struct connector * c, Point * p )
 {
-    int i = 0;
+    unsigned int i = 0;
 
     if( c == NULL || p == NULL )
     {
@@ -67,7 +102,21 @@ void connector_push_front( struct connector * c, Point * p )
         return;
     }
 
-    c->list = ( Point ** ) repalloc( c->list, sizeof( Point * ) * ( c->length + 1 ) );
+    c->list = ( Point ** ) repalloc(
+        c->list,
+        sizeof( Point * ) * ( c->length + 1 )
+    );
+
+    if( c->list == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not extend connector point list" )
+            )
+        );
+    }
 
     for( i = c->length; i > 0; i-- )
     {
@@ -76,6 +125,7 @@ void connector_push_front( struct connector * c, Point * p )
 
     c->list[0] = p;
     c->length++;
+
     return;
 }
 
@@ -88,7 +138,6 @@ bool connector_link_segment( struct connector * c, struct segment * s )
 
     if( c->length == 0 || c->list == NULL )
     {
-        elog( DEBUG1, "Could not link segment: point list is uninitialized" );
         return false;
     }
 
@@ -158,8 +207,12 @@ bool connector_link_chain( struct connector * c0, struct connector * c1 )
         return false;
     }
 
+#ifdef DEBUG
+    elog( DEBUG1, "Linking connector chains:" );
     _dump_connector( c0 );
     _dump_connector( c1 );
+#endif // DEBUG
+
     if( points_equal( c1->list[0], c0->list[c0->length - 1] ) )
     {
         connector_pop_front( c1 );
@@ -193,12 +246,17 @@ bool connector_link_chain( struct connector * c0, struct connector * c1 )
     return false;
 }
 
-void connector_splice( struct connector * c_to, int ins_index, struct connector * c_from, int start_ind )
+void connector_splice(
+    struct connector * c_to,
+    unsigned int       ins_index,
+    struct connector * c_from,
+    unsigned int       start_ind
+)
 {
-    Point ** list_temp = NULL;
-    int temp_len = 0;
-    int i = 0;
-    int to_ind = 0;
+    Point **     list_temp = NULL;
+    unsigned int temp_len  = 0;
+    unsigned int i         = 0;
+    unsigned int to_ind    = 0;
 
     if(
            c_to == NULL
@@ -216,6 +274,17 @@ void connector_splice( struct connector * c_to, int ins_index, struct connector 
     {
         list_temp = ( Point ** ) palloc0( sizeof( Point * ) * temp_len );
 
+        if( list_temp == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not allocate memory for connector splice" )
+                )
+            );
+        }
+
         for( i = ins_index; i < c_to->length; i++ )
         {
             list_temp[i - ins_index] = c_to->list[i];
@@ -227,6 +296,17 @@ void connector_splice( struct connector * c_to, int ins_index, struct connector 
         sizeof( Point * )
       * ( c_to->length + ( c_from->length - start_ind ) )
     );
+
+    if( c_to->list == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not extend connector point list during splice" )
+            )
+        );
+    }
 
     to_ind = ins_index;
 
@@ -256,8 +336,26 @@ void connector_splice( struct connector * c_to, int ins_index, struct connector 
     }
     else
     {
-        list_temp = ( Point ** ) palloc0( sizeof( Point * ) * ( c_from->length - start_ind ) );
+        list_temp = ( Point ** ) palloc0(
+            sizeof( Point * )
+          * ( c_from->length - start_ind )
+        );
+
+        if( list_temp == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg(
+                        "Could not extend connector point list during splice"
+                    )
+                )
+            );
+        }
+
         to_ind = 0;
+
         for( i = 0; i < start_ind; i++ )
         {
             list_temp[to_ind] = c_from->list[i];
@@ -265,7 +363,8 @@ void connector_splice( struct connector * c_to, int ins_index, struct connector 
         }
 
         pfree( c_from->list );
-        c_from->list = list_temp;
+
+        c_from->list   = list_temp;
         c_from->length = to_ind;
     }
 
@@ -274,8 +373,8 @@ void connector_splice( struct connector * c_to, int ins_index, struct connector 
 
 void connector_reverse( struct connector * c )
 {
-    Point * temp = NULL;
-    int i = 0;
+    Point *      temp = NULL;
+    unsigned int i    = 0;
 
     if( c == NULL || c->length == 0 )
     {
@@ -284,8 +383,8 @@ void connector_reverse( struct connector * c )
 
     for( i = 0; i < ( int ) ( c->length / 2 ); i++ )
     {
-        temp = c->list[i];
-        c->list[i] = c->list[c->length - 1 - i];
+        temp                       = c->list[i];
+        c->list[i]                 = c->list[c->length - 1 - i];
         c->list[c->length - 1 - i] = temp;
     }
 
@@ -294,8 +393,8 @@ void connector_reverse( struct connector * c )
 
 void connector_pop_front( struct connector * c )
 {
-    Point ** list_temp = NULL;
-    int i = 0;
+    Point **     list_temp = NULL;
+    unsigned int i         = 0;
 
     if( c == NULL || c->length == 0 )
     {
@@ -311,14 +410,27 @@ void connector_pop_front( struct connector * c )
 
     list_temp = ( Point ** ) palloc0( sizeof( Point * ) * ( c->length - 1 ) );
 
+    if( list_temp == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not resize connector point list" )
+            )
+        );
+    }
+
     for( i = 0; i < c->length - 1; i++ )
     {
         list_temp[i] = c->list[i + 1];
     }
 
     pfree( c->list );
-    c->list = list_temp;
+
+    c->list   = list_temp;
     c->length = c->length - 1;
+
     return;
 }
 
@@ -341,36 +453,96 @@ void connector_pop( struct connector * c )
 
     list_temp = ( Point ** ) palloc0( sizeof( Point * ) * ( c->length - 1 ) );
 
+    if( list_temp == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not resize connector point list" )
+            )
+        );
+    }
+
     for( i = 0; i < c->length - 1; i++ )
     {
         list_temp[i] = c->list[i];
     }
 
     pfree( c->list );
-    c->list = list_temp;
+
+    c->list   = list_temp;
     c->length = c->length - 1;
+
     return;
 }
 
-struct polygon_connector * new_polygon_connector( struct connector * open, struct connector * closed )
+struct polygon_connector * new_polygon_connector(
+    struct connector * open,
+    struct connector * closed
+)
 {
     struct polygon_connector * new_pc = NULL;
 
-    new_pc = ( struct polygon_connector * ) palloc0( sizeof( struct polygon_connector ) );
-    new_pc->open_length = 0;
+    new_pc = ( struct polygon_connector * ) palloc0(
+        sizeof( struct polygon_connector )
+    );
+
+    if( new_pc == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not initialize polygon connector" )
+            )
+        );
+    }
+
+    new_pc->open          = NULL;
+    new_pc->closed        = NULL;
+    new_pc->open_length   = 0;
     new_pc->closed_length = 0;
 
     if( open != NULL )
     {
-        new_pc->open = ( struct connector ** ) palloc0( sizeof( struct connector * ) );
-        new_pc->open[0] = open;
+        new_pc->open = ( struct connector ** ) palloc0(
+            sizeof( struct connector * )
+        );
+
+        if( new_pc->open == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not initialize open polygon connector" )
+                )
+            );
+        }
+
+        new_pc->open[0]     = open;
         new_pc->open_length = 1;
     }
 
     if( closed != NULL )
     {
-        new_pc->closed = ( struct connector ** ) palloc0( sizeof( struct connector * ) );
-        new_pc->closed[0] = closed;
+        new_pc->closed = ( struct connector ** ) palloc0(
+            sizeof( struct connector * )
+        );
+
+        if( new_pc->closed == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not initialize closed polygon connector" )
+                )
+            );
+        }
+
+        new_pc->closed[0]     = closed;
         new_pc->closed_length = 1;
     }
 
@@ -407,10 +579,14 @@ void free_polygon_connector( struct polygon_connector * pc )
     }
 
     pfree( pc );
+
     return;
 }
 
-void polygon_connector_add_open_connector( struct polygon_connector * pc, struct connector * c )
+void polygon_connector_add_open_connector(
+    struct polygon_connector * pc,
+    struct connector *         c
+)
 {
     if( pc == NULL || c == NULL )
     {
@@ -422,7 +598,21 @@ void polygon_connector_add_open_connector( struct polygon_connector * pc, struct
         pc->open = ( struct connector ** ) palloc0(
             sizeof( struct connector * )
         );
-        pc->open[0] = c;
+
+        if( pc->open == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg(
+                        "Could not add open connector to polygon connector"
+                    )
+                )
+            );
+        }
+
+        pc->open[0]     = c;
         pc->open_length = 1;
     }
     else
@@ -432,6 +622,18 @@ void polygon_connector_add_open_connector( struct polygon_connector * pc, struct
             sizeof( struct connector * )
           * ( pc->open_length + 1 )
         );
+
+        if( pc->open == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not extend open connector array" )
+                )
+            );
+        }
+
         pc->open[pc->open_length] = c;
         pc->open_length++;
     }
@@ -439,7 +641,10 @@ void polygon_connector_add_open_connector( struct polygon_connector * pc, struct
     return;
 }
 
-void polygon_connector_add_closed_connector( struct polygon_connector * pc, struct connector * c )
+void polygon_connector_add_closed_connector(
+    struct polygon_connector * pc,
+    struct connector *         c
+)
 {
     if( pc == NULL || c == NULL )
     {
@@ -451,7 +656,21 @@ void polygon_connector_add_closed_connector( struct polygon_connector * pc, stru
         pc->closed = ( struct connector ** ) palloc0(
             sizeof( struct connector * )
         );
-        pc->closed[0] = c;
+
+        if( pc->closed == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg(
+                        "Could not add closed connector to polygon connector"
+                    )
+                )
+            );
+        }
+
+        pc->closed[0]     = c;
         pc->closed_length = 1;
     }
     else
@@ -461,17 +680,35 @@ void polygon_connector_add_closed_connector( struct polygon_connector * pc, stru
             sizeof( struct connector * )
           * ( pc->closed_length + 1 )
         );
+
+        if( pc->closed == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg(
+                        "Could not extend closed connector array"
+                    )
+                )
+            );
+        }
+
         pc->closed[pc->closed_length] = c;
         pc->closed_length++;
     }
+
     return;
 }
 
-void polygon_connector_remove_open_connector( struct polygon_connector * pc, int index )
+void polygon_connector_remove_open_connector(
+    struct polygon_connector * pc,
+    unsigned int               index
+)
 {
-    struct connector ** list_temp = NULL;
-    int i = 0;
-    int ind_offset = 0;
+    struct connector ** list_temp  = NULL;
+    unsigned int        i          = 0;
+    unsigned int        ind_offset = 0;
 
     if( pc == NULL || index >= pc->open_length || index < 0 )
     {
@@ -482,6 +719,17 @@ void polygon_connector_remove_open_connector( struct polygon_connector * pc, int
         sizeof( struct connector * )
       * ( pc->open_length - 1 )
     );
+
+    if( list_temp == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not resize polygon open connector array" )
+            )
+        );
+    }
 
     for( i = 0; i < pc->open_length - 1; i++ )
     {
@@ -494,16 +742,21 @@ void polygon_connector_remove_open_connector( struct polygon_connector * pc, int
     }
 
     pfree( pc->open );
+
     pc->open = list_temp;
     pc->open_length--;
+
     return;
 }
 
-void polygon_connector_remove_closed_connector( struct polygon_connector * pc, int index )
+void polygon_connector_remove_closed_connector(
+    struct polygon_connector * pc,
+    unsigned int               index
+)
 {
-    struct connector ** list_temp = NULL;
-    int i = 0;
-    int ind_offset = 0;
+    struct connector ** list_temp  = NULL;
+    unsigned int        i          = 0;
+    unsigned int        ind_offset = 0;
 
     if( pc == NULL || index >= pc->closed_length || index < 0 )
     {
@@ -514,6 +767,17 @@ void polygon_connector_remove_closed_connector( struct polygon_connector * pc, i
         sizeof( struct connector * )
       * ( pc->closed_length - 1 )
     );
+
+    if( list_temp == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not resize polygon closed connector array" )
+            )
+        );
+    }
 
     for( i = 0; i < pc->closed_length - 1; i++ )
     {
@@ -526,21 +790,25 @@ void polygon_connector_remove_closed_connector( struct polygon_connector * pc, i
     }
 
     pfree( pc->closed );
+
     pc->closed = list_temp;
     pc->closed_length--;
+
     return;
 }
 
 
-void polygon_connector_add_segment( struct polygon_connector * pc, struct segment * s )
+void polygon_connector_add_segment(
+    struct polygon_connector * pc,
+    struct segment *           s
+)
 {
-    int i                   = 0;
-    int k                   = 0;
+    unsigned int i          = 0;
+    unsigned int k          = 0;
     struct connector * temp = NULL;
 
     if( pc == NULL || s == NULL )
     {
-        elog( DEBUG1, "Could not add segment: pc %p, s %p", pc, s );
         return;
     }
 
@@ -576,6 +844,7 @@ void polygon_connector_add_segment( struct polygon_connector * pc, struct segmen
     temp = new_connector( s->p1 );
     connector_add_point( temp, s->p2 );
     polygon_connector_add_open_connector( pc, temp );
+
     return;
 }
 
@@ -586,7 +855,6 @@ struct polygon * polygon_connector_to_polygon( struct polygon_connector * pc )
     int              i = 0;
     int              j = 0;
 
-    elog( DEBUG1, "Entry, polygon_connector_to_polygon" );
     if( pc == NULL || pc->closed_length == 0 )
     {
         return NULL;
@@ -612,6 +880,7 @@ struct polygon * polygon_connector_to_polygon( struct polygon_connector * pc )
     return p;
 }
 
+#ifdef DEBUG
 void _dump_connector( struct connector * c )
 {
     int i = 0;
@@ -659,6 +928,7 @@ void _dump_polygon_connector( struct polygon_connector * pc )
     elog( DEBUG1, "Polygon connector ADDR %p", ( void * ) pc );
     elog( DEBUG1, "pc->open_length: %d", pc->open_length );
     elog( DEBUG1, "pc->open: %p", pc->open );
+
     for( i = 0; i < pc->open_length; i++ )
     {
         c = pc->open[i];
@@ -697,7 +967,7 @@ void _dump_polygon_connector( struct polygon_connector * pc )
             }
         }
     }
-    
+
     elog( DEBUG1, "pc->closed_length: %d", pc->closed_length );
     elog( DEBUG1, "pc->closed %p", pc->closed );
 
@@ -741,3 +1011,4 @@ void _dump_polygon_connector( struct polygon_connector * pc )
     }
     return;
 }
+#endif // DEBUG

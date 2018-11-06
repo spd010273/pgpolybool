@@ -21,13 +21,39 @@
 #define POLY_TYPE_SUBJECT 0
 #define POLY_TYPE_CLIPPING 1
 
-extern void process_segment( struct segment *, unsigned int, struct dlpq *, struct sweep_event ***, unsigned int * );
-extern struct polygon * compute( struct polygon *, struct polygon *, short int );
-extern void possible_intersection( struct sweep_event *, struct sweep_event *, unsigned int *, struct dlpq *, struct sweep_event ***, unsigned int * );
-extern void divide_segment( struct sweep_event *, Point *, struct dlpq *, struct sweep_event ***, unsigned int * );
+extern void process_segment(
+    struct segment *,
+    unsigned int,
+    struct dlpq *,
+    struct sweep_event ***,
+    unsigned int *
+);
+
+extern struct polygon * compute(
+    struct polygon *,
+    struct polygon *,
+    short int
+);
+
+extern void possible_intersection(
+    struct sweep_event *,
+    struct sweep_event *,
+    unsigned int *,
+    struct dlpq *,
+    struct sweep_event ***,
+    unsigned int *
+);
+
+extern void divide_segment(
+    struct sweep_event *,
+    Point *,
+    struct dlpq *,
+    struct sweep_event ***,
+    unsigned int *
+);
+
 
 extern POLYGON * mpoly_to_poly( struct polygon * );
 extern struct polygon * poly_to_mpoly( POLYGON * );
 extern void free_pgpoly( POLYGON * );
-extern void free_queues( struct dlpq *, struct dlpq * );
 #endif

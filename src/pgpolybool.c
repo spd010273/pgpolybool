@@ -21,10 +21,10 @@ static void dump_polygon( POLYGON * );
 PG_MODULE_MAGIC;
 #endif
 
-PG_FUNCTION_INFO_V1(fn_intersect_polygons);
-PG_FUNCTION_INFO_V1(fn_subtract_polygons);
-PG_FUNCTION_INFO_V1(fn_union_polygons);
-PG_FUNCTION_INFO_V1(fn_xor_polygons);
+PG_FUNCTION_INFO_V1( fn_intersect_polygons );
+PG_FUNCTION_INFO_V1( fn_subtract_polygons );
+PG_FUNCTION_INFO_V1( fn_union_polygons );
+PG_FUNCTION_INFO_V1( fn_xor_polygons );
 
 Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 {
@@ -56,7 +56,6 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     if( num_poly == 1 )
     {
-        elog( DEBUG1, "Only 1 poly passed :|" );
         new_polygon = sorted_polys[0];
         pfree( sorted_polys );
 
@@ -136,7 +135,6 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
     if( num_poly == 1 )
     {
-        elog( DEBUG1, "Only 1 poly passed :|" );
         new_polygon = sorted_polys[0];
         pfree( sorted_polys );
 
@@ -216,7 +214,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
     sorted_polys = poly_preprocessing(
         PG_GETARG_ARRAYTYPE_P(0),
         true,
-        true,
+        false,
         &num_poly
     );
 
@@ -228,7 +226,6 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     if( num_poly == 1 )
     {
-        elog( DEBUG1, "Only 1 poly passed :|" );
         new_polygon = sorted_polys[0];
         pfree( sorted_polys );
 
@@ -247,11 +244,9 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 #ifdef DEBUG
         dump_polygon( new_polygon );
         dump_polygon( sorted_polys[i] );
-#endif
+#endif // DEBUG
         mp_subj = poly_to_mpoly( new_polygon );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
-
-        elog( DEBUG1, "Entering compute with OP_UNION" );
 
         mp_result = compute(
             mp_subj,
@@ -259,8 +254,10 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
             OP_UNION
         );
 
+#ifdef DEBUG
         elog( DEBUG1, "Compute with OP_UNION done" );
         _dump_polygon( mp_result );
+#endif // DEBUG
         new_polygon = mpoly_to_poly( mp_result );
 
         if( new_polygon == NULL )
@@ -321,7 +318,6 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
     if( num_poly == 1 )
     {
-        elog( DEBUG1, "Only 1 poly passed :|" );
         new_polygon = sorted_polys[0];
         pfree( sorted_polys );
 
@@ -344,16 +340,17 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
         mp_subj = poly_to_mpoly( new_polygon );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
 
-        elog( DEBUG1, "Entering compute with OP_XOR" );
-
         mp_result = compute(
             mp_subj,
             mp_clip,
             OP_XOR
         );
 
+#ifdef DEBUG
         elog( DEBUG1, "Compute with OP_XOR done" );
         _dump_polygon( mp_result );
+#endif // DEBUG
+
         new_polygon = mpoly_to_poly( mp_result );
 
         if( new_polygon == NULL )
@@ -431,16 +428,52 @@ POLYGON ** poly_preprocessing(
     if( (*num_poly) <= 1 )
     {
         buff_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
-        buff_poly = DatumGetPolygonP( dpoly[0] );
+
+        if( buff_polys == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not buffer input polygons" )
+                )
+            );
+        }
+
+        buff_poly     = DatumGetPolygonP( dpoly[0] );
         buff_polys[0] = buff_poly;
+
         return buff_polys;
     }
 
     // Allocate structs
     palloc_sz  = sizeof( POLYGON * ) * (*num_poly);
     buff_polys = ( POLYGON ** ) palloc0( palloc_sz );
-    palloc_sz  = (*num_poly) * sizeof( Point * );
-    centers    = ( Point ** ) palloc0( palloc_sz );
+
+    if( buff_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not buffer input polygons" )
+            )
+        );
+    }
+
+    palloc_sz = (*num_poly) * sizeof( Point * );
+    centers   = ( Point ** ) palloc0( palloc_sz );
+
+    if( centers == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate polygon centroids" )
+            )
+        );
+    }
 
     for( i = 0; i < (*num_poly); i++ )
     {
@@ -467,6 +500,19 @@ POLYGON ** poly_preprocessing(
         buff_poly    = ( POLYGON * ) palloc0( palloc_sz );
         center       = ( Point * ) palloc0( palloc_sz );
 
+        if( buff_poly == NULL || center == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg(
+                        "Could not allocate centroid or buffer for polygon"
+                    )
+                )
+            );
+        }
+
         for( j = 0; j < current_poly->npts; j++ )
         {
             sum_x += current_poly->p[j].x;
@@ -482,8 +528,10 @@ POLYGON ** poly_preprocessing(
         {
             if( scale )
             {
-                buff_poly->p[j].x = current_poly->p[j].x * ZOOM_RATE - ( ZOOM_RATE - 1 ) * center->x;
-                buff_poly->p[j].y = current_poly->p[j].y * ZOOM_RATE - ( ZOOM_RATE - 1 ) * center->y;
+                buff_poly->p[j].x = current_poly->p[j].x * ZOOM_RATE
+                                  - ( ZOOM_RATE - 1 ) * center->x;
+                buff_poly->p[j].y = current_poly->p[j].y * ZOOM_RATE
+                                  - ( ZOOM_RATE - 1 ) * center->y;
             }
             else
             {
@@ -501,7 +549,20 @@ POLYGON ** poly_preprocessing(
 
     if( sort )
     {
-        buff_polys_sorted = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) * (*num_poly) );
+        buff_polys_sorted = ( POLYGON ** ) palloc0(
+            sizeof( POLYGON * ) * (*num_poly)
+        );
+
+        if( buff_polys_sorted == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not create sorting array for polygons" )
+                )
+            );
+        }
 
         // Sort polys by center-center distance from buff_poly[0]
         buff_polys_sorted[0] = buff_polys[0];
@@ -572,6 +633,17 @@ POLYGON * poly_postprocessing( POLYGON * poly, bool scale )
         // De-scale the poly by ZOOM_RATE
         center = ( Point * ) palloc0( sizeof( Point ) );
 
+        if( center == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not allocate output polygon centroid" )
+                )
+            );
+        }
+
         for( i = 0; i < poly->npts; i++ )
         {
             sum_x += poly->p[i].x;
@@ -583,8 +655,10 @@ POLYGON * poly_postprocessing( POLYGON * poly, bool scale )
 
         for( i = 0; i < poly->npts; i++ )
         {
-            poly->p[i].x = ( poly->p[i].x + ( ZOOM_RATE - 1 ) * center->x ) / ZOOM_RATE;
-            poly->p[i].y = ( poly->p[i].y + ( ZOOM_RATE - 1 ) * center->y ) / ZOOM_RATE;
+            poly->p[i].x = ( poly->p[i].x + ( ZOOM_RATE - 1 ) * center->x )
+                         / ZOOM_RATE;
+            poly->p[i].y = ( poly->p[i].y + ( ZOOM_RATE - 1 ) * center->y )
+                         / ZOOM_RATE;
         }
 
         pfree( center );
@@ -594,6 +668,7 @@ POLYGON * poly_postprocessing( POLYGON * poly, bool scale )
     return poly;
 }
 
+#ifdef DEBUG
 static void dump_polygon( POLYGON * p )
 {
     unsigned int i = 0;
@@ -624,3 +699,4 @@ static void dump_polygon( POLYGON * p )
 
     return;
 }
+#endif // DEBUG
