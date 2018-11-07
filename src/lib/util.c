@@ -81,14 +81,14 @@ double distance( Point * a, Point * b )
 unsigned int find_intersection(
     struct segment * s0,
     struct segment * s1,
-    Point *          p0,
-    Point *          p1
+    Point *          p0, // pi0
+    Point *          p1 // pi1
 )
 {
-    Point *      isect_s0   = NULL;
-    Point *      isect_s1   = NULL;
-    Point *      d0         = NULL;
-    Point *      d1         = NULL;
+    Point *      isect_s0   = NULL; // p0
+    Point *      isect_s1   = NULL; // p1
+    Point *      d0         = NULL; // do
+    Point *      d1         = NULL; // d1
     Point *      E          = NULL;
     double       cross_prod = 0.0;
     double       sq_len0    = 0.0;
@@ -111,8 +111,8 @@ unsigned int find_intersection(
         return 0;
     }
 
-    isect_s0   = s0->p1;
-    isect_s1   = s1->p1;
+    isect_s0 = s0->p1;
+    isect_s1 = s1->p1;
 
     d0 = ( Point * ) palloc0( sizeof( Point ) );
     d1 = ( Point * ) palloc0( sizeof( Point ) );
@@ -217,6 +217,7 @@ unsigned int find_intersection(
     s_min = ( s_0 < s_1 ) ? s_0 : s_1;
     s_max = ( s_0 > s_1 ) ? s_0 : s_1;
 
+    // u1 == 0.0, u1 == 1.0, v0 == smin, v1 == smax
     if( 1.0 < s_min || 0.0 > s_max )
     {
         return 0;
@@ -263,7 +264,7 @@ unsigned int find_intersection(
     if( imax > 0 )
     {
         p0->x = isect_s0->x + w[0] * d0->x;
-        p0->y = isect_s1->x + w[0] * d0->y;
+        p0->y = isect_s1->y + w[0] * d0->y;
 
         if( distance( p0, s0->p1 ) < sq_epsilon )
         {

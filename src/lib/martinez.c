@@ -166,6 +166,19 @@ void possible_intersection(
 #ifdef DEBUG
     elog(
         DEBUG1,
+        "Locating intersections between p (%f,%f) o (%f,%f) "\
+        "and p (%f,%f) o (%f,%f)",
+        e0->p->x,
+        e0->p->y,
+        e0->other->p->x,
+        e0->other->p->y,
+        e1->p->x,
+        e1->p->y,
+        e1->other->p->x,
+        e1->other->p->y
+    );
+    elog(
+        DEBUG1,
         "Find intersections %d, %f,%f %f,%f",
         num_intersections,
         isect_p0->x,
@@ -990,16 +1003,6 @@ struct polygon * compute(
 
     result = polygon_connector_to_polygon( pc );
 
-    for( i = 0; i < pc->open_length; i++ )
-    {
-        free_connector( pc->open[i] );
-    }
-
-    for( i = 0; i < pc->closed_length; i++ )
-    {
-        free_connector( pc->closed[i] );
-    }
-
     free_polygon_connector( pc );
     free_dlpq( &sl_head );
     free_dlpq( &phead );
@@ -1097,6 +1100,7 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
         }
     }
 
+    elog( DEBUG1, "Searching %u contours", mpoly->num_contours );
     for( c = 0; c < mpoly->num_contours; c++ )
     {
         p = ( POLYGON * ) palloc0(
@@ -1134,14 +1138,15 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
 
         arr[c] = p;
         area   = contour_area( mpoly->contours[c] );
-
+        elog( DEBUG1, "Got contour area %f for contour %u", area, c );
         if( area > max_area )
         {
             max_area     = area;
-            max_area_ind = i;
+            max_area_ind = c;
         }
     }
 
+    elog( DEBUG1, "Accessing contour max area %u", max_area_ind );
     p = arr[max_area_ind];
 
     for( i = 0; i < mpoly->num_contours; i++ )

@@ -50,6 +50,7 @@ void free_connector( struct connector * c )
     if( c->list != NULL )
     {
         pfree( c->list );
+        c->list = NULL;
     }
 
     pfree( c );
@@ -563,9 +564,11 @@ void free_polygon_connector( struct polygon_connector * pc )
         for( i = 0; i < pc->open_length; i++ )
         {
             free_connector( pc->open[i] );
+            pc->open[i] = NULL;
         }
 
         pfree( pc->open );
+        pc->open = NULL;
     }
 
     if( pc->closed != NULL )
@@ -573,9 +576,11 @@ void free_polygon_connector( struct polygon_connector * pc )
         for( i = 0; i < pc->closed_length; i++ )
         {
             free_connector( pc->closed[i] );
+            pc->closed[i] = NULL;
         }
 
         pfree( pc->closed );
+        pc->closed = NULL;
     }
 
     pfree( pc );
@@ -715,6 +720,14 @@ void polygon_connector_remove_open_connector(
         return;
     }
 
+    if( pc->open_length == 1 && index == 0 )
+    {
+        pfree( pc->open );
+        pc->open = NULL;
+        pc->open_length = 0;
+        return;
+    }
+
     list_temp = ( struct connector ** ) palloc0(
         sizeof( struct connector * )
       * ( pc->open_length - 1 )
@@ -760,6 +773,14 @@ void polygon_connector_remove_closed_connector(
 
     if( pc == NULL || index >= pc->closed_length || index < 0 )
     {
+        return;
+    }
+
+    if( pc->closed_length == 1 && index == 0 )
+    {
+        pfree( pc->closed );
+        pc->closed = NULL;
+        pc->closed_length = 0;
         return;
     }
 

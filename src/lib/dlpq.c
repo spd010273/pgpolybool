@@ -433,6 +433,7 @@ void _dlpq_debug( struct dlpq * head )
     );
     while( temp != NULL )
     {
+/*
         _LOG(
             "Node #%u: %p prev %p next %p DATA: %p",
             index,
@@ -441,6 +442,7 @@ void _dlpq_debug( struct dlpq * head )
             temp->next,
             temp->value
         );
+  */
         if( head->__dump_function != NULL )
         {
             head->__dump_function( temp->value );
