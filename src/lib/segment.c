@@ -1,5 +1,4 @@
 #include "segment.h"
-#include "postgres.h"
 
 void segment_set_begin( struct segment * seg, Point * p )
 {
@@ -46,8 +45,20 @@ struct segment * new_segment( void )
     struct segment * new_segment = NULL;
 
     new_segment = ( struct segment * ) palloc0( sizeof( struct segment ) );
-    //new_segment->p1 = ( Point * ) palloc0( sizeof( Point ) );
-    //new_segment->p2 = ( Point * ) palloc0( sizeof( Point ) );
+
+    if( new_segment == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create new segment" )
+            )
+        );
+    }
+
+    new_segment->p1 = NULL;
+    new_segment->p2 = NULL;
 
     return new_segment;
 }

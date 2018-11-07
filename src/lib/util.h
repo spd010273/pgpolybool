@@ -15,12 +15,13 @@ extern double signed_area_two( Point *, Point * );
 extern int sign( Point *, Point *, Point * );
 extern bool point_in_triangle( struct segment *, Point *, Point * );
 extern double distance( Point *, Point * );
-extern unsigned int find_intersection( struct segment *, struct segment *, Point *, Point * );
+
+extern unsigned int find_intersection(
+    struct segment *,
+    struct segment *,
+    Point *,
+    Point *
+);
 
 extern bool points_equal( Point *, Point * );
-//extern bool _fp_gte( double, double );
-//extern bool _fp_gt( double, double );
-//extern bool _fp_lte( double, double );
-//extern bool _fp_lt( double, double );
-//extern bool _fp_eq( double, double );
 #endif

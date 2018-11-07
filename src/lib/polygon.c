@@ -1,9 +1,9 @@
 #include "polygon.h"
 
-int polygon_num_points( struct polygon * p )
+unsigned int polygon_num_points( struct polygon * p )
 {
-    int i = 0;
-    int count = 0;
+    unsigned int i     = 0;
+    unsigned int count = 0;
 
     if( p == NULL )
     {
@@ -23,13 +23,13 @@ int polygon_num_points( struct polygon * p )
 
 void polygon_boundingbox( struct polygon * p, Point * min, Point * max )
 {
-    double min_x = 0;
-    double min_y = 0;
-    double max_x = 0;
-    double max_y = 0;
-    int i = 0;
-    Point min_temp = {0.0};
-    Point max_temp = {0.0};
+    Point        min_temp = {0.0};
+    Point        max_temp = {0.0};
+    double       min_x    = 0;
+    double       min_y    = 0;
+    double       max_x    = 0;
+    double       max_y    = 0;
+    unsigned int i        = 0;
 
     min_x = DBL_MAX;
     min_y = DBL_MAX;
@@ -81,6 +81,17 @@ void polygon_boundingbox( struct polygon * p, Point * min, Point * max )
         max = ( Point * ) palloc0( sizeof( Point ) );
     }
 
+    if( min == NULL || max == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate bounding box for polygon" )
+            )
+        );
+    }
+
     min->x = min_x;
     min->y = min_y;
     max->x = max_x;
@@ -91,8 +102,8 @@ void polygon_boundingbox( struct polygon * p, Point * min, Point * max )
 
 void polygon_move( struct polygon * p, double x, double y )
 {
-    int i = 0;
-    int j = 0;
+    unsigned int i = 0;
+    unsigned int j = 0;
 
     if( p == NULL )
     {
@@ -140,6 +151,17 @@ void polygon_erase_contour( struct polygon * p, unsigned int ind )
       * ( p->num_contours - 1 )
     );
 
+    if( temp_contours == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not resize polygon contours" )
+            )
+        );
+    }
+
     for( i = 0; i < p->num_contours; i++ )
     {
         if( p->contours[i] != NULL )
@@ -150,8 +172,10 @@ void polygon_erase_contour( struct polygon * p, unsigned int ind )
     }
 
     pfree( p->contours );
-    p->contours = temp_contours;
+
+    p->contours     = temp_contours;
     p->num_contours = p->num_contours - 1;
+
     return;
 }
 
@@ -169,9 +193,23 @@ void polygon_add_contour( struct polygon * p, struct contour * c )
             return;
         }
 
-        p->contours = ( struct contour ** ) palloc0( sizeof( struct contour * ) );
+        p->contours = ( struct contour ** ) palloc0(
+            sizeof( struct contour * )
+        );
+
+        if( p->contours == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not allocate polygon contour structure" )
+                )
+            );
+        }
+
         p->num_contours = 1;
-        p->contours[0] = c;
+        p->contours[0]  = c;
     }
     else
     {
@@ -181,8 +219,19 @@ void polygon_add_contour( struct polygon * p, struct contour * c )
           * ( p->num_contours + 1 )
         );
 
+        if( p->contours == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not resize polygon contour structure" )
+                )
+            );
+        }
+
         p->contours[p->num_contours] = c;
-        p->num_contours = p->num_contours + 1;
+        p->num_contours              = p->num_contours + 1;
     }
 
     return;
@@ -193,13 +242,26 @@ struct polygon * new_polygon( void )
     struct polygon * p = NULL;
 
     p = ( struct polygon * ) palloc0( sizeof( struct polygon ) );
+
+    if( p == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Failed to allocate new polygon" )
+            )
+        );
+    }
+
     p->num_contours = 0;
+    p->contours     = NULL;
     return p;
 }
 
 void free_polygon( struct polygon * p )
 {
-    int i = 0;
+    unsigned int i = 0;
 
     if( p == NULL )
     {
@@ -230,14 +292,17 @@ struct segment * sweep_event_get_segment( struct sweep_event * se )
     }
 
     s = new_segment();
+
     segment_set_begin( s, se->p );
     segment_set_end( s, se->other->p );
+
     return s;
 }
 
 bool sweep_event_below( struct sweep_event * e, Point * p )
 {
     double area = 0.0;
+
     if( e->left )
     {
         area = signed_area_three( e->p, e->other->p, p );
@@ -267,25 +332,30 @@ bool sweep_event_above( struct sweep_event * e, Point * p )
 
 bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
 {
-    return !sweep_event_sl_comp( ( struct sweep_event * ) e1, ( struct sweep_event * ) e2 );
+    return !sweep_event_sl_comp(
+        ( struct sweep_event * ) e1,
+        ( struct sweep_event * ) e2
+    );
 }
 
 bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
 {
-    return sweep_event_sl_comp( ( struct sweep_event * ) e1, ( struct sweep_event * ) e2 );
+    return sweep_event_sl_comp(
+        ( struct sweep_event * ) e1,
+        ( struct sweep_event * ) e2
+    );
 }
 
-bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 ) //SweepEventComp
+// Used for comparing Status Line Events
+bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 )
 {
     if( e1->p->x > e2->p->x )
     {
-        //elog( DEBUG1, "E1: %p, E2: %p 1st cond", e1, e2 );
         return true;
     }
 
     if( e2->p->x > e1->p->x )
     {
-        //elog( DEBUG1, "E1: %p, E2: %p 2nd cond", e1, e2 );
         return false;
     }
 
@@ -293,36 +363,35 @@ bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 ) //S
     {
         if( e1->p->y > e2->p->y )
         {
-            //elog( DEBUG1, "E1: %p, E2: %p 3rd cond inner", e1, e2 );
             return true;
         }
 
-        //elog( DEBUG1, "E1: %p, E2: %p 3rd cond outer", e1, e2 );
         return false;
     }
 
     if( e1->left != e2->left )
     {
-        //elog( DEBUG1, "E1: %p, E2: %p 4th cond", e1, e2 );
         return e1->left;
     }
 
     if( sweep_event_above( e1, e2->other->p ) )
     {
-        //elog( DEBUG1, "E1: %p, E2: %p 5th cond", e1, e2 );
         return true;
     }
 
-    //elog( DEBUG1, "E1: %p, E2: %p fallthrough", e1, e2 );
     return false;
 }
 
 bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
 {
-    return sweep_event_ev_comp( ( struct sweep_event * ) e1, ( struct sweep_event * ) e2 );
+    return sweep_event_ev_comp(
+        ( struct sweep_event * ) e1,
+        ( struct sweep_event * ) e2
+    );
 }
 
-bool sweep_event_ev_comp( struct sweep_event * e1, struct sweep_event * e2 ) // SEComp
+// Used for comparins Events out of status line context
+bool sweep_event_ev_comp( struct sweep_event * e1, struct sweep_event * e2 )
 {
     // returns true if e1 is to the 'left' of e2
     //
@@ -354,19 +423,30 @@ bool sweep_event_ev_comp( struct sweep_event * e1, struct sweep_event * e2 ) // 
 
 bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
 {
-    return !sweep_event_sl_segment_comp( ( struct sweep_event * ) e0, ( struct sweep_event * ) e1 );
+    return !sweep_event_sl_segment_comp(
+        ( struct sweep_event * ) e0,
+        ( struct sweep_event * ) e1
+    );
 }
 
 bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
 {
-    return sweep_event_sl_segment_comp( ( struct sweep_event * ) e0, ( struct sweep_event * ) e1 );
+    return sweep_event_sl_segment_comp(
+        ( struct sweep_event * ) e0,
+        ( struct sweep_event * ) e1
+    );
 }
 
-bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * e1 ) //SegmentComp
+bool sweep_event_sl_segment_comp(
+    struct sweep_event * e0,
+    struct sweep_event * e1
+)
 {
     bool result = false;
+
     if( e0 == e1 )
     {
+#ifdef DEBUG
         elog(
             DEBUG1,
             "1st case: (%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
@@ -376,6 +456,7 @@ bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * 
             e1->other->p->x, e1->other->p->y,
             result?"T":"F"
         );
+#endif // DEBUG
         return false;
     }
 
@@ -384,6 +465,7 @@ bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * 
        || signed_area_three( e0->p, e0->other->p, e1->other->p ) != 0
       )
     {
+#ifdef DEBUG
         elog(
             DEBUG1,
             "2nd cond (%f,%f)(%f,%f) SA (%f,%f)(%f,%f)",
@@ -392,10 +474,11 @@ bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * 
             e1->p->x, e1->p->y,
             e1->other->p->x, e1->other->p->y
         );
+#endif // DEBUG
         if( points_equal( e0->p, e1->p ) )
         {
             result = sweep_event_below( e0, e1->other->p );
-
+#ifdef DEBUG
             elog(
                 DEBUG1,
                 "2.1 comp: (%f,%f)(%f,%f) ==  (%f,%f)(%f,%f) result: %s",
@@ -405,13 +488,14 @@ bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * 
                 e1->other->p->x, e1->other->p->y,
                 result?"T":"F"
             );
+#endif // DEBUG
             return result;
         }
 
         if( sweep_event_sl_comp( e0, e1 ) )
         {
             result = sweep_event_above( e1, e0->p );
-
+#ifdef DEBUG
             elog(
                 DEBUG1,
                 "2.2 comp: (%f,%f)(%f,%f) == (%f,%f)(%f,%f) result: %s",
@@ -421,10 +505,12 @@ bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * 
                 e1->other->p->x, e1->other->p->y,
                 result?"T":"F"
             );
+#endif // DEBUG
             return result;
         }
 
         result = sweep_event_below( e0, e1->p );
+#ifdef DEBUG
         elog(
             DEBUG1,
             "2nd cond catchall: (%f,%f)(%f,%f) bl (%f,%f)(%f,%f) result: %s",
@@ -434,38 +520,48 @@ bool sweep_event_sl_segment_comp( struct sweep_event * e0, struct sweep_event * 
             e1->other->p->x, e1->other->p->y,
             result?"T":"F"
         );
+#endif // DEBUG
         return result;
     }
 
     if( points_equal( e0->p, e1->p ) )
     {
         result = sweep_event_sl_comp( e0, e1 );
+#ifdef DEBUG
         elog(
             DEBUG1,
-            "Weird case in segments comp: (%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
+            "final point comp in segments comp: "\
+            "(%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
             e0->p->x, e0->p->y,
             e0->other->p->x, e0->other->p->y,
             e1->p->x, e1->p->y,
             e1->other->p->x, e1->other->p->y,
             result?"T":"F"
         );
+#endif // DEBUG
         return result;
     }
 
     result = sweep_event_sl_comp( e0, e1 );
+#ifdef DEBUG
     elog(
         DEBUG1,
-        "Weird case in segments comp: (%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
+        "catchall in segments comp: "\
+        "(%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
         e0->p->x, e0->p->y,
         e0->other->p->x, e0->other->p->y,
         e1->p->x, e1->p->y,
         e1->other->p->x, e1->other->p->y,
         result?"T":"F"
     );
+#endif // DEBUG
     return result;
 }
 
-bool sweep_event_ev_segment_comp( struct sweep_event * e0, struct sweep_event * e1 ) //SegmentsComp
+bool sweep_event_ev_segment_comp(
+    struct sweep_event * e0,
+    struct sweep_event * e1
+) //SegmentsComp
 {
     if( sweep_event_equal( e0, e1 ) )
     {
@@ -500,13 +596,39 @@ bool sweep_event_ev_segment_comp( struct sweep_event * e0, struct sweep_event * 
 
 struct sweep_event * new_sweep_event( void )
 {
-    struct sweep_event * s;
+    struct sweep_event * s = NULL;
+
     s = ( struct sweep_event * ) palloc0( sizeof( struct sweep_event ) );
+
+    if( s == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create new sweep event" )
+            )
+        );
+    }
+
     s->p = ( Point * ) palloc0( sizeof( Point ) );
-    s->left = false;
-    s->polygon = 0;
-    s->in_out = false;
+
+    if( s->p == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create point for new sweep event" )
+            )
+        );
+    }
+
+    s->left     = false;
+    s->polygon  = 0;
+    s->in_out   = false;
     s->position = 0;
+
     return s;
 }
 
@@ -522,12 +644,17 @@ void free_sweep_event( struct sweep_event * s )
         pfree( s->p );
     }
 
+    s->p = NULL;
     pfree( s );
+    s = NULL;
 
     return;
 }
 
-struct sweep_event ** _manage_ev_buffer( struct sweep_event ** ev, unsigned int ev_index )
+struct sweep_event ** _manage_ev_buffer(
+    struct sweep_event ** ev,
+    unsigned int          ev_index
+)
 {
     // Handles extending sweep event buffer by SE_BUFFER_LENGTH
     // based on index.
@@ -535,32 +662,67 @@ struct sweep_event ** _manage_ev_buffer( struct sweep_event ** ev, unsigned int 
     {
         if( ev == NULL )
         {
-            elog( DEBUG1, " === made initial ev palloc, size %d == ", SE_BUFFER_LENGTH );
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                " === made initial ev palloc, size %d == ",
+                SE_BUFFER_LENGTH
+            );
+#endif // DEBUG
             ev = ( struct sweep_event ** ) palloc0(
                 sizeof( struct sweep_event * )
               * SE_BUFFER_LENGTH
             );
+
+            if( ev == NULL )
+            {
+                ereport(
+                    ERROR,
+                    (
+                        errcode( ERRCODE_OUT_OF_MEMORY ),
+                        errmsg( "Could not create sweep event buffer" )
+                    )
+                );
+            }
         }
         else
         {
-            elog( DEBUG1, " === extended ev, size %d == ", SE_BUFFER_LENGTH * ( (int) ( ev_index + 1 / SE_BUFFER_LENGTH ) + 1 ) );
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                " === extended ev, size %d == ",
+                SE_BUFFER_LENGTH
+              * ( (int) ( ev_index + 1 / SE_BUFFER_LENGTH ) + 1 )
+            );
+#endif // DEBUG
             ev = ( struct sweep_event ** ) repalloc(
                 ev,
                 sizeof( struct sweep_event * )
               * SE_BUFFER_LENGTH
               * ( (int) ( ( ev_index + 1 ) / SE_BUFFER_LENGTH ) + 1 )
             );
+
+            if( ev == NULL )
+            {
+                ereport(
+                    ERROR,
+                    (
+                        errcode( ERRCODE_OUT_OF_MEMORY ),
+                        errmsg( " Failed to extend sweep event buffer" )
+                    )
+                );
+            }
         }
-    }
-    else
-    {
-        elog( DEBUG1, "EV not extended :(" );
     }
 
     return ev;
 }
 
-void _sort_ev_buffer( struct sweep_event ** ev, unsigned int start_ind, unsigned int end_ind )
+void _sort_ev_buffer(
+    struct sweep_event ** ev,
+    unsigned int          start_ind,
+    unsigned int          end_ind
+)
 {
     struct sweep_event * key  = NULL;
     struct sweep_event * temp = NULL;
@@ -575,8 +737,8 @@ void _sort_ev_buffer( struct sweep_event ** ev, unsigned int start_ind, unsigned
         ev[0] = ev[k];
         ev[k] = temp;
         key   = ev[start_ind];
-        i = start_ind + 1;
-        j = end_ind;
+        i     = start_ind + 1;
+        j     = end_ind;
 
         while( i <= j )
         {
@@ -621,7 +783,7 @@ unsigned int _se_set_insert(
     struct sweep_event *** set,
     struct sweep_event * se,
     unsigned int * len,
-    bool (*sort_function)( struct sweep_event *, struct sweep_event * ) // pointer to sorting function
+    bool (*sort_function)( struct sweep_event *, struct sweep_event * )
 )
 {
     unsigned int i          = 0;
@@ -635,28 +797,28 @@ unsigned int _se_set_insert(
 
     if( set == NULL || (*set) == NULL )
     {
-        (*set) = ( struct sweep_event ** ) palloc0( sizeof( struct sweep_event * ) );
-        (*set)[0] = se;
-        se->position = 0;
-        (*len) = 1;
-
-        /*
-        elog(
-            DEBUG1,
-            "Adding SE %p p(%f,%f) op(%f,%f) left: %s to SET: %p",
-            se,
-            se->p->x,
-            se->p->y,
-            se->other->p->x,
-            se->other->p->y,
-            se->left?"true":"false",
-            (*set)
+        (*set) = ( struct sweep_event ** ) palloc0(
+            sizeof( struct sweep_event * )
         );
-        */
+
+        if( (*set) == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not allocate sweep event set" )
+                )
+            );
+        }
+
+        (*set)[0]    = se;
+        se->position = 0;
+        (*len)       = 1;
+
         return 1;
     }
-    //elog( DEBUG1, "Dumping SET" );
-    //_dump_se_set( set, (*len) );
+
     for( i = 0; i < (*len); i++ )
     {
         // scan for insertion point
@@ -674,13 +836,24 @@ unsigned int _se_set_insert(
                     sizeof( struct sweep_event * ) * ( (*len) + 1 )
                 );
 
+                if( (*set) == NULL )
+                {
+                    ereport(
+                        ERROR,
+                        (
+                            errcode( ERRCODE_OUT_OF_MEMORY ),
+                            errmsg( "Could not extend sweep event set" )
+                        )
+                    );
+                }
+
                 ind_offset = 1;
 
                 for( j = (*len); j >= i && j > 0; j-- )
                 {
                     if( j == i )
                     {
-                        (*set)[j] = se;
+                        (*set)[j]  = se;
                         ind_offset = 0;
                     }
                     else
@@ -692,19 +865,6 @@ unsigned int _se_set_insert(
                 }
 
                 (*len)++;
-/*
-                elog(
-                    DEBUG1,
-                    "Adding SE %p p(%f,%f) op(%f,%f) left: %s to SET: %p",
-                    se,
-                    se->p->x,
-                    se->p->y,
-                    se->other->p->x,
-                    se->other->p->y,
-                    se->left?"true":"false",
-                    (*set)
-                );
-*/
                 return i;
             }
         }
@@ -716,43 +876,66 @@ unsigned int _se_set_insert(
         (*set),
         sizeof( struct sweep_event * ) * ( (*len) + 1 )
     );
+
+    if( (*set) == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not extend sweep event set" )
+            )
+        );
+    }
+
     (*set)[*len] = se;
     se->position = (*len);
     (*len)++;
-/*
-    elog(
-        DEBUG1,
-        "Adding SE %p p(%f,%f) op(%f,%f) left: %s to SET: %p",
-        se,
-        se->p->x,
-        se->p->y,
-        se->other->p->x,
-        se->other->p->y,
-        se->left?"true":"false",
-        (*set)
-    );
-*/
+
     return 1;
 }
 
-// constrict ev buffer to exact fit, clear processed bit and set position index for usage as set
-struct sweep_event ** _process_ev_buffer( struct sweep_event ** ev, unsigned int ev_index )
+// constrict ev buffer to exact fit, clear processed
+// bit and set position index for usage as set
+struct sweep_event ** _process_ev_buffer(
+    struct sweep_event ** ev,
+    unsigned int          ev_index
+)
 {
     struct sweep_event ** new_ev = NULL;
     unsigned int          i      = 0;
 
-    new_ev = ( struct sweep_event ** ) palloc0( sizeof( struct sweep_event * ) * ev_index );
+    new_ev = ( struct sweep_event ** ) palloc0(
+        sizeof( struct sweep_event * ) * ev_index
+    );
+
+    if( new_ev == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate event buffer for swap" )
+            )
+        );
+    }
+
     for( i = 0; i < ev_index; i++ )
     {
-        new_ev[i] = ev[i];
+        new_ev[i]           = ev[i];
         new_ev[i]->position = i;
     }
 
     pfree( ev );
+
     return new_ev;
 }
 
-void _se_set_remove( struct sweep_event *** set, unsigned int position, unsigned int * ev_index )
+void _se_set_remove(
+    struct sweep_event *** set,
+    unsigned int           position,
+    unsigned int *         ev_index
+)
 {
     struct sweep_event ** ev_set_temp = NULL;
     unsigned int          i           = 0;
@@ -763,7 +946,20 @@ void _se_set_remove( struct sweep_event *** set, unsigned int position, unsigned
         return;
     }
 
-    ev_set_temp = ( struct sweep_event ** ) palloc0( sizeof( struct sweep_event * ) * ( (*ev_index) - 1 ) );
+    ev_set_temp = ( struct sweep_event ** ) palloc0(
+        sizeof( struct sweep_event * ) * ( (*ev_index) - 1 )
+    );
+
+    if( ev_set_temp == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not resize event buffer" )
+            )
+        );
+    }
 
     for( i = 0; i < (*ev_index) - 1; i++ )
     {
@@ -772,13 +968,14 @@ void _se_set_remove( struct sweep_event *** set, unsigned int position, unsigned
             ind_offset++;
         }
 
-        ev_set_temp[i] = (*set)[i + ind_offset];
+        ev_set_temp[i]           = (*set)[i + ind_offset];
         ev_set_temp[i]->position = i;
     }
 
     pfree( (*set) );
     (*set) = ev_set_temp;
     (*ev_index)--;
+
     return;
 }
 
@@ -868,8 +1065,36 @@ void polygon_compute_holes( struct polygon * p )
     // Sort SEs in place
     _sort_ev_buffer( ev, 0, ev_index - 1 );
 
-    processed = ( bool * ) palloc0( sizeof( bool ) * p->num_contours );
-    hole_of   = ( unsigned int * ) palloc0( sizeof( unsigned int ) * p->num_contours );
+    processed = ( bool * ) palloc0(
+        sizeof( bool ) * p->num_contours
+    );
+
+    if( processed == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate hole processing bitmap" )
+            )
+        );
+    }
+
+    hole_of = ( unsigned int * ) palloc0(
+        sizeof( unsigned int ) * p->num_contours
+    );
+
+    if( hole_of == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate polygon hole map" )
+            )
+        );
+    }
+
     // may need to init ev_set with ev prior to entry
 
     ev_set = _process_ev_buffer( ev, ev_index );
@@ -880,7 +1105,13 @@ void polygon_compute_holes( struct polygon * p )
 
         if( se->left )
         {
-            insertion_ind = _se_set_insert( &ev_set, se, &ev_index, &sweep_event_ev_segment_comp );
+            insertion_ind = _se_set_insert(
+                &ev_set,
+                se,
+                &ev_index,
+                &sweep_event_ev_segment_comp
+            );
+
             if( insertion_ind > 0 )
             {
                 ev_index++;
@@ -908,28 +1139,46 @@ void polygon_compute_holes( struct polygon * p )
                             se->polygon
                         );
 
-                        if( contour_counterclockwise( p->contours[se_last->polygon] ) )
+                        if(
+                            contour_counterclockwise(
+                                p->contours[se_last->polygon]
+                            )
+                          )
                         {
                             contour_set_clockwise( p->contours[se->polygon] );
                         }
                         else
                         {
-                            contour_set_counterclockwise( p->contours[se->polygon] );
+                            contour_set_counterclockwise(
+                                p->contours[se->polygon]
+                            );
                         }
                     }
-                    else if( hole_of[se->polygon] == hole_of[se_last->polygon] )
+                    else if(
+                            hole_of[se->polygon] == hole_of[se_last->polygon]
+                           )
                     {
                         hole_of[se->polygon] = hole_of[se_last->polygon];
                         p->contours[se->polygon]->_external = false;
-                        contour_add_hole( p->contours[hole_of[se->polygon]], se->polygon );
 
-                        if( contour_counterclockwise( p->contours[hole_of[se->polygon]] ) )
+                        contour_add_hole(
+                            p->contours[hole_of[se->polygon]],
+                            se->polygon
+                        );
+
+                        if(
+                            contour_counterclockwise(
+                                p->contours[hole_of[se->polygon]]
+                            )
+                          )
                         {
                             contour_set_clockwise( p->contours[se->polygon] );
                         }
                         else
                         {
-                            contour_set_counterclockwise( p->contours[se->polygon] );
+                            contour_set_counterclockwise(
+                                p->contours[se->polygon]
+                            );
                         }
                     }
                     else
@@ -959,6 +1208,7 @@ void polygon_compute_holes( struct polygon * p )
     return;
 }
 
+#ifdef DEBUG
 void _dump_polygon( struct polygon * p )
 {
     unsigned int     i = 0;
@@ -970,7 +1220,14 @@ void _dump_polygon( struct polygon * p )
         return;
     }
 
-    elog( DEBUG1, "Polygon dump (%p):\n num_contours: %d, contours %p", p, p->num_contours, p->contours );
+    elog(
+        DEBUG1,
+        "Polygon dump (%p):\n num_contours: %d, contours %p",
+        p,
+        p->num_contours,
+        p->contours
+    );
+
     for( i = 0; i < p->num_contours; i++ )
     {
         c = p->contours[i];
@@ -1003,20 +1260,13 @@ void _dump_sweep_event( struct sweep_event * e )
         e->left ? "L":"R",
         e->inside?"I":"O",
         e->in_out?"IO":"OI",
-        e->edge_type == 0 ? "N" : e->edge_type == 1 ? "NC" : e->edge_type == 2 ? "ST" : "DT",
+        e->edge_type == 0 ?
+            "N" : e->edge_type == 1 ?
+                "NC" : e->edge_type == 2 ?
+                    "ST" : "DT",
         e->polygon_type == 0 ? "S" : "C"
     );
-    /*
-    elog( DEBUG1, "left: %s", e->left? "t":"f" );
-    elog( DEBUG1, "inside: %s", e->inside?"t":"f" );
-    elog( DEBUG1, "polygon %d", e->polygon );
-    elog( DEBUG1, "other: %p", e->other );
-    elog( DEBUG1, "in_out: %s", e->in_out? "t":"f" );
-    elog( DEBUG1, "position: %d", e->position );
-    elog( DEBUG1, "edge_type: %d", e->edge_type );
-    elog( DEBUG1, "polygon_type: %d", e->polygon_type );
-    elog( DEBUG1, "p: (%f,%f)", e->p->x, e->p->y );
-    */
+
     return;
 }
 
@@ -1036,13 +1286,21 @@ void _dump_se_set( struct sweep_event *** ev_set, unsigned int ev_index )
         }
         else
         {
-            elog( DEBUG1, "SES[%d]: %p (%f,%f) (%f,%f) %s", i, e, e->p->x, e->p->y, e->other->p->x, e->other->p->y, e->left?"L":"R" );
-            //_dump_sweep_event( e );
+            elog(
+                DEBUG1,
+                "SES[%d]: %p (%f,%f) (%f,%f) %s",
+                i,
+                e,
+                e->p->x, e->p->y,
+                e->other->p->x, e->other->p->y,
+                e->left?"L":"R"
+            );
         }
     }
 
     return;
 }
+#endif // DEBUG
 
 bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
 {

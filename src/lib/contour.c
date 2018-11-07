@@ -51,6 +51,17 @@ void contour_bounding_box( struct contour * c, Point * min, Point * max )
         max = ( Point * ) palloc0( sizeof( Point ) );
     }
 
+    if( min == NULL || max == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create contour bounding box" )
+            )
+        );
+    }
+
     min->x = min_x;
     min->y = min_y;
     max->x = max_x;
@@ -78,7 +89,8 @@ bool contour_counterclockwise( struct contour * c )
 
     for( i = 0; i < c->num_points - 1; i++ )
     {
-        area += c->points[i]->x * c->points[i+1]->y - c->points[i+1]->x * c->points[i]->y;
+        area += c->points[i]->x * c->points[i+1]->y
+              - c->points[i+1]->x * c->points[i]->y;
     }
 
     area += c->points[c->num_points - 1]->x * c->points[0]->y
@@ -197,7 +209,20 @@ void contour_erase_point( struct contour * c, unsigned int i )
     pfree( c->points[i] );
     c->points[i] = NULL;
 
-    temp_points = ( Point ** ) palloc0( sizeof( Point * ) * ( c->num_points - 1 ) );
+    temp_points = ( Point ** ) palloc0(
+        sizeof( Point * ) * ( c->num_points - 1 )
+    );
+
+    if( temp_points == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not resize contour point array" )
+            )
+        );
+    }
 
     for( j = 0; j < c->num_points; j++ )
     {
@@ -217,7 +242,20 @@ void contour_erase_point( struct contour * c, unsigned int i )
     {
         if( c->holes[j] == i )
         {
-            temp_holes = ( unsigned int * ) palloc0( sizeof( unsigned int ) * ( c->num_holes - 1 ) );
+            temp_holes = ( unsigned int * ) palloc0(
+                sizeof( unsigned int ) * ( c->num_holes - 1 )
+            );
+
+            if( temp_holes == NULL )
+            {
+                ereport(
+                    ERROR,
+                    (
+                        errcode( ERRCODE_OUT_OF_MEMORY ),
+                        errmsg( "Failed to resize hole map for contour" )
+                    )
+                );
+            }
 
             for( h = 0; h < c->num_holes; h++ )
             {
@@ -228,7 +266,7 @@ void contour_erase_point( struct contour * c, unsigned int i )
             }
 
             pfree( c->holes );
-            c->holes = temp_holes;
+            c->holes     = temp_holes;
             c->num_holes = c->num_holes - 1;
         }
     }
@@ -251,12 +289,39 @@ void contour_add_hole( struct contour * c, unsigned int index )
         }
 
         c->holes = ( unsigned int * ) palloc0( sizeof( unsigned int ) );
+
+        if( c->holes == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Failed to create contour holes map" )
+                )
+            );
+        }
+
         c->num_holes = 1;
         c->holes[0] = index;
     }
     else
     {
-        c->holes = ( unsigned int * ) repalloc( c->holes, sizeof( unsigned int ) * ( c->num_holes + 1 ) );
+        c->holes = ( unsigned int * ) repalloc(
+            c->holes,
+            sizeof( unsigned int ) * ( c->num_holes + 1 )
+        );
+
+        if( c->holes == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Failed to resize contour hole map" )
+                )
+            );
+        }
+
         c->holes[c->num_holes] = index;
         c->num_holes = c->num_holes + 1;
     }
@@ -291,14 +356,41 @@ void contour_add_point( struct contour * c, Point * p )
         }
 
         c->points = ( Point ** ) palloc0( sizeof( Point * ) );
+
+        if( c->points == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not create contour point array" )
+                )
+            );
+        }
+
         c->num_points = 1;
-        c->points[0] = p;
+        c->points[0]  = p;
     }
     else
     {
-        c->points = ( Point ** ) repalloc( c->points, sizeof( Point * ) * ( c->num_points + 1 ) );
+        c->points = ( Point ** ) repalloc(
+            c->points,
+            sizeof( Point * ) * ( c->num_points + 1 )
+        );
+
+        if( c->points == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not resize contour point array" )
+                )
+            );
+        }
+
         c->points[c->num_points] = p;
-        c->num_points = c->num_points + 1;
+        c->num_points            = c->num_points + 1;
     }
 
     return;
@@ -334,6 +426,17 @@ struct contour * new_contour( void )
     struct contour * c = NULL;
 
     c = ( struct contour * ) palloc0( sizeof( struct contour ) );
+
+    if( c == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Failed to create new contour" )
+            )
+        );
+    }
 
     c->num_points      = 0;
     c->num_holes       = 0;
@@ -394,6 +497,7 @@ double contour_area( struct contour * c )
     return area;
 }
 
+#ifdef DEBUG
 void _dump_contour( struct contour * c )
 {
     unsigned int i = 0;
@@ -407,8 +511,8 @@ void _dump_contour( struct contour * c )
 
     elog(
         DEBUG1,
-        "points: %p\nnum_points: %d\nholes: %p\nnum_holes: %d\n_external: %s\n"\
-        "_precompiled_cc: %s\n_cc: %s",
+        "points: %p\nnum_points: %d\nholes: %p\nnum_holes: %d\n"\
+        "_external: %s\n_precompiled_cc: %s\n_cc: %s",
         c->points,
         c->num_points,
         c->holes,
@@ -426,7 +530,14 @@ void _dump_contour( struct contour * c )
         }
         else
         {
-            elog( DEBUG1, "points[%d]: (%f,%f) ADDR %p", i, c->points[i]->x, c->points[i]->y, c->points[i] );
+            elog(
+                DEBUG1,
+                "points[%d]: (%f,%f) ADDR %p",
+                i,
+                c->points[i]->x,
+                c->points[i]->y,
+                c->points[i]
+            );
         }
     }
 
@@ -437,3 +548,4 @@ void _dump_contour( struct contour * c )
 
     return;
 }
+#endif // DEBUG

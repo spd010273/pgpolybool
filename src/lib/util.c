@@ -2,12 +2,8 @@
 
 double signed_area_three( Point * a, Point * b, Point * c )
 {
-    //if( a == NULL || b == NULL || c == NULL )
-    //{
-    //    return 0;
-    //}
-
-    return ( a->x - c->x ) * ( b->y - c->y ) - ( b->x - c->x ) * ( a->y - c->y );
+    return ( a->x - c->x ) * ( b->y - c->y )
+         - ( b->x - c->x ) * ( a->y - c->y );
 }
 
 double signed_area_two( Point * a, Point * b )
@@ -66,8 +62,8 @@ bool point_in_triangle( struct segment * s, Point * a, Point * b )
 double distance( Point * a, Point * b )
 {
     double distance = 0.0;
-    double dx = 0.0;
-    double dy = 0.0;
+    double dx       = 0.0;
+    double dy       = 0.0;
 
     if( a == NULL || b == NULL )
     {
@@ -82,7 +78,12 @@ double distance( Point * a, Point * b )
     return distance;
 }
 
-unsigned int find_intersection( struct segment * s0, struct segment * s1, Point * p0, Point * p1 )
+unsigned int find_intersection(
+    struct segment * s0,
+    struct segment * s1,
+    Point *          p0,
+    Point *          p1
+)
 {
     Point *      isect_s0   = NULL;
     Point *      isect_s1   = NULL;
@@ -116,6 +117,20 @@ unsigned int find_intersection( struct segment * s0, struct segment * s1, Point 
     d0 = ( Point * ) palloc0( sizeof( Point ) );
     d1 = ( Point * ) palloc0( sizeof( Point ) );
     E  = ( Point * ) palloc0( sizeof( Point ) );
+
+    if( d0 == NULL || d1 == NULL || E == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg(
+                    "Could not create reference points"\
+                    " for intersection calculation"
+                )
+            )
+        );
+    }
 
     d0->x = s0->p2->x - s0->p1->x;
     d0->y = s0->p2->y - s0->p1->y;
@@ -184,7 +199,7 @@ unsigned int find_intersection( struct segment * s0, struct segment * s1, Point 
     }
 
     // Handle the parallel case
-    sq_len_E = E->x * E->x + E->y * E->y;
+    sq_len_E   = E->x * E->x + E->y * E->y;
     cross_prod = E->x * d0->y - E->y * d0->x;
 
     if( ( cross_prod * cross_prod ) > ( sq_epsilon * sq_len0 * sq_len_E ) )
@@ -287,7 +302,6 @@ bool points_equal( Point * a, Point * b )
 {
     if( a == NULL || b == NULL )
     {
-        elog( DEBUG, "points eq got NULL pointers" );
         return false;
     }
 
@@ -298,83 +312,3 @@ bool points_equal( Point * a, Point * b )
 
     return false;
 }
-/*
-bool _fp_gte( double a, double b )
-{
-    if( a < b )
-    {
-        return false;
-    }
-
-    return true;
-}
-
-bool _fp_gt( double a, double b )
-{
-    if( a > b && !_fp_eq( a, b ) )
-    {
-        return true;
-    }
-
-    return false;
-}
-
-bool _fp_lte( double a, double b )
-{
-    if( a > b )
-    {
-        return false;
-    }
-
-    return true;
-}
-
-bool _fp_lt( double a, double b )
-{
-    if( a < b && !_fp_eq( a, b ) )
-    {
-        return true;
-    }
-
-    return false;
-}
-
-bool _fp_eq( double a, double b )
-{
-    double diff = 0.0;
-    double min  = 0.0;
-    double a_a  = 0.0;
-    double a_b  = 0.0;
-
-    if( a == b )
-    {
-        return true;
-    }
-
-    diff = fabs( a - b );
-
-    if( a == 0 || b == 0 || diff <= DBL_EPSILON )
-    {
-        return true;
-    }
-
-    a_a = fabs( a );
-    a_b = fabs( b );
-
-    if( ( a_a + a_b ) > DBL_MAX )
-    {
-        min = DBL_MAX;
-    }
-    else
-    {
-        min = a_a + a_b;
-    }
-
-    if( ( diff / min ) < DBL_EPSILON )
-    {
-        return true;
-    }
-
-    return false;
-}
-*/

@@ -30,5 +30,7 @@ extern struct segment * contour_get_segment( struct contour *, unsigned int );
 extern struct contour * new_contour( void );
 extern void free_contour( struct contour * );
 extern double contour_area( struct contour * );
+#ifdef DEBUG
 extern void _dump_contour( struct contour * );
-#endif
+#endif // DEBUG
+#endif // CONTOUR_H

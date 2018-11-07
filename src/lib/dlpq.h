@@ -25,7 +25,7 @@
 
 #include "postgres.h"
 
-#define DLPQ_DEBUG true
+#define DLPQ_DEBUG DEBUG
 
 #define _ALLOC(size) palloc0(size)
 #define _FREE(ptr) pfree(ptr)

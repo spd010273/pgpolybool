@@ -409,8 +409,9 @@ struct polygon * compute(
     }
 
     phead = new_dlpq( &sweep_event_sl_comp_wrapper );
+#ifdef DEBUG
     _dlpq_setup_debug( phead, &_dump_sweep_event_dlpq_wrapper );
-
+#endif
     min_subj = ( Point * ) palloc0( sizeof( Point ) );
     max_subj = ( Point * ) palloc0( sizeof( Point ) );
     min_clip = ( Point * ) palloc0( sizeof( Point ) );

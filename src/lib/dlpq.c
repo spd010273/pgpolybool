@@ -114,8 +114,8 @@ inline bool dlpq_empty( struct dlpq * head )
 
 unsigned int dlpq_get_position( struct dlpq * head, void * data )
 { //naive function
-    unsigned int position = 0;
-    struct dlpq_node * node = NULL;
+    unsigned int       position = 0;
+    struct dlpq_node * node     = NULL;
 
     if( head == NULL )
     {
@@ -140,14 +140,18 @@ unsigned int dlpq_get_position( struct dlpq * head, void * data )
 
 void * dlpq_peek_position( struct dlpq * head, unsigned int position )
 {
-    unsigned int i = 0;
+    unsigned int       i    = 0;
     struct dlpq_node * node = NULL;
 
     if( head == NULL || position >= head->size )
     {
         if( head != NULL && position >= head->size )
         {
-            _LOG( "position %d is out of bound of dlpq sized %d", position, head->size );
+            _LOG(
+                "position %d is out of bound of dlpq sized %d",
+                position,
+                head->size
+            );
         }
 
         return NULL;
@@ -175,7 +179,6 @@ void dlpq_remove( struct dlpq * head, void * data )
 
     if( dlpq_empty( head ) )
     {
-        _LOG( "dlpq_remove: Head %p is empty!", head );
         return;
     }
 
@@ -306,7 +309,6 @@ void dlpq_push( struct dlpq * head, void * data )
         }
     }
 
-    _LOG( "DLPQ new node added %p", new_node );
     return;
 }
 
