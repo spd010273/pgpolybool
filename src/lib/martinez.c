@@ -1100,7 +1100,6 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
         }
     }
 
-    elog( DEBUG1, "Searching %u contours", mpoly->num_contours );
     for( c = 0; c < mpoly->num_contours; c++ )
     {
         p = ( POLYGON * ) palloc0(
@@ -1121,13 +1120,9 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
 
         for( i = 0; i < mpoly->contours[c]->num_points; i++ )
         {
-            if( mpoly->num_contours == 1 )
-            {
-                p->p[i].x = mpoly->contours[c]->points[i]->x;
-                p->p[i].y = mpoly->contours[c]->points[i]->y;
-            }
-
-            p->npts = mpoly->contours[c]->num_points;
+            p->p[i].x = mpoly->contours[c]->points[i]->x;
+            p->p[i].y = mpoly->contours[c]->points[i]->y;
+            p->npts   = mpoly->contours[c]->num_points;
         }
 
         if( mpoly->num_contours == 1 )
@@ -1138,7 +1133,7 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
 
         arr[c] = p;
         area   = contour_area( mpoly->contours[c] );
-        elog( DEBUG1, "Got contour area %f for contour %u", area, c );
+
         if( area > max_area )
         {
             max_area     = area;
@@ -1146,7 +1141,6 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
         }
     }
 
-    elog( DEBUG1, "Accessing contour max area %u", max_area_ind );
     p = arr[max_area_ind];
 
     for( i = 0; i < mpoly->num_contours; i++ )
