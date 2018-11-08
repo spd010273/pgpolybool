@@ -974,8 +974,9 @@ struct polygon * compute(
             );
 
             if(
-                    next_event < sl_head->size - 1
-                 && previous_event < sl_head->size -1
+                    next_event < sl_head->size - 1 
+                 && previous_event < sl_head->size - 1
+                 && sl_head->size != 0
               )
             {
                 possible_intersection(
