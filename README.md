@@ -16,15 +16,26 @@ pgpolybool provides the following functions:
 * POLYGON fn_xor_polygons( POLYGON[] ): XOR 2..n polygons.
 * POLYGON fn_xor_polygons( POLYGON, POLYGON ): XOR two polygons.
 
-pgpolybool implements the clipping algorithm developed in Martinez, Rueda, Feito 2009 paper published the cageo journal (see /docs/martinez_boolean.pdf).
+pgpolybool implements the clipping algorithm described in Martinez, Rueda, Feito paper published the Computers & Geosciences Journal, Volume 35, issue 8 (pp. 1177-1185) ( see https://www.sciencedirect.com/science/article/pii/S0098300408002793 ).
+
+The XOR and UNION operations scale the polygons in order to aid the subsequent operation. Once the operation has been completed, the polygons are scaled back to (an approximation of) their original size.
+
+The work of Martinez et al was origionally released into the Public Domain. This author requests that, in the spirit of the origional authors, any derivative works be released under a permissive FOSS license or into the public domain as well.
 
 # Usage
 
+
+
 # Installation
 
-# Special Thanks
+* Checkout the repo 'git clone <repo>'
+* Build the repo 'make'
+* Install with 'make install'
+* Add the extension to your desired database 'CREATE EXTENSION pgpolybool;'
 
-Francisco Martinez, Antonio Jesus Reuda, and Francisco Ramon Feito for deveoping this algorithm, it is extremely versatile and fast. It excelled in cases where both the Vatti algorithm or Greneir-Horrman failed or could not be modified to handle colinearity edge cases.
+# Acknowledgements
+
+Francisco Martinez, Antonio Jesus Reuda, and Francisco Ramon Feito for deveoping this algorithm, it is extremely versatile and fast. It excelled in cases where both the Vatti algorithm or Greiner-Hormann failed or could not be easily modified to handle colinearity edge cases. The authors also released their original work to the public domain.
 
 Sean Connelly for his work at (http://sean.cm/a/polygon-clipping-pt2). This post contains a very well illustrated and articulated walkthrough of the algorithm's operation. There is also a interactive tool for playing around with polygon inputs to the algorithm.
 
@@ -32,7 +43,7 @@ PostgreSQL Global Development Group, for their finely maintained project, except
 
 Richard Davies for encouragments, jokes, insights and tricks in C/C++.
 
-My employer, Nead Werx, Inc. for granting me the time to bring this implementation to PostgreSQL. I hope later to get this into the PostGIS codebase ;)
+My employer, Nead Werx, Inc., for granting me the time to bring this implementation to PostgreSQL. I hope later to get this into the PostGIS codebase ;)
 
 # Coming Soon
 

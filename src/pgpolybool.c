@@ -1,3 +1,26 @@
+/*
+ * pgpolybool is released under the PostgreSQL license.
+ * 
+ * Copyright (c) 2018, Nead Werx, Inc.
+ * Copyright (c) 2018, Chris Autry
+ * 
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation for any purpose, without fee, and without a written agreement is
+ * hereby granted, provided that the above copyright notice and this paragraph and
+ * the following two paragraphs appear in all copies.
+ * 
+ * IN NO EVENT SHALL Nead Werx, Inc. or Chris Autry BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
+ * SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS, ARISING
+ * OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF Nead Werx, Inc. or Chris Autry HAVE
+ * BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * Nead Werx, Inc. and Chris Autry SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS ON AN "AS IS" BASIS, AND NEITHER
+ * Nead Werx, Inc. or Chris Autry HAVE NO OBLIGATIONS TO PROVIDE MAINTENANCE, SUPPORT, UPDATES,
+ * ENHANCEMENTS, OR MODIFICATIONS.
+ */
+
 #include "postgres.h"
 #include "utils/array.h"
 #include "utils/geo_decls.h"
@@ -48,6 +71,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
     unsigned int     num_poly     = 0;
     unsigned int     i            = 0;
     Point **         centers      = NULL;
+
     if( PG_ARGISNULL(0) )
     {
         PG_RETURN_NULL();
@@ -717,8 +741,10 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 }
 
 /*
- * Preprocessing frontend that handles buffering, scaling and sorting of polys from function input
- * We CANNOT modify the original polygons, as they may be pointers to something in the disk buffer
+ * Preprocessing frontend that handles buffering, scaling and sorting of polys
+ * from function input
+ * We CANNOT modify the original polygons, as they may be pointers to something
+ * in the disk buffer.
  */
 POLYGON * poly_preprocessing(
     POLYGON * current_poly,
@@ -733,11 +759,11 @@ POLYGON * poly_preprocessing(
     double sum_x           = 0;
     double sum_y           = 0;
 
-    palloc_sz    = offsetof( POLYGON, p )
-                 + sizeof( current_poly->p[0] )
-                 * current_poly->npts;
-    buff_poly    = ( POLYGON * ) palloc0( palloc_sz );
-    (*center)    = ( Point * ) palloc0( palloc_sz );
+    palloc_sz = offsetof( POLYGON, p )
+              + sizeof( current_poly->p[0] )
+              * current_poly->npts;
+    buff_poly = ( POLYGON * ) palloc0( palloc_sz );
+    (*center) = ( Point * ) palloc0( palloc_sz );
 
     if( buff_poly == NULL || (*center) == NULL )
     {
@@ -955,7 +981,12 @@ POLYGON ** poly_preprocessing_array(
     return ret;
 }
 
-POLYGON * poly_postprocessing( POLYGON * poly, Point ** centers, unsigned int num_centers, bool scale )
+POLYGON * poly_postprocessing(
+    POLYGON *    poly,
+    Point **     centers,
+    unsigned int num_centers,
+    bool         scale
+)
 {
     Point *      center = NULL;
     double       sum_x  = 0.0;
