@@ -12,7 +12,6 @@
  */
 
 #include "polyprocessing.h"
-#include "util.h"
 
 /*
  * Preprocessing frontend that handles buffering, scaling and sorting of polys
@@ -263,9 +262,11 @@ POLYGON * poly_postprocessing(
 )
 {
     Point *      center                = NULL;
-    double       sum_x                 = 0.0;
-    double       sum_y                 = 0.0;
+    Point *      min_dist_center       = NULL;
+    double       min_distance          = 0.0;
+    double       dist                  = 0.0;
     unsigned int i                     = 0;
+    unsigned int j                     = 0;
     bool         colinear_points_found = false;
     Point *      p0                    = NULL;
     Point *      p1                    = NULL;
@@ -278,38 +279,33 @@ POLYGON * poly_postprocessing(
 
     if( scale )
     {
-        // De-scale the poly by ZOOM_RATE
-        center = ( Point * ) palloc0( sizeof( Point ) );
-
-        if( center == NULL )
-        {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not allocate output polygon centroid" )
-                )
-            );
-        }
-
         for( i = 0; i < poly->npts; i++ )
         {
-            sum_x += poly->p[i].x;
-            sum_y += poly->p[i].y;
+            min_distance    = DBL_MAX;
+            min_dist_center = NULL;
+
+            for( j = 0; j < num_centers; j++ )
+            {
+                center = centers[j];
+                dist   = distance( center, &(poly->p[i]) );
+
+                if( dist < min_distance )
+                {
+                    min_distance    = dist;
+                    min_dist_center = center;
+                }
+            }
+
+            poly->p[i].x = (
+                                poly->p[i].x
+                              + ( ZOOM_RATE - 1 ) * min_dist_center->x
+                           ) / ZOOM_RATE;
+            poly->p[i].y = (
+                                poly->p[i].y
+                              + ( ZOOM_RATE - 1 ) * min_dist_center->y
+                           ) / ZOOM_RATE;
+
         }
-
-        center->x = sum_x / poly->npts;
-        center->y = sum_y / poly->npts;
-
-        for( i = 0; i < poly->npts; i++ )
-        {
-            poly->p[i].x = ( poly->p[i].x + ( ZOOM_RATE - 1 ) * center->x )
-                         / ZOOM_RATE;
-            poly->p[i].y = ( poly->p[i].y + ( ZOOM_RATE - 1 ) * center->y )
-                         / ZOOM_RATE;
-        }
-
-        pfree( center );
     }
 
     // TODO: Eliminate duplicate points and points that are coincident / colinear

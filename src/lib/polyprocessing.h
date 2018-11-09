@@ -20,6 +20,8 @@
 #include "catalog/pg_type.h"
 #include "fmgr.h"
 
+#include "util.h"
+
 #define ZOOM_RATE 1.04
 
 extern POLYGON ** poly_preprocessing_array(
