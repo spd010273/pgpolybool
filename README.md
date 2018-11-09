@@ -49,5 +49,4 @@ My employer, Nead Werx, Inc., for granting me the time to bring this implementat
 
 I seek to add the following features in future releases:
 
-* Output filter to remove redundant colinear points in output
 * Aggregate versions of the functions

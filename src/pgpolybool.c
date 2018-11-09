@@ -1,24 +1,14 @@
-/*
- * pgpolybool is released under the PostgreSQL license.
- * 
+/*------------------------------------------------------------------------------
+ * pgpolybool.c
+ *      PostgreSQL function declarations
+ *
  * Copyright (c) 2018, Nead Werx, Inc.
  * Copyright (c) 2018, Chris Autry
- * 
- * Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose, without fee, and without a written agreement is
- * hereby granted, provided that the above copyright notice and this paragraph and
- * the following two paragraphs appear in all copies.
- * 
- * IN NO EVENT SHALL Nead Werx, Inc. or Chris Autry BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
- * SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS, ARISING
- * OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF Nead Werx, Inc. or Chris Autry HAVE
- * BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * Nead Werx, Inc. and Chris Autry SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS ON AN "AS IS" BASIS, AND NEITHER
- * Nead Werx, Inc. or Chris Autry HAVE NO OBLIGATIONS TO PROVIDE MAINTENANCE, SUPPORT, UPDATES,
- * ENHANCEMENTS, OR MODIFICATIONS.
+ *
+ * IDENTIFICATION
+ *      pgpolybool.c
+ *
+ *------------------------------------------------------------------------------
  */
 
 #include "postgres.h"
@@ -29,25 +19,6 @@
 
 #include "martinez.h"
 #include "polyprocessing.h"
-
-#define ZOOM_RATE 1.04
-
-// Helper Routines
-POLYGON ** poly_preprocessing_array(
-    ArrayType *,
-    bool,
-    bool,
-    Point ***,
-    unsigned int *
-);
-
-POLYGON * poly_preprocessing( POLYGON *, bool, Point ** );
-POLYGON * poly_postprocessing( POLYGON *, Point **, unsigned int, bool );
-
-// Debug Routines
-#ifdef DEBUG
-static void dump_polygon( POLYGON * );
-#endif
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -144,6 +115,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
@@ -216,6 +188,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
@@ -310,6 +283,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
@@ -382,6 +356,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif

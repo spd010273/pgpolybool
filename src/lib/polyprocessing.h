@@ -32,9 +32,10 @@ extern POLYGON ** poly_preprocessing_array(
 
 extern POLYGON * poly_preprocessing( POLYGON *, bool, Point ** );
 extern POLYGON * poly_postprocessing( POLYGON *, Point **, unsigned int, bool );
-
+extern bool points_colinear( Point *, Point *, Point * );
+extern void remove_colinear_point( POLYGON **, Point * );
 #ifdef DEBUG
-extern static void dump_polygon( POLYGON * );
+extern void dump_polygon( POLYGON * );
 #endif // DEBUG
 
 #endif // POLYPROCESSING_H

@@ -262,12 +262,14 @@ POLYGON * poly_postprocessing(
     bool         scale
 )
 {
-    Point *      center   = NULL;
-    double       sum_x    = 0.0;
-    double       sum_y    = 0.0;
-    double       distance = 0.0
-    unsigned int i        = 0;
-    unsigned int j        = 0;
+    Point *      center                = NULL;
+    double       sum_x                 = 0.0;
+    double       sum_y                 = 0.0;
+    unsigned int i                     = 0;
+    bool         colinear_points_found = false;
+    Point *      p0                    = NULL;
+    Point *      p1                    = NULL;
+    Point *      p2                    = NULL;
 
     if( poly == NULL )
     {
@@ -308,26 +310,131 @@ POLYGON * poly_postprocessing(
         }
 
         pfree( center );
-
-        /*
-        for( i = 0; i < num_centers; i++ )
-        {
-            center = centers[i];
-
-            for( j = 0; j < poly->npts; j++ )
-            {
-                distance = distance( center, poly->p[j] );
-            }
-        }
-        */
     }
 
     // TODO: Eliminate duplicate points and points that are coincident / colinear
+    if( poly->npts < 3 )
+    {
+        return poly;
+    }
+
+    colinear_points_found = true;
+
+    while( colinear_points_found )
+    {
+        colinear_points_found = false;
+
+        if( poly->npts < 3 )
+        {
+            break;
+        }
+
+        for( i = 0; i < poly->npts; i++ )
+        {
+            p0 = &(poly->p[i]);
+
+            if( ( i + 1 ) >= poly->npts )
+            {
+                p1 = &(poly->p[0]);
+                p2 = &(poly->p[1]);
+            }
+            else if( ( i + 2 ) >= poly->npts )
+            {
+                p1 = &(poly->p[i + 1]);
+                p2 = &(poly->p[0]);
+            }
+            else
+            {
+                p1 = &(poly->p[i + 1]);
+                p2 = &(poly->p[i + 2]);
+            }
+
+            colinear_points_found = points_colinear( p0, p1, p2 );
+
+            if( colinear_points_found )
+            {
+                remove_colinear_point( &poly, p1 );
+                break;
+            }
+
+            p0 = NULL;
+            p1 = NULL;
+            p2 = NULL;
+        }
+    }
+
     return poly;
 }
 
+bool points_colinear( Point * p0, Point * p1, Point * p2 )
+{
+    double area = 0.0;
+
+    if( p0 == NULL || p1 == NULL || p2 == NULL )
+    {
+        return false;
+    }
+
+    area = signed_area_three( p0, p1, p2 );
+
+    if( fabs( area ) <= DBL_EPSILON )
+    {
+        return true;
+    }
+
+    return false;
+}
+
+void remove_colinear_point( POLYGON ** poly, Point * colinear_point )
+{
+    POLYGON *    new_poly = NULL;
+    unsigned int i        = 0;
+    unsigned int offset   = 0;
+
+    if( (*poly) == NULL || colinear_point == NULL )
+    {
+        return;
+    }
+
+    new_poly = ( POLYGON * ) palloc0(
+        offsetof( POLYGON, p )
+      + ( sizeof( Point ) * ( (*poly)->npts - 1 ) )
+    );
+
+    if( new_poly == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create new polygon" )
+            )
+        );
+    }
+
+    new_poly->npts = (*poly)->npts - 1;
+
+    for( i = 0; i < (*poly)->npts - 1; i++ )
+    {
+        if( points_equal( &((*poly)->p[i]), colinear_point ) )
+        {
+            offset = 1;
+        }
+
+        new_poly->p[i].x = (*poly)->p[i + offset].x;
+        new_poly->p[i].y = (*poly)->p[i + offset].y;
+    }
+
+    pfree( (*poly) );
+
+    colinear_point->x = 0;
+    colinear_point->y = 0;
+    (*poly) = new_poly;
+    return;
+}
+
 #ifdef DEBUG
-static void dump_polygon( POLYGON * p )
+void dump_polygon( POLYGON * p )
 {
     unsigned int i = 0;
 
