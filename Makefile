@@ -12,7 +12,7 @@ PGXS			= $(shell $(PG_CONFIG) --pgxs)
 EXTRA_CLEAN		= src/*.o src/*.so *.so *.o
 
 # Add -DDEBUG to enable DEBUG output of log level DEBUG
-PG_CPPFLAGS		= -DDEBUG -g $(PG_CFLAGS)
+PG_CPPFLAGS		= -g $(PG_CFLAGS)
 DATA			= sql/pgpolybool--1.0.sql
 EXTENSION       = pgpolybool
 include $(PGXS)
