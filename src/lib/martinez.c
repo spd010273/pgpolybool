@@ -1084,24 +1084,43 @@ void free_pgpoly( POLYGON * p )
     return;
 }
 
-POLYGON * mpoly_to_poly( struct polygon * mpoly )
+POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
 {
     unsigned int i            = 0;
     unsigned int c            = 0;
     unsigned int max_area_ind = 0;
     POLYGON *    p            = NULL;
     POLYGON **   arr          = NULL;
+    POLYGON **   result       = NULL;
     double       area         = 0.0;
     double       max_area     = 0.0;
-
+    
     if( mpoly == NULL )
     {
         return NULL;
     }
 
+    if( single_result )
+    {
+        result = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+    
+        if( result == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not create polygon result array" )
+                )
+            );
+        }
+    }
+
     if( mpoly->num_contours > 1 )
     {
-        arr = palloc0( sizeof( POLYGON * ) * mpoly->num_contours );
+        arr = ( POLYGON ** ) palloc0(
+            sizeof( POLYGON * ) * mpoly->num_contours
+        );
 
         if( arr == NULL )
         {
@@ -1143,7 +1162,8 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
         if( mpoly->num_contours == 1 )
         {
             free_polygon( mpoly );
-            return p;
+            result[0] = p;
+            return result;
         }
 
         arr[c] = p;
@@ -1156,18 +1176,28 @@ POLYGON * mpoly_to_poly( struct polygon * mpoly )
         }
     }
 
-    p = arr[max_area_ind];
-
-    for( i = 0; i < mpoly->num_contours; i++ )
+    if( single_result )
     {
-        if( i != max_area_ind )
+        p = arr[max_area_ind];
+
+        for( i = 0; i < mpoly->num_contours; i++ )
         {
-            pfree( arr[i] );
+            if( i != max_area_ind )
+            {
+                pfree( arr[i] );
+            }
         }
+
+        pfree( arr );
+
+        result[0] = p;
+    }
+    else
+    {
+        result = arr;
     }
 
-    pfree( arr );
     free_polygon( mpoly );
 
-    return p;
+    return result;
 }

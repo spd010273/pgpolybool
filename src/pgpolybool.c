@@ -36,6 +36,7 @@ PG_FUNCTION_INFO_V1( fn_xor_polygons );
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
     POLYGON **       sorted_polys = NULL;
+    POLYGON **       result_polys = NULL;
     POLYGON *        new_polygon  = NULL;
     struct polygon * mp_subj      = NULL;
     struct polygon * mp_clip      = NULL;
@@ -70,6 +71,19 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+
+    if( result_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create result polygon array" )
+            )
+        );
+    }
+
     if( num_poly == 1 )
     {
         new_polygon = sorted_polys[0];
@@ -99,7 +113,8 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
             OP_DIFFERENCE
         );
 
-        new_polygon = mpoly_to_poly( mp_result );
+        result_polys = mpoly_to_poly( mp_result, true );
+        new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
@@ -111,6 +126,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
     }
 
     pfree( sorted_polys );
+    pfree( result_polys );
 
     if( new_polygon == NULL )
     {
@@ -131,6 +147,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 
 Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 {
+    POLYGON **       result_polys  = NULL;
     POLYGON *        new_polygon   = NULL;
     POLYGON *        buff_polys[2] = {NULL};
     struct polygon * mp_subj       = NULL;
@@ -158,6 +175,19 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
     pfree( centers[0] );
     pfree( centers[1] );
 
+    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+
+    if( result_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create result polygon array" )
+            )
+        );
+    }
+
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
     {
         elog( WARNING, "poly preprocessing failure" );
@@ -176,7 +206,9 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
         OP_DIFFERENCE
     );
 
-    new_polygon = mpoly_to_poly( mp_result );
+    result_polys = mpoly_to_poly( mp_result, true );
+    new_polygon  = result_polys[0]; 
+    pfree( result_polys );
 
     if( new_polygon == NULL )
     {
@@ -199,6 +231,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
 Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
 {
+    POLYGON **       result_polys = NULL;
     POLYGON **       sorted_polys = NULL;
     POLYGON *        new_polygon  = NULL;
     struct polygon * mp_subj      = NULL;
@@ -227,6 +260,19 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
     }
 
     pfree( centers );
+
+    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+
+    if( result_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create result polygon array" )
+            )
+        );
+    }
 
     if( num_poly == 1 )
     {
@@ -263,7 +309,8 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
             OP_INTERSECTION
         );
 
-        new_polygon = mpoly_to_poly( mp_result );
+        result_polys = mpoly_to_poly( mp_result, true );
+        new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
@@ -275,6 +322,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
     }
 
     pfree( sorted_polys );
+    pfree( result_polys );
 
     if( new_polygon == NULL )
     {
@@ -295,6 +343,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
 
 Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 {
+    POLYGON **       result_polys  = NULL;
     POLYGON *        new_polygon   = NULL;
     POLYGON *        buff_polys[2] = {NULL};
     struct polygon * mp_subj       = NULL;
@@ -322,6 +371,19 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
     pfree( centers[0] );
     pfree( centers[1] );
 
+    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+
+    if( result_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create result polygon array" )
+            )
+        );
+    }
+
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
     {
         elog( WARNING, "poly preprocessing failure" );
@@ -340,7 +402,9 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
         OP_INTERSECTION
     );
 
-    new_polygon = mpoly_to_poly( mp_result );
+    result_polys = mpoly_to_poly( mp_result, true );
+    new_polygon  = result_polys[0];
+    pfree( result_polys );
 
     if( new_polygon == NULL )
     {
@@ -363,6 +427,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
 Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 {
+    POLYGON **       result_polys = NULL;
     POLYGON **       sorted_polys = NULL;
     POLYGON *        new_polygon  = NULL;
     struct polygon * mp_subj      = NULL;
@@ -406,6 +471,19 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 
     new_polygon = sorted_polys[0];
 
+    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+
+    if( result_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create result polygon array" )
+            )
+        );
+    }
+
     for( i = 1; i < num_poly; i++ )
     {
 #ifdef DEBUG
@@ -425,7 +503,8 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
         elog( DEBUG1, "Compute with OP_UNION done" );
         _dump_polygon( mp_result );
 #endif // DEBUG
-        new_polygon = mpoly_to_poly( mp_result );
+        result_polys = mpoly_to_poly( mp_result, true );
+        new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
@@ -437,6 +516,7 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
     }
 
     pfree( sorted_polys );
+    pfree( result_polys );
 
     if( new_polygon == NULL )
     {
@@ -467,6 +547,7 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 
 Datum fn_union_polygons( PG_FUNCTION_ARGS )
 {
+    POLYGON **       result_polys  = NULL;
     POLYGON *        new_polygon   = NULL;
     POLYGON *        buff_polys[2] = {NULL};
     struct polygon * mp_subj       = NULL;
@@ -497,6 +578,19 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+
+    if( result_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create result polygon array" )
+            )
+        );
+    }
+
 #ifdef DEBUG
     dump_polygon( buff_polys[0] );
     dump_polygon( buff_polys[1] );
@@ -509,7 +603,9 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
         OP_UNION
     );
 
-    new_polygon = mpoly_to_poly( mp_result );
+    result_polys = mpoly_to_poly( mp_result, true );
+    new_polygon  = result_polys[0];
+    pfree( result_polys );
 
     if( new_polygon == NULL )
     {
@@ -535,6 +631,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
 Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 {
+    POLYGON **       result_polys = NULL;
     POLYGON **       sorted_polys = NULL;
     POLYGON *        new_polygon  = NULL;
     struct polygon * mp_subj      = NULL;
@@ -578,6 +675,19 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
     new_polygon = sorted_polys[0];
 
+    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+
+    if( result_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create result polygon array" )
+            )
+        );
+    }
+
     for( i = 1; i < num_poly; i++ )
     {
 #ifdef DEBUG
@@ -598,7 +708,8 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
         _dump_polygon( mp_result );
 #endif // DEBUG
 
-        new_polygon = mpoly_to_poly( mp_result );
+        result_polys = mpoly_to_poly( mp_result, true );
+        new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
@@ -609,6 +720,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
     }
 
     pfree( sorted_polys );
+    pfree( result_polys );
 
     if( new_polygon == NULL )
     {
@@ -638,6 +750,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
 Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 {
+    POLYGON **       result_polys  = NULL;
     POLYGON *        new_polygon   = NULL;
     POLYGON *        buff_polys[2] = {NULL};
     struct polygon * mp_subj       = NULL;
@@ -668,6 +781,19 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+
+    if( result_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create result polygon array" )
+            )
+        );
+    }
+
 #ifdef DEBUG
     dump_polygon( buff_polys[0] );
     dump_polygon( buff_polys[1] );
@@ -680,7 +806,9 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
         OP_XOR
     );
 
-    new_polygon = mpoly_to_poly( mp_result );
+    result_polys = mpoly_to_poly( mp_result, true );
+    new_polygon  = result_polys[0];
+    pfree( result_polys );
 
     if( new_polygon == NULL )
     {

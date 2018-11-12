@@ -68,7 +68,7 @@ extern void divide_segment(
 );
 
 
-extern POLYGON * mpoly_to_poly( struct polygon * );
+extern POLYGON ** mpoly_to_poly( struct polygon * , bool );
 extern struct polygon * poly_to_mpoly( POLYGON * );
 extern void free_pgpoly( POLYGON * );
 #endif // MARTINEZ_H
