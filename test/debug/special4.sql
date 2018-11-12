@@ -1,4 +1,0 @@
-SET client_min_messages = DEBUG;
-SELECT pg_backend_pid();
-SELECT fn_union_polygons( ARRAY[
-'((795.000000,1948.000000),(795.000000,1900.000000),(819.000000,1900.000000),(819.000000,1948.000000))' ]::POLYGON[] );
