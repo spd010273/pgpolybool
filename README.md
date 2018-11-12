@@ -18,7 +18,7 @@ pgpolybool provides the following functions:
 
 pgpolybool implements the clipping algorithm described in Martinez, Rueda, Feito paper published the Computers & Geosciences Journal, Volume 35, issue 8 (pp. 1177-1185) ( see https://www.sciencedirect.com/science/article/pii/S0098300408002793 ).
 
-The XOR and UNION operations scale the polygons in order to aid the subsequent operation. Once the operation has been completed, the polygons are scaled back to (an approximation of) their original size.
+The UNION operation scales the input polygons in order to increase the odds that intersections between the subject and clipping polygons are found. Once the operation has been completed, the polygons are scaled back to (an approximation of) their original size.
 
 The work of Martinez et al was originally released into the Public Domain. This author requests that, in the spirit of the original authors, any derivative works be released under a permissive FOSS license or into the public domain as well.
 
