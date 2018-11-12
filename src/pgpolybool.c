@@ -106,6 +106,8 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
             elog( WARNING, "polygons have no intersections" );
             PG_RETURN_NULL();
         }
+
+        new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
     }
 
     pfree( sorted_polys );
@@ -115,7 +117,6 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
@@ -180,11 +181,6 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
     if( new_polygon == NULL )
     {
         elog( WARNING, "polygons have no intersections" );
-        PG_RETURN_NULL();
-    }
-
-    if( new_polygon == NULL )
-    {
         PG_RETURN_NULL();
     }
 
@@ -274,6 +270,8 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
             elog( WARNING, "polygons have no intersections" );
             PG_RETURN_NULL();
         }
+        
+        new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
     }
 
     pfree( sorted_polys );
@@ -283,7 +281,6 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
@@ -348,11 +345,6 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
     if( new_polygon == NULL )
     {
         elog( WARNING, "polygons have no intersections" );
-        PG_RETURN_NULL();
-    }
-
-    if( new_polygon == NULL )
-    {
         PG_RETURN_NULL();
     }
 
@@ -440,6 +432,8 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
             elog( WARNING, "polygons have no intersections" );
             PG_RETURN_NULL();
         }
+
+        new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
     }
 
     pfree( sorted_polys );
@@ -449,6 +443,7 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    // De-scale polygon prior to output
     new_polygon = poly_postprocessing( new_polygon, centers, num_poly, true );
 
     for( i = 0; i < num_poly; i++ )
@@ -522,12 +517,8 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    if( new_polygon == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
     new_polygon = poly_postprocessing( new_polygon, centers, 2, true );
+
     pfree( centers[0] );
     pfree( centers[1] );
 #ifdef DEBUG
@@ -614,6 +605,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
             elog( WARNING, "polygons have no intersections" );
             PG_RETURN_NULL();
         }
+        new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
     }
 
     pfree( sorted_polys );
@@ -693,11 +685,6 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
     if( new_polygon == NULL )
     {
         elog( WARNING, "polygons have no intersections" );
-        PG_RETURN_NULL();
-    }
-
-    if( new_polygon == NULL )
-    {
         PG_RETURN_NULL();
     }
 
