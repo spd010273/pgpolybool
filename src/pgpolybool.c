@@ -26,10 +26,13 @@ PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1( fn_intersect_polygons_array );
 PG_FUNCTION_INFO_V1( fn_intersect_polygons );
+
 PG_FUNCTION_INFO_V1( fn_subtract_polygons_array );
 PG_FUNCTION_INFO_V1( fn_subtract_polygons );
+
 PG_FUNCTION_INFO_V1( fn_union_polygons_array );
 PG_FUNCTION_INFO_V1( fn_union_polygons );
+
 PG_FUNCTION_INFO_V1( fn_xor_polygons_array );
 PG_FUNCTION_INFO_V1( fn_xor_polygons );
 
@@ -562,13 +565,13 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     buff_polys[0] = poly_preprocessing(
         PG_GETARG_POLYGON_P(0),
-        false,
+        true,
         &centers[0]
     );
 
     buff_polys[1] = poly_preprocessing(
         PG_GETARG_POLYGON_P(1),
-        false,
+        true,
         &centers[1]
     );
 
@@ -649,7 +652,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
     sorted_polys = poly_preprocessing_array(
         PG_GETARG_ARRAYTYPE_P(0),
         true,
-        true,
+        false,
         &centers,
         &num_poly
     );
@@ -727,7 +730,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    new_polygon = poly_postprocessing( new_polygon, centers, num_poly, true );
+    new_polygon = poly_postprocessing( new_polygon, centers, num_poly, false );
 
     for( i = 0; i < num_poly; i++ )
     {
@@ -806,7 +809,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
         OP_XOR
     );
 
-    result_polys = mpoly_to_poly( mp_result, true );
+    result_polys = mpoly_to_poly( mp_result, false );
     new_polygon  = result_polys[0];
     pfree( result_polys );
 
