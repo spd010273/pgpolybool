@@ -20,8 +20,18 @@
 #include <math.h>
 
 #define FP_FUDGE_FACTOR 128
+
+#ifndef DBL_EPSILON
 #define DBL_EPSILON (2.2204460492503131e-16) * FP_FUDGE_FACTOR
+#endif // DBL_EPSILON
+
+#ifndef DBL_MAX
 #define DBL_MAX (1.79769e+308)
+#endif // DBL_MAX
+
+#ifndef PI
+#define PI (3.14159265358979)
+#endif // PI
 
 extern double signed_area_three( Point *, Point *, Point * );
 extern double signed_area_two( Point *, Point * );

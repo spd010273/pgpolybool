@@ -15,6 +15,7 @@
 #include "utils/array.h"
 #include "utils/geo_decls.h"
 #include "catalog/pg_type.h"
+#include "utils/lsyscache.h"
 #include "fmgr.h"
 
 #include "martinez.h"
@@ -35,6 +36,10 @@ PG_FUNCTION_INFO_V1( fn_union_polygons );
 
 PG_FUNCTION_INFO_V1( fn_xor_polygons_array );
 PG_FUNCTION_INFO_V1( fn_xor_polygons );
+
+PG_FUNCTION_INFO_V1( fn_rotate_polygon );
+PG_FUNCTION_INFO_V1( fn_get_polygon_points );
+PG_FUNCTION_INFO_V1( fn_get_polygon_line_segs );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -210,7 +215,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
     );
 
     result_polys = mpoly_to_poly( mp_result, true );
-    new_polygon  = result_polys[0]; 
+    new_polygon  = result_polys[0];
     pfree( result_polys );
 
     if( new_polygon == NULL )
@@ -320,7 +325,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
             elog( WARNING, "polygons have no intersections" );
             PG_RETURN_NULL();
         }
-        
+
         new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
     }
 
@@ -832,4 +837,211 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
     );
 
     PG_RETURN_POLYGON_P( new_polygon );
+}
+
+/*
+ * Polygon Helper Functions
+ */
+
+Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
+{
+    POLYGON * poly    = NULL;
+    float8    radians = 0.0;
+    int32     i       = 0;
+    Point     center  = {0.0};
+    float8    min_x   = DBL_MAX;
+    float8    max_x   = -DBL_MAX;
+    float8    min_y   = DBL_MAX;
+    float8    max_y   = -DBL_MAX;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    poly    = PG_GETARG_POLYGON_P_COPY(0);
+    radians = PG_GETARG_FLOAT8(1);
+
+    if(
+            radians > ( 2 * PI + DBL_EPSILON )
+         || radians < - ( 2 * PI - DBL_EPSILON )
+      )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE ),
+                errmsg( "radians argument must be between -2pi and 2pi" )
+            )
+        );
+    }
+
+    if( poly == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_NULL_VALUE_NOT_ALLOWED ),
+                errmsg( "Polygon may not be NULL" )
+            )
+        );
+    }
+
+    if( fabs( radians ) <= DBL_EPSILON )
+    {
+        PG_RETURN_POLYGON_P( poly );
+    }
+
+    for( i = 0; i < poly->npts; i++ )
+    {
+        max_x = ( poly->p[i].x > max_x ) ? poly->p[i].x : max_x;
+        min_x = ( poly->p[i].x < min_x ) ? poly->p[i].x : min_x;
+        max_y = ( poly->p[i].y > max_y ) ? poly->p[i].y : max_y;
+        min_y = ( poly->p[i].y < min_y ) ? poly->p[i].y : min_y;
+    }
+
+    center.x = ( max_x + min_x ) / 2;
+    center.y = ( max_y + min_y ) / 2;
+
+    for( i = 0; i < poly->npts; i++ )
+    {
+        poly->p[i].x = poly->p[i].x * cos( radians ) - poly->p[i].y * sin( radians )
+          + ( center.x - ( center.x * cos( radians ) - center.y * sin( radians ) ) );
+
+        poly->p[i].y = poly->p[i].x * sin( radians ) + poly->p[i].y * cos( radians )
+          + ( center.y - ( center.x * sin( radians ) + center.y * cos( radians ) ) );
+    }
+
+    PG_RETURN_POLYGON_P( poly );
+}
+
+Datum fn_get_polygon_points( PG_FUNCTION_ARGS )
+{
+    POLYGON *    poly      = NULL;
+    unsigned int i         = 0;
+    ArrayType *  result    = NULL;
+    Datum *      elements  = NULL;
+
+    int16        typlen;
+    char         typalign;
+    bool         typbyval;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    poly = PG_GETARG_POLYGON_P(0);
+
+    if( poly == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    elements = ( Datum * ) palloc0( sizeof( Datum ) * poly->npts );
+
+    if( elements == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate polygon point return array" )
+            )
+        );
+    }
+
+    for( i = 0; i < poly->npts; i++ )
+    {
+        elements[i] = PointPGetDatum( &(poly->p[i]) );
+        //pfree( polypoint );
+    }
+
+    get_typlenbyvalalign( POINTOID, &typlen, &typbyval, &typalign );
+    result = construct_array(
+        elements,
+        poly->npts,
+        POINTOID,
+        typlen,
+        typbyval,
+        typalign
+    );
+
+    PG_RETURN_ARRAYTYPE_P( result );
+}
+
+Datum fn_get_polygon_line_segs( PG_FUNCTION_ARGS )
+{
+    POLYGON *    poly     = NULL;
+    Datum *      elements = NULL;
+    ArrayType *  result   = NULL;
+    unsigned int i        = 0;
+    unsigned int next_i   = 0;
+    LSEG *       segment  = NULL;
+
+    int16 typlen;
+    char  typalign;
+    bool  typbyval;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    poly = PG_GETARG_POLYGON_P(0);
+
+    if( poly == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    if( poly->npts == 1 )
+    {
+        PG_RETURN_NULL();
+    }
+
+    elements = ( Datum * ) palloc0( sizeof( Datum ) * poly->npts );
+
+    if( elements == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg(
+                    "Could not allocate polygon line segment return array"
+                )
+            )
+        );
+    }
+
+    for( i = 0; i < poly->npts; i++ )
+    {
+        if( i == poly->npts - 1 )
+        {
+            next_i = 0;
+        }
+        else
+        {
+            next_i = i + 1;
+        }
+
+        segment = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+        segment->p[0] = poly->p[i];
+        segment->p[1] = poly->p[next_i];
+        elements[i] = LsegPGetDatum( segment );
+    }
+
+    get_typlenbyvalalign( LSEGOID, &typlen, &typbyval, &typalign );
+    result = construct_array(
+        elements,
+        poly->npts,
+        LSEGOID,
+        typlen,
+        typbyval,
+        typalign
+    );
+
+    PG_RETURN_ARRAYTYPE_P( result );
 }
