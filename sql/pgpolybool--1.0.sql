@@ -24,3 +24,11 @@ CREATE OR REPLACE FUNCTION fn_get_polygon_points( poly POLYGON )
 RETURNS POINT[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_polygon_points';
 CREATE OR REPLACE FUNCTION fn_get_polygon_line_segments( poly POLYGON )
 RETURNS LSEG[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_polygon_line_segs';
+CREATE OR REPLACE FUNCTION fn_line_segments_intersect( a LSEG, b LSEG )
+RETURNS BOOLEAN IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_intersect';
+CREATE OR REPLACE FUNCTION fn_line_segments_intersection_point( a LSEG, b LSEG )
+RETURNS POINT IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_intersect_point';
+CREATE OR REPLACE FUNCTION fn_line_segments_distance( a LSEG, b LSEG )
+RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_distance';
+CREATE OR REPLACE FUNCTION fn_get_polygon_line_segment_distance( poly POLYGON, seg LSEG )
+RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_polygon_lseg_distance';

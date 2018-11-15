@@ -20,26 +20,38 @@
 
 #include "martinez.h"
 #include "polyprocessing.h"
+#include "lseg_funcs.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
 #endif
 
+// Intersection
 PG_FUNCTION_INFO_V1( fn_intersect_polygons_array );
 PG_FUNCTION_INFO_V1( fn_intersect_polygons );
 
+// Difference / Subtraction
 PG_FUNCTION_INFO_V1( fn_subtract_polygons_array );
 PG_FUNCTION_INFO_V1( fn_subtract_polygons );
 
+// Union
 PG_FUNCTION_INFO_V1( fn_union_polygons_array );
 PG_FUNCTION_INFO_V1( fn_union_polygons );
 
+// Exclusive Or
 PG_FUNCTION_INFO_V1( fn_xor_polygons_array );
 PG_FUNCTION_INFO_V1( fn_xor_polygons );
 
+// Other random ops
+// Polygon Functions
 PG_FUNCTION_INFO_V1( fn_rotate_polygon );
 PG_FUNCTION_INFO_V1( fn_get_polygon_points );
 PG_FUNCTION_INFO_V1( fn_get_polygon_line_segs );
+PG_FUNCTION_INFO_V1( fn_get_polygon_lseg_distance );
+// LSEG functions
+PG_FUNCTION_INFO_V1( fn_lseg_intersect );
+PG_FUNCTION_INFO_V1( fn_lseg_intersect_point );
+PG_FUNCTION_INFO_V1( fn_lseg_distance );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -1044,4 +1056,153 @@ Datum fn_get_polygon_line_segs( PG_FUNCTION_ARGS )
     );
 
     PG_RETURN_ARRAYTYPE_P( result );
+}
+
+Datum fn_lseg_intersect_point( PG_FUNCTION_ARGS )
+{
+    LSEG *  a     = NULL;
+    LSEG *  b     = NULL;
+    Point * isect = NULL;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    a = PG_GETARG_LSEG_P(0);
+    b = PG_GETARG_LSEG_P(0);
+
+    if( a == NULL || b == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    isect = line_segment_intersection( a, b );
+
+    if( isect == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_POINT_P( isect );
+}
+
+Datum fn_lseg_intersect( PG_FUNCTION_ARGS )
+{
+    LSEG * a = NULL;
+    LSEG * b = NULL;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    a = PG_GETARG_LSEG_P(0);
+    b = PG_GETARG_LSEG_P(0);
+
+    if( a == NULL || b == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    if( line_segment_intersect( a, b ) )
+    {
+        PG_RETURN_BOOL( true );
+    }
+
+    PG_RETURN_BOOL( false );
+}
+
+Datum fn_lseg_distance( PG_FUNCTION_ARGS )
+{
+    LSEG * a         = NULL;
+    LSEG * b         = NULL;
+    double distance  = 0.0;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    a = PG_GETARG_LSEG_P(0);
+    b = PG_GETARG_LSEG_P(1);
+
+    if( a == NULL || b == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    distance = line_segment_distance( a, b );
+
+    PG_RETURN_FLOAT8( distance );
+}
+
+Datum fn_get_polygon_lseg_distance( PG_FUNCTION_ARGS )
+{
+    POLYGON *    poly     = NULL;
+    LSEG *       in_lseg  = NULL;
+    LSEG *       segment  = NULL;
+    unsigned int i        = 0;
+    unsigned int next_i   = 0;
+    double       min_dist = 0.0;
+    double       dist     = 0.0;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    poly    = PG_GETARG_POLYGON_P(0);
+    in_lseg = PG_GETARG_LSEG_P(1);
+
+    if( poly == NULL || in_lseg == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    if( poly->npts == 1 )
+    {
+        PG_RETURN_NULL();
+    }
+
+    min_dist = DBL_MAX;
+    segment  = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+    if( segment == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not divide polygon into line segment" )
+            )
+        );
+    }
+
+    for( i = 0; i < poly->npts; i++ )
+    {
+        if( i == poly->npts - 1 )
+        {
+            next_i = 0;
+        }
+        else
+        {
+            next_i = i + 1;
+        }
+
+
+        segment->p[0] = poly->p[i];
+        segment->p[1] = poly->p[next_i];
+
+        dist = line_segment_distance( segment, in_lseg );
+
+        if( dist < min_dist )
+        {
+            min_dist = dist;
+        }
+    }
+
+    pfree( segment );
+
+    PG_RETURN_FLOAT8( min_dist );
 }
