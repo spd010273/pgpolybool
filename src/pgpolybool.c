@@ -858,21 +858,23 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
 Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
 {
-    POLYGON * poly    = NULL;
-    float8    radians = 0.0;
-    int32     i       = 0;
-    Point     center  = {0.0};
-    float8    min_x   = DBL_MAX;
-    float8    max_x   = -DBL_MAX;
-    float8    min_y   = DBL_MAX;
-    float8    max_y   = -DBL_MAX;
+    POLYGON *    poly     = NULL;
+    POLYGON *    new_poly = NULL;
+    float8       radians  = 0.0;
+    int32        i        = 0;
+    Point        center   = {0.0};
+    float8       min_x    = DBL_MAX;
+    float8       max_x    = -DBL_MAX;
+    float8       min_y    = DBL_MAX;
+    float8       max_y    = -DBL_MAX;
+    unsigned int size     = 0;
 
-    if( PG_ARGISNULL(0) )
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
     {
         PG_RETURN_NULL();
     }
 
-    poly    = PG_GETARG_POLYGON_P_COPY(0);
+    poly    = PG_GETARG_POLYGON_P(0);
     radians = PG_GETARG_FLOAT8(1);
 
     if(
@@ -902,6 +904,7 @@ Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
 
     if( fabs( radians ) <= DBL_EPSILON )
     {
+        elog( DEBUG1, "Radians <= 0" );
         PG_RETURN_POLYGON_P( poly );
     }
 
@@ -916,16 +919,64 @@ Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
     center.x = ( max_x + min_x ) / 2;
     center.y = ( max_y + min_y ) / 2;
 
-    for( i = 0; i < poly->npts; i++ )
-    {
-        poly->p[i].x = poly->p[i].x * cos( radians ) - poly->p[i].y * sin( radians )
-          + ( center.x - ( center.x * cos( radians ) - center.y * sin( radians ) ) );
+    max_x = -DBL_MAX;
+    min_x = DBL_MAX;
+    max_y = -DBL_MAX;
+    min_y = DBL_MAX;
 
-        poly->p[i].y = poly->p[i].x * sin( radians ) + poly->p[i].y * cos( radians )
-          + ( center.y - ( center.x * sin( radians ) + center.y * cos( radians ) ) );
+    size = offsetof( POLYGON, p ) + ( poly->npts * sizeof( new_poly->p[0] ) );
+
+    new_poly = ( POLYGON * ) palloc0( size );
+
+    if( new_poly == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not rotate polygon" )
+            )
+        );
     }
 
-    PG_RETURN_POLYGON_P( poly );
+    for( i = 0; i < poly->npts; i++ )
+    {
+        new_poly->p[i].x = ( poly->p[i].x * cos( radians ) )
+                         - ( poly->p[i].y * sin( radians ) )
+                         + (
+                              center.x
+                            - (
+                                  center.x * cos( radians )
+                                - center.y * sin( radians )
+                              )
+                           );
+        new_poly->p[i].y = ( poly->p[i].x * sin( radians ) )
+                         + ( poly->p[i].y * cos( radians ) )
+                         + (
+                              center.y
+                            - (
+                                  center.x * sin( radians )
+                                + center.y * cos( radians )
+                              )
+                           );
+
+        // Generate new bounding box inline
+        max_x = ( new_poly->p[i].x > max_x ) ? new_poly->p[i].x : max_x;
+        min_x = ( new_poly->p[i].x < min_x ) ? new_poly->p[i].x : min_x;
+        max_y = ( new_poly->p[i].y > max_y ) ? new_poly->p[i].y : max_y;
+        min_y = ( new_poly->p[i].y < min_y ) ? new_poly->p[i].y : min_y;
+
+        elog( DEBUG1, "Set new rotated point %f,%f for i %d", new_poly->p[i].x, new_poly->p[i].y, i );
+    }
+
+    new_poly->boundbox.high.x = max_x;
+    new_poly->boundbox.high.y = max_y;
+    new_poly->boundbox.low.x  = min_x;
+    new_poly->boundbox.low.y  = min_y;
+    new_poly->npts            = poly->npts;
+
+    SET_VARSIZE( new_poly, size );
+    PG_RETURN_POLYGON_P( new_poly );
 }
 
 Datum fn_get_polygon_points( PG_FUNCTION_ARGS )
