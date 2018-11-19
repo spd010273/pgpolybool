@@ -346,3 +346,157 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
 
     return dist;
 }
+
+/*
+ * Given a segment 'segment', find orthogonal segment pointing away
+ *  from the point 'away_point'. The result segment originates at the
+ *  center of 'segment'. Additionally, the segment is of unit length (1)
+ *
+ * We start by solving for the dot product, given that one point of the
+ * result vector will be the cetner of the provided segment:
+ * [(A,B),(C,D)] and [(Cx,Cy),(x,y)] are orthogonal,
+ * where Cx = ( A + C ) / 2 and Cy = ( B + D ) / 2
+ *
+ * Thus:
+ *
+ * A ( ( A + C ) / 2 ) + B ( ( B + D ) / 2 ) + Cx + Dy = 0
+ *  and
+ * sqrt( ( ( Ax + Cx ) / 2 ) * ( ( Ax + Cx ) / 2 ) + ( ( By + Dy ) / 2 ) * ( ( By + Dy ) / 2 ) ) = 1
+ */
+
+LSEG * line_segment_orthogonal_line_segment( LSEG * segment, Point * away_point, double length )
+{
+    LSEG * result = NULL;
+    double A      = 0.0;
+    double B      = 0.0;
+    double C      = 0.0;
+    double D      = 0.0;
+    double E      = 0.0;
+    double F      = 0.0;
+    double curr_s = 0.0; // For orth slope
+    double targ_s = 0.0;
+    double y_int  = 0.0;
+    double d1     = 0.0; // For distance comp
+    double d2     = 0.0;
+    double a      = 0.0; // For quadratic solution
+    double b      = 0.0;
+    double c      = 0.0;
+    double x1     = 0.0;
+    double x2     = 0.0;
+    double y1     = 0.0;
+    double y2     = 0.0;
+
+    if( segment == NULL )
+    {
+        return NULL;
+    }
+
+    result = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+    if( result == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create output segment" )
+            )
+        );
+    }
+
+    A = segment->p[0].x;
+    B = segment->p[0].y;
+    C = segment->p[1].x;
+    D = segment->p[1].y;
+
+    result->p[0].x = ( A + C ) / 2;
+    result->p[0].y = ( B + D ) / 2;
+
+    E = result->p[0].x;
+    F = result->p[0].y;
+
+    if( A == C ) // Current slope is inf, target slope is 0
+    {
+        result->p[1].y = F;
+
+        if( away_point != NULL )
+        {
+            result->p[1].x = E + length;
+            d1 = distance( away_point, &(result->p[1]) );
+            result->p[1].x = E - length;
+            d2 = distance( away_point, &(result->p[1]) );
+
+            if( d1 > d2 )
+            {
+                result->p[1].x = E + length;
+            }
+        }
+        else
+        {
+            result->p[1].x = E + length;
+        }
+    }
+    else if( B == D ) // Current slope is 0, target_slope is inf
+    {
+        result->p[1].x = E;
+
+        if( away_point != NULL )
+        {
+            result->p[1].y = F + length;
+            d1 = distance( away_point, &(result->p[1]) );
+            result->p[1].y = F - length;
+            d2 = distance( away_point, &(result->p[1]) );
+
+            if( d1 > d2 )
+            {
+                result->p[1].y = F + length;
+            }
+        }
+        else
+        {
+            result->p[1].y = F + length;
+        }
+    }
+    else
+    {
+        // Solve for y = mx + b
+        curr_s = ( A - C ) / ( B - D );
+        targ_s = pow( curr_s, -1 ) * -1;
+        y_int  = F - ( E * targ_s );
+
+        // Find quadratic solution to sqrt( ( E - x )^2 + ( F - y )^2 ) = length
+        a = 1 + ( targ_s * targ_s );
+        b = ( 2 * targ_s * y_int ) - ( 2 * F * targ_s ) - ( 2 * E );
+        c = ( E * E ) + ( F * F ) - ( 2 * F * y_int ) + ( y_int * y_int ) - ( length * length );
+
+        if( ( b * b ) < ( 4 * a * c ) )
+        {
+            elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
+            return NULL;
+        }
+
+        x1 = ( -b + sqrt( ( b * b ) - ( 4 * a * c ) ) ) / ( 2 * a );
+        x2 = ( -b - sqrt( ( b * b ) - ( 4 * a * c ) ) ) / ( 2 * a );
+        y1 = targ_s * x1 + y_int;
+        y2 = targ_s * x2 + y_int;
+
+        result->p[1].x = x1;
+        result->p[1].y = y1;
+
+        if( away_point != NULL )
+        {
+            d1 = distance( away_point, &(result->p[1]) );
+            result->p[1].x = x2;
+            result->p[1].y = y2;
+            d2 = distance( away_point, &(result->p[1]) );
+
+            if( d1 > d2 )
+            {
+                result->p[1].x = x1;
+                result->p[1].y = y1;
+            }
+        }
+    }
+
+    return result;
+}

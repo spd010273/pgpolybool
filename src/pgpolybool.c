@@ -52,6 +52,7 @@ PG_FUNCTION_INFO_V1( fn_get_polygon_lseg_distance );
 PG_FUNCTION_INFO_V1( fn_lseg_intersect );
 PG_FUNCTION_INFO_V1( fn_lseg_intersect_point );
 PG_FUNCTION_INFO_V1( fn_lseg_distance );
+PG_FUNCTION_INFO_V1( fn_get_orthogonal_segment );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -1205,4 +1206,50 @@ Datum fn_get_polygon_lseg_distance( PG_FUNCTION_ARGS )
     pfree( segment );
 
     PG_RETURN_FLOAT8( min_dist );
+}
+
+Datum fn_get_orthogonal_segment( PG_FUNCTION_ARGS )
+{
+    LSEG *  seg        = NULL;
+    Point * away_point = NULL;
+    LSEG *  result     = NULL;
+    double  length     = 1.0;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    seg = PG_GETARG_LSEG_P(0);
+
+    if( seg == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    if( !PG_ARGISNULL(1) )
+    {
+        away_point = PG_GETARG_POINT_P(1);
+
+        if( away_point == NULL )
+        {
+            PG_RETURN_NULL();
+        }
+    }
+
+    if( !PG_ARGISNULL(2) )
+    {
+        length = PG_GETARG_FLOAT8(2);
+    }
+
+    result = line_segment_orthogonal_line_segment( seg, away_point, length );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+    else
+    {
+        PG_RETURN_LSEG_P( result );
+    }
 }
