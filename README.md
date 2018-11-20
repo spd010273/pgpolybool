@@ -84,6 +84,17 @@ Where:
 
 Provided that ![Determinant](img/quadratic_determinant_conditional.png) is satisfied, there exists real roots and a solution for ![OutputPoint](img/output_point.png)
 
+### fn_get_line_segments_distance
+
+This function returns the minimum distance between two line segments.
+
+The cross product of the line segments is computed. If the cross product is zero, the segments are (close to) parallel, otherwise, they are not.
+
+For the parallel case, if the segments overlap but do not intersect  (share some x or y coordinates in their line equation), an orthogonal projection is the shortest distance between the two lines. Otherwise, the minimum distance is the minimum distance between the segment's end points.
+
+In the non parallel case, rays are cast from the lines to determine which points on the line equation closest to the virtual intersection. In cases where the point that is closest to the intersection lies within the line segment, that point is used, otherwise, the closest endpoint is used.
+
+
 # Installation
 
 * Checkout the repo 'git clone <repo>'

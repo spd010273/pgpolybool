@@ -347,23 +347,6 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
     return dist;
 }
 
-/*
- * Given a segment 'segment', find orthogonal segment pointing away
- *  from the point 'away_point'. The result segment originates at the
- *  center of 'segment'. Additionally, the segment is of unit length (1)
- *
- * We start by solving for the dot product, given that one point of the
- * result vector will be the cetner of the provided segment:
- * [(A,B),(C,D)] and [(Cx,Cy),(x,y)] are orthogonal,
- * where Cx = ( A + C ) / 2 and Cy = ( B + D ) / 2
- *
- * Thus:
- *
- * A ( ( A + C ) / 2 ) + B ( ( B + D ) / 2 ) + Cx + Dy = 0
- *  and
- * sqrt( ( ( Ax + Cx ) / 2 ) * ( ( Ax + Cx ) / 2 ) + ( ( By + Dy ) / 2 ) * ( ( By + Dy ) / 2 ) ) = 1
- */
-
 LSEG * line_segment_orthogonal_line_segment( LSEG * segment, Point * away_point, double length )
 {
     LSEG * result = NULL;
