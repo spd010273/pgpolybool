@@ -63,6 +63,7 @@ Let ![LengthScalar](img/length_scalar.png) be the desired length of the output l
 We must solve for ![OutputPoint](img/output_point.png) using the following system of equations:
 
 ![LengthFunction](img/length_function.png)
+
 ![LineEquation](img/line_equation.png)
 
 Where ![SlopeSolution](img/slope_solution.png) and ![YInterceptSolution](img/y_intercept_solution.png)
@@ -70,11 +71,15 @@ Where ![SlopeSolution](img/slope_solution.png) and ![YInterceptSolution](img/y_i
 After some simplification, we arrive at the quadratic system of equations:
 
 ![Quadratic](img/quadratic.png)
+
 ![LineEquation](img/line_equation.png)
 
 Where:
+
 ![QuadraticA](img/quadratic_a_solution.png)
+
 ![QuadraticB](img/quadratic_b_solution.png)
+
 ![QuadraticC](img/quadratic_c_solution.png)
 
 Provided that ![Determinant](img/quadratic_determinant_conditional.png) is satisfied, there exists real roots and a solution for ![OutputPoint](img/output_point.png)
