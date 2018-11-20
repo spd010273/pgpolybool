@@ -5,7 +5,7 @@ pgpolybool
 
 Polygon arithmatic operations for native PostgreSQL POLYGON type.
 
-pgpolybool provides the following functions:
+pgpolybool provides the following functions for polygon boolean operations:
 
 * POLYGON fn_union_polygons( POLYGON[] ): UNION 2..n polygons.
 * POLYGON fn_union_polygons( POLYGON, POLYGON ): UNION two polygons.
@@ -15,6 +15,17 @@ pgpolybool provides the following functions:
 * POLYGON fn_subtract_polygons( POLYGON, POLYGON ): Subtract two polygons.
 * POLYGON fn_xor_polygons( POLYGON[] ): XOR 2..n polygons.
 * POLYGON fn_xor_polygons( POLYGON, POLYGON ): XOR two polygons.
+
+pgpolybool also provides the following utility functions:
+
+* POLYGON fn_rotate_polygon( POLYGON, DOUBLE PRECISION ): Rotate a polygon by the specified number of radians
+* POINT[] fn_get_polygon_points( POLYGON ): Return the points that comprise a given polygon
+* LSEG[] fn_get_polygon_line_segments( POLYGON ): Return the line segments that comprise a given polygon
+* BOOLEAN fn_line_segments_intersect( LSEG, LSEG ): Return whether or not two line segments intersect
+* POINT fn_line_segments_intersection_point( LSEG, LSEG ): Return the point of intersection between two line segments, NULL if there is no intersection
+* DOUBLE PRECISION fn_line_segments_distance( LSEG, LSEG ): Return the minimum distance between two line segments.
+* DOUBLE PRECISION fn_get_polygon_line_segment_distance( POLYGON, LSEG ): Get the minimum distance between a polygon and a line segment.
+* LSEG fn_get_orthogonal_segment( LSEG, POINT, DOUBLE PRECISION ): Generate an orthogonal line segment starting at the center of the provided line segment, pointing away from the optional POINT, and of length DOUBLE PRECISION (default length is unit length, or 1.0)
 
 pgpolybool implements the clipping algorithm described in Martinez, Rueda, Feito paper published the Computers & Geosciences Journal, Volume 35, issue 8 (pp. 1177-1185) ( see https://www.sciencedirect.com/science/article/pii/S0098300408002793 ).
 
