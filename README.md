@@ -27,15 +27,57 @@ pgpolybool also provides the following utility functions:
 * DOUBLE PRECISION fn_get_polygon_line_segment_distance( POLYGON, LSEG ): Get the minimum distance between a polygon and a line segment.
 * LSEG fn_get_orthogonal_segment( LSEG, POINT, DOUBLE PRECISION ): Generate an orthogonal line segment starting at the center of the provided line segment, pointing away from the optional POINT, and of length DOUBLE PRECISION (default length is unit length, or 1.0)
 
-pgpolybool implements the clipping algorithm described in Martinez, Rueda, Feito paper published the Computers & Geosciences Journal, Volume 35, issue 8 (pp. 1177-1185) ( see https://www.sciencedirect.com/science/article/pii/S0098300408002793 ).
+pgpolybool implements the clipping algorithm described in Martinez, Rueda, and Feito paper published the Computers & Geosciences Journal, Volume 35, issue 8 (pp. 1177-1185) ( see https://www.sciencedirect.com/science/article/pii/S0098300408002793 ).
 
 The UNION operation scales the input polygons in order to increase the odds that intersections between the subject and clipping polygons are found. Once the operation has been completed, the polygons are scaled back to (an approximation of) their original size.
 
 The work of Martinez et al was originally released into the Public Domain. This author requests that, in the spirit of the original authors, any derivative works be released under a permissive FOSS license or into the public domain as well.
 
-# Usage
+# Details
+
+A little more detail on the functions that are not self-explanatory
+
+### Polygon UNION
+
+As mentioned previously, this operation takes several steps during its computation:
+
+* Order all input polygons by distance, ascending, from an arbitrary polygon in the set
+* Scale all polygons to 104% of their current size (extends points away from the center of each input polygon)
+* Perform the polygon union, pairwise, until every polygon in the input set has been unioned
+* Scale the output polygon by contracting points back towards their original input polygon's center point. If new points were created during the union computation (read: intersections of line segments), these points are scaled to whichever input centroid they lie closest to.
+
+### fn_get_orthogonal_segment
+
+This generates an orthogonal segment (a perpendicular line segment) to the input line segment. This segment will have one end point at the center of the input line segment.
+
+For any line segment, there are two orthogonal segments. The function (currently) selects whichever segment is in the positive (x,y) direction as its return value. If a POINT is provided as input, the segment with an endpoint furthest away from that point is returned instead.
+
+The third argument ( length DOUBLE_PRECISION ), controls the scaling of the output line segment. The default length is 1.0
+
+This function will return NULL in the case that there is no solution to the quadratic equation below:
 
 
+Let the input line segment be defined as ![InputLineSegment](img/input_line_segment.png)
+Let ![LengthScalar](img/length_scalar.png) be the desired length of the output line segment, ![OutputLineSegment](img/output_line_segment.png)
+
+We must solve for ![OutputPoint](img/output_point.png) using the following system of equations:
+
+![LengthFunction](img/length_function.png)
+![LineEquation](img/line_equation.png)
+
+Where ![SlopeSolution](img/slope_solution.png) and ![YInterceptSolution](img/y_intercept_solution.png)
+
+After some simplification, we arrive at the quadratic system of equations:
+
+![Quadratic](img/quadratic.png)
+![LineEquation](img/line_equation.png)
+
+Where:
+![QuadraticA](img/quadratic_a_solution.png)
+![QuadraticB](img/quadratic_b_solution.png)
+![QuadraticC](img/quadratic_c_solution.png)
+
+Provided that ![Determinant](img/quadratic_determinant_conditional.png) is satisfied, there exists real roots and a solution for ![OutputPoint](img/output_point.png)
 
 # Installation
 
@@ -61,3 +103,5 @@ My employer, Nead Werx, Inc., for granting me the time to bring this implementat
 I seek to add the following features in future releases:
 
 * SRF (set returning function) versions of the functions
+* Arrive at state where op enhancements can be added to PostgreSQL core
+* Arrive at state where polybool ops can be added to PostGIS
