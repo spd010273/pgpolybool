@@ -1122,7 +1122,7 @@ Datum fn_lseg_intersect_point( PG_FUNCTION_ARGS )
     }
 
     a = PG_GETARG_LSEG_P(0);
-    b = PG_GETARG_LSEG_P(0);
+    b = PG_GETARG_LSEG_P(1);
 
     if( a == NULL || b == NULL )
     {
@@ -1150,7 +1150,7 @@ Datum fn_lseg_intersect( PG_FUNCTION_ARGS )
     }
 
     a = PG_GETARG_LSEG_P(0);
-    b = PG_GETARG_LSEG_P(0);
+    b = PG_GETARG_LSEG_P(1);
 
     if( a == NULL || b == NULL )
     {
