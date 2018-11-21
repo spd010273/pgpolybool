@@ -26,6 +26,7 @@ pgpolybool also provides the following utility functions:
 * DOUBLE PRECISION fn_line_segments_distance( LSEG, LSEG ): Return the minimum distance between two line segments.
 * DOUBLE PRECISION fn_get_polygon_line_segment_distance( POLYGON, LSEG ): Get the minimum distance between a polygon and a line segment.
 * LSEG fn_get_orthogonal_segment( LSEG, POINT, DOUBLE PRECISION ): Generate an orthogonal line segment starting at the center of the provided line segment, pointing away from the optional POINT, and of length DOUBLE PRECISION (default length is unit length, or 1.0)
+* LSEG[] fn_get_orthogonal_segments( LSEG, DOUBLE PRECISION ): Generate two orthogonal line segments starting from the center of the provided line segment, scaled to the optional length DOUBLE PRECISION
 
 pgpolybool implements the clipping algorithm described in Martinez, Rueda, and Feito paper published the Computers & Geosciences Journal, Volume 35, issue 8 (pp. 1177-1185) ( see https://www.sciencedirect.com/science/article/pii/S0098300408002793 ).
 

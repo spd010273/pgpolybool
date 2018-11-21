@@ -49,3 +49,6 @@ RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 
 
 CREATE OR REPLACE FUNCTION fn_get_orthogonal_segment( seg LSEG, away_point POINT DEFAULT NULL, length DOUBLE PRECISION DEFAULT 1.0 )
 RETURNS LSEG IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_orthogonal_segment';
+
+CREATE OR REPLACE FUNCTION fn_get_orthogonal_segments( seg LSEG, length DOUBLE PRECISION DEFAULT 1.0 )
+RETURNS LSEG[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_orthogonal_segments';

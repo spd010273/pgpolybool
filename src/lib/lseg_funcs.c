@@ -347,34 +347,46 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
     return dist;
 }
 
-LSEG * line_segment_orthogonal_line_segment( LSEG * segment, Point * away_point, double length )
+LSEG ** line_segment_orthogonal_line_segment(
+    LSEG *  segment,
+    Point * away_point,
+    double  length
+)
 {
-    LSEG * result = NULL;
-    double A      = 0.0;
-    double B      = 0.0;
-    double C      = 0.0;
-    double D      = 0.0;
-    double E      = 0.0;
-    double F      = 0.0;
-    double curr_s = 0.0; // For orth slope
-    double targ_s = 0.0;
-    double y_int  = 0.0;
-    double d1     = 0.0; // For distance comp
-    double d2     = 0.0;
-    double a      = 0.0; // For quadratic solution
-    double b      = 0.0;
-    double c      = 0.0;
-    double x1     = 0.0;
-    double x2     = 0.0;
-    double y1     = 0.0;
-    double y2     = 0.0;
+    LSEG **      result = NULL;
+    double       A      = 0.0;
+    double       B      = 0.0;
+    double       C      = 0.0;
+    double       D      = 0.0;
+    double       E      = 0.0;
+    double       F      = 0.0;
+    double       curr_s = 0.0; // For orth slope
+    double       targ_s = 0.0;
+    double       y_int  = 0.0;
+    double       d1     = 0.0; // For distance comp
+    double       d2     = 0.0;
+    double       a      = 0.0; // For quadratic solution
+    double       b      = 0.0;
+    double       c      = 0.0;
+    double       x1     = 0.0;
+    double       x2     = 0.0;
+    double       y1     = 0.0;
+    double       y2     = 0.0;
+    unsigned int size   = 0;
 
     if( segment == NULL )
     {
         return NULL;
     }
 
-    result = ( LSEG * ) palloc0( sizeof( LSEG ) );
+    size = 1;
+
+    if( away_point == NULL )
+    {
+        size = 2;
+    }
+
+    result = ( LSEG ** ) palloc0( sizeof( LSEG * ) * size );
 
     if( result == NULL )
     {
@@ -387,57 +399,96 @@ LSEG * line_segment_orthogonal_line_segment( LSEG * segment, Point * away_point,
         );
     }
 
+    result[0] = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+    if( away_point == NULL )
+    {
+        result[1] = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+        if( result[1] == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not create orthogonal root" )
+                )
+            );
+        }
+    }
+
+    if( result[0] == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create orthogonal root" )
+            )
+        );
+    }
+
     A = segment->p[0].x;
     B = segment->p[0].y;
     C = segment->p[1].x;
     D = segment->p[1].y;
 
-    result->p[0].x = ( A + C ) / 2;
-    result->p[0].y = ( B + D ) / 2;
+    result[0]->p[0].x = ( A + C ) / 2;
+    result[0]->p[0].y = ( B + D ) / 2;
 
-    E = result->p[0].x;
-    F = result->p[0].y;
+    if( away_point == NULL )
+    {
+        result[1]->p[0].x = result[0]->p[0].x;
+        result[1]->p[0].y = result[0]->p[0].y;
+    }
+
+    E = result[0]->p[0].x;
+    F = result[0]->p[0].y;
 
     if( A == C ) // Current slope is inf, target slope is 0
     {
-        result->p[1].y = F;
+        result[0]->p[1].y = F;
 
         if( away_point != NULL )
         {
-            result->p[1].x = E + length;
-            d1 = distance( away_point, &(result->p[1]) );
-            result->p[1].x = E - length;
-            d2 = distance( away_point, &(result->p[1]) );
+            result[0]->p[1].x = E + length;
+            d1 = distance( away_point, &(result[0]->p[1]) );
+            result[0]->p[1].x = E - length;
+            d2 = distance( away_point, &(result[0]->p[1]) );
 
             if( d1 > d2 )
             {
-                result->p[1].x = E + length;
+                result[0]->p[1].x = E + length;
             }
         }
         else
         {
-            result->p[1].x = E + length;
+            result[1]->p[1].y = F;
+            result[0]->p[1].x = E + length;
+            result[1]->p[1].x = E - length;
         }
     }
     else if( B == D ) // Current slope is 0, target_slope is inf
     {
-        result->p[1].x = E;
+        result[0]->p[1].x = E;
 
         if( away_point != NULL )
         {
-            result->p[1].y = F + length;
-            d1 = distance( away_point, &(result->p[1]) );
-            result->p[1].y = F - length;
-            d2 = distance( away_point, &(result->p[1]) );
+            result[0]->p[1].y = F + length;
+            d1 = distance( away_point, &(result[0]->p[1]) );
+            result[0]->p[1].y = F - length;
+            d2 = distance( away_point, &(result[0]->p[1]) );
 
             if( d1 > d2 )
             {
-                result->p[1].y = F + length;
+                result[0]->p[1].y = F + length;
             }
         }
         else
         {
-            result->p[1].y = F + length;
+            result[1]->p[1].x = E;
+            result[0]->p[1].y = F + length;
+            result[1]->p[1].y = F - length;
         }
     }
     else
@@ -463,21 +514,26 @@ LSEG * line_segment_orthogonal_line_segment( LSEG * segment, Point * away_point,
         y1 = targ_s * x1 + y_int;
         y2 = targ_s * x2 + y_int;
 
-        result->p[1].x = x1;
-        result->p[1].y = y1;
+        result[0]->p[1].x = x1;
+        result[0]->p[1].y = y1;
 
         if( away_point != NULL )
         {
-            d1 = distance( away_point, &(result->p[1]) );
-            result->p[1].x = x2;
-            result->p[1].y = y2;
-            d2 = distance( away_point, &(result->p[1]) );
+            d1 = distance( away_point, &(result[0]->p[1]) );
+            result[0]->p[1].x = x2;
+            result[0]->p[1].y = y2;
+            d2 = distance( away_point, &(result[0]->p[1]) );
 
             if( d1 > d2 )
             {
-                result->p[1].x = x1;
-                result->p[1].y = y1;
+                result[0]->p[1].x = x1;
+                result[0]->p[1].y = y1;
             }
+        }
+        else
+        {
+            result[1]->p[1].x = x2;
+            result[1]->p[1].y = y2;
         }
     }
 
