@@ -23,7 +23,6 @@ pgpolybool also provides the following utility functions:
 * LSEG[] fn_get_polygon_line_segments( POLYGON ): Return the line segments that comprise a given polygon
 * BOOLEAN fn_line_segments_intersect( LSEG, LSEG ): Return whether or not two line segments intersect
 * POINT fn_line_segments_intersection_point( LSEG, LSEG ): Return the point of intersection between two line segments, NULL if there is no intersection
-* DOUBLE PRECISION fn_line_segments_distance( LSEG, LSEG ): Return the minimum distance between two line segments.
 * DOUBLE PRECISION fn_get_polygon_line_segment_distance( POLYGON, LSEG ): Get the minimum distance between a polygon and a line segment.
 * LSEG fn_get_orthogonal_segment( LSEG, POINT, DOUBLE PRECISION ): Generate an orthogonal line segment starting at the center of the provided line segment, pointing away from the optional POINT, and of length DOUBLE PRECISION (default length is unit length, or 1.0)
 * LSEG[] fn_get_orthogonal_segments( LSEG, DOUBLE PRECISION ): Generate two orthogonal line segments starting from the center of the provided line segment, scaled to the optional length DOUBLE PRECISION
@@ -84,17 +83,6 @@ Where:
 ![QuadraticC](img/quadratic_c_solution.png)
 
 Provided that ![Determinant](img/quadratic_determinant_conditional.png) is satisfied, there exists real roots and a solution for ![OutputPoint](img/output_point.png)
-
-### fn_get_line_segments_distance
-
-This function returns the minimum distance between two line segments.
-
-The cross product of the line segments is computed. If the cross product is zero, the segments are (close to) parallel, otherwise, they are not.
-
-For the parallel case, if the segments overlap but do not intersect  (share some x or y coordinates in their line equation), an orthogonal projection is the shortest distance between the two lines. Otherwise, the minimum distance is the minimum distance between the segment's end points.
-
-In the non parallel case, rays are cast from the lines to determine which points on the line equation closest to the virtual intersection. In cases where the point that is closest to the intersection lies within the line segment, that point is used, otherwise, the closest endpoint is used.
-
 
 # Installation
 

@@ -48,10 +48,10 @@ PG_FUNCTION_INFO_V1( fn_rotate_polygon );
 PG_FUNCTION_INFO_V1( fn_get_polygon_points );
 PG_FUNCTION_INFO_V1( fn_get_polygon_line_segs );
 PG_FUNCTION_INFO_V1( fn_get_polygon_lseg_distance );
+
 // LSEG functions
 PG_FUNCTION_INFO_V1( fn_lseg_intersect );
 PG_FUNCTION_INFO_V1( fn_lseg_intersect_point );
-PG_FUNCTION_INFO_V1( fn_lseg_distance );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segment );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segments );
 
@@ -1130,30 +1130,6 @@ Datum fn_lseg_intersect( PG_FUNCTION_ARGS )
     }
 
     PG_RETURN_BOOL( false );
-}
-
-Datum fn_lseg_distance( PG_FUNCTION_ARGS )
-{
-    LSEG * a         = NULL;
-    LSEG * b         = NULL;
-    double distance  = 0.0;
-
-    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    a = PG_GETARG_LSEG_P(0);
-    b = PG_GETARG_LSEG_P(1);
-
-    if( a == NULL || b == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    distance = line_segment_distance( a, b );
-
-    PG_RETURN_FLOAT8( distance );
 }
 
 Datum fn_get_polygon_lseg_distance( PG_FUNCTION_ARGS )

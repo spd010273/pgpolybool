@@ -25,8 +25,8 @@ struct contour {
     unsigned int * holes;
     unsigned int   num_holes;
     bool _external;
-    bool _precomputed_cc;
-    bool _cc;
+    bool _precomputed_cc; // Counterclockwise bit was precomputed
+    bool _cc;             // The points are listed counter-clockwise
 };
 
 extern void contour_change_orientation( struct contour * );
