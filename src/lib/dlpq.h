@@ -28,6 +28,7 @@
 
 #define DLPQ_DEBUG DEBUG
 
+/* Hooks to external functions for memory allocation, freeing, and logging */
 #define _ALLOC(size) palloc0(size)
 #define _FREE(ptr) pfree(ptr)
 #define _LOG(msg,args...) elog(DEBUG1,msg,args)

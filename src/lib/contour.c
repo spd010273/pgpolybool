@@ -1,6 +1,8 @@
 /*------------------------------------------------------------------------------
  * contour.c
- *     Polygon Contour functions and utilities
+ *     Polygon Contour functions and utilities. Within the context of this
+ *     program, a contour constitutes an analogue of PostgreSQL's POLYGON
+ *     type.
  *
  * Copyright (c) 2018, Nead Werx, Inc.
  * Copyright (c) 2018, Chris Autry
@@ -13,6 +15,23 @@
 
 #include "contour.h"
 
+/*
+ * void contour_bounding_box( struct contour *, Point *, Point * )
+ *     Computes the bounding box of a contour by finding the minima and
+ *     maxima of both the X and Y coordinates.
+ * 
+ * Arguments:
+ *     contour * c:     Contour of which we are computing the bounding box.
+ *     Point * minumum: Pass-by-reference return for the minimum x,y coordinate
+ *                      of one corner of the bounding box for contour c.
+ *     Point * maximum: Pass-by-reference return for the maximum x,y coordinate
+ *                      of one corner of the bounding box for contour c.
+ * Return:
+ *     Point * min, Point * max (pass-by-reference).
+ * Error Conditions:
+ *     No result returned when provided a NULL contour
+ *     Fatal error upon failure to allocate memory for pass-by-reference result
+ */
 void contour_bounding_box( struct contour * c, Point * min, Point * max )
 {
     unsigned int i     = 0;
@@ -83,6 +102,20 @@ void contour_bounding_box( struct contour * c, Point * min, Point * max )
     return;
 }
 
+/*
+ * bool contour_counterclockwise( struct contour * )
+ *     Determines the ordering of a contours points. This also sets the _cc bit
+ *     of the contour.
+ *
+ * Arguments: 
+ *     struct contour * c: The contour of which we are determining orientation.
+ * Return:
+ *     bool result: True indicates that the points forming contour c are
+ *                  arranged in counterclockwise order. False indicates
+ *                  clockwise arrangement.
+ * Error Conditions:
+ *     Returns false when NULL contour is provided.
+ */
 bool contour_counterclockwise( struct contour * c )
 {
     double       area = 0.0;
@@ -121,6 +154,18 @@ bool contour_counterclockwise( struct contour * c )
     return c->_cc;
 }
 
+/*
+ * bool contour_clockwise( struct contour * )
+ *     Inverse operand of contour_counterclockwise.
+ *
+ * Arguments:
+ *     struct contour * c: The contour of which we are determining orientation.
+ * Return:
+ *     bool result: True indicates that the points forming contour c are arranged
+ *                  in clockwise order. False indicates counterclockwise.
+ * Error Conditions:
+ *     Returns false when NULL contour is provided.
+ */
 bool contour_clockwise( struct contour * c )
 {
     if( c == NULL )
@@ -131,6 +176,18 @@ bool contour_clockwise( struct contour * c )
     return !contour_counterclockwise( c );
 }
 
+/*
+ * void contour_set_clockwise( struct contour * )
+ *     Reorders points of contour c such that they are in a clockwise
+ *     arrangement.
+ *
+ * Arguments:
+ *     struct contour * c: The contour we are reorienting.
+ * Return:
+ *     None.
+ * Error conditions:
+ *     No effect when a NULL contour is provided.
+ */
 void contour_set_clockwise( struct contour * c )
 {
     if( c == NULL )
@@ -146,6 +203,18 @@ void contour_set_clockwise( struct contour * c )
     return;
 }
 
+/*
+ * void contour_set_counterclockwise( struct contour * )
+ *     Reorders points of contour c such that they are in a counterclockwise
+ *     orientation.
+ *
+ * Arguments:
+ *     struct contour * c: The contour we are reorienting.
+ * Return:
+ *     None.
+ * Error Conditions:
+ *     No effect when a NULL contour is provided.
+ */
 void contour_set_counterclockwise( struct contour * c )
 {
     if( c == NULL )
@@ -161,6 +230,19 @@ void contour_set_counterclockwise( struct contour * c )
     return;
 }
 
+/*
+ * void contour_change_orientation( struct contour * )
+ *     Reorders the passed contour. This is wrapped by:
+ *         contour_set_clockwise()
+ *         contour_set_counterclockwise()
+ *
+ * Arguments:
+ *     struct contour * c: The contour we are reorienting.
+ * Return:
+ *     None.
+ * Error Conditions:
+ *     No effect when a NULL contour is provided.
+ */
 void contour_change_orientation( struct contour * c )
 {
     unsigned int start_i  = 0;
@@ -201,6 +283,21 @@ void contour_change_orientation( struct contour * c )
     return;
 }
 
+/*
+ * void contour_erase_point( struct contour *, unsigned int )
+ *     Remove the point at the specified index
+ *
+ * Arguments:
+ *     struct contour * c: The contour being modified
+ *     unsigned int i:     The index of the point we are removing
+ * Return:
+ *     None.
+ * Error Conditions:
+ *     No effect when a NULL contour is provided or the index exceeds
+ *      number of points in contour c.
+ *     Error on failure to reallocate the point array.
+ *     Error on failure to recompute holes.
+ */
 void contour_erase_point( struct contour * c, unsigned int i )
 {
     unsigned int   j           = 0;
@@ -287,6 +384,18 @@ void contour_erase_point( struct contour * c, unsigned int i )
     return;
 }
 
+/*
+ * void contour_add_hole( struct contour *, unsigned int )
+ *     Adds a hole of specified index to the contour
+ *
+ * Arguments:
+ *     sturct contour * c: The contour being modified
+ *     unsigned int i:     Index of the hole being added
+ * Return:
+ *     None
+ * Error conditions:
+ *     Error on failure to reallocate holes[] array
+ */
 void contour_add_hole( struct contour * c, unsigned int index )
 {
     if( c == NULL )
