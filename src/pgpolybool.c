@@ -819,7 +819,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
         if( result_polys == NULL )
         {
-            elog( LOG_LEVEL_WARNING, "Polygon type conversion failed" );
+            elog( WARNING, "Polygon type conversion failed" );
             PG_RETURN_NULL();
         }
 
