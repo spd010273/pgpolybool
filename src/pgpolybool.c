@@ -135,12 +135,25 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
             OP_DIFFERENCE
         );
 
+        if( mp_result == NULL )
+        {
+            elog( WARNING, "Polygons have no intersection" );
+            PG_RETURN_NULL();
+        }
+
         result_polys = mpoly_to_poly( mp_result, true );
+
+        if( result_polys == NULL )
+        {
+            elog( WARNING, "Polygon type conversion failed" );
+            PG_RETURN_NULL();
+        }
+
         new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( WARNING, "polygons have no intersections" );
+            elog( WARNING, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -228,13 +241,26 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
         OP_DIFFERENCE
     );
 
+    if( mp_result == NULL )
+    {
+        elog( WARNING, "Polygons have no intersection" );
+        PG_RETURN_NULL();
+    }
+
     result_polys = mpoly_to_poly( mp_result, true );
+
+    if( result_polys == NULL )
+    {
+        elog( WARNING, "Polygon type conversion failed" );
+        PG_RETURN_NULL();
+    }
+
     new_polygon  = result_polys[0];
     pfree( result_polys );
 
     if( new_polygon == NULL )
     {
-        elog( WARNING, "polygons have no intersections" );
+        elog( WARNING, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -331,12 +357,25 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
             OP_INTERSECTION
         );
 
+        if( mp_result == NULL )
+        {
+            elog( WARNING, "Polygons have no intersection" );
+            PG_RETURN_NULL();
+        }
+
         result_polys = mpoly_to_poly( mp_result, true );
+
+        if( result_polys == NULL )
+        {
+            elog( WARNING, "Polygon type conversion failed" );
+            PG_RETURN_NULL();
+        }
+
         new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( WARNING, "polygons have no intersections" );
+            elog( WARNING, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -424,13 +463,28 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
         OP_INTERSECTION
     );
 
+    elog( DEBUG1, "Result is %p", mp_result );
+
+    if( mp_result == NULL )
+    {
+        elog( WARNING, "Polygons have no intersection" );
+        PG_RETURN_NULL();
+    }
+
     result_polys = mpoly_to_poly( mp_result, true );
+
+    if( result_polys == NULL )
+    {
+        elog( WARNING, "Polygon type conversion failed" );
+        PG_RETURN_NULL();
+    }
+
     new_polygon  = result_polys[0];
     pfree( result_polys );
 
     if( new_polygon == NULL )
     {
-        elog( WARNING, "polygons have no intersections" );
+        elog( WARNING, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -525,12 +579,24 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
         elog( DEBUG1, "Compute with OP_UNION done" );
         _dump_polygon( mp_result );
 #endif // DEBUG
+        if( mp_result == NULL )
+        {
+            elog( WARNING, "Polygons have no intersection" );
+            PG_RETURN_NULL();
+        }
+
         result_polys = mpoly_to_poly( mp_result, true );
+
+        if( result_polys == NULL )
+        {
+            elog( WARNING, "Polygon type conversion failed" );
+        }
+
         new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( WARNING, "polygons have no intersections" );
+            elog( WARNING, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -625,13 +691,26 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
         OP_UNION
     );
 
+    if( mp_result == NULL )
+    {
+        elog( WARNING, "Polygons have no intersection" );
+        PG_RETURN_NULL();
+    }
+
     result_polys = mpoly_to_poly( mp_result, true );
+
+    if( result_polys == NULL )
+    {
+        elog( WARNING, "Polygon type conversion failed" );
+        PG_RETURN_NULL();
+    }
+
     new_polygon  = result_polys[0];
     pfree( result_polys );
 
     if( new_polygon == NULL )
     {
-        elog( WARNING, "polygons have no intersections" );
+        elog( WARNING, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -730,14 +809,28 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
         _dump_polygon( mp_result );
 #endif // DEBUG
 
+        if( mp_result == NULL )
+        {
+            elog( WARNING, "Polygons have no intersection" );
+            PG_RETURN_NULL();
+        }
+
         result_polys = mpoly_to_poly( mp_result, true );
+
+        if( result_polys == NULL )
+        {
+            elog( LOG_LEVEL_WARNING, "Polygon type conversion failed" );
+            PG_RETURN_NULL();
+        }
+
         new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( WARNING, "polygons have no intersections" );
+            elog( WARNING, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
+
         new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
     }
 
@@ -828,13 +921,26 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
         OP_XOR
     );
 
+    if( mp_result == NULL )
+    {
+        elog( WARNING, "Polygons have no intersection" );
+        PG_RETURN_NULL();
+    }
+
     result_polys = mpoly_to_poly( mp_result, false );
+
+    if( result_polys == NULL )
+    {
+        elog( WARNING, "Polygon type conversion failed" );
+        PG_RETURN_NULL();
+    }
+
     new_polygon  = result_polys[0];
     pfree( result_polys );
 
     if( new_polygon == NULL )
     {
-        elog( WARNING, "polygons have no intersections" );
+        elog( WARNING, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -903,7 +1009,6 @@ Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
 
     if( fabs( radians ) <= DBL_EPSILON )
     {
-        elog( DEBUG1, "Radians <= 0" );
         PG_RETURN_POLYGON_P( poly );
     }
 
@@ -1308,14 +1413,14 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
             )
         );
     }
-    
+
     elements[0] = LsegPGetDatum( l_result[0] );
     elements[1] = LsegPGetDatum( l_result[1] );
 
     pfree( l_result[0] );
     pfree( l_result[1] );
     pfree( l_result );
- 
+
     get_typlenbyvalalign( LSEGOID, &typlen, &typbyval, &typalign );
 
     result = construct_array(
