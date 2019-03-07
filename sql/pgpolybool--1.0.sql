@@ -37,6 +37,9 @@ RETURNS POINT[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_p
 CREATE OR REPLACE FUNCTION fn_get_polygon_line_segments( poly POLYGON )
 RETURNS LSEG[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_polygon_line_segs';
 
+CREATE OR REPLACE FUNCTION fn_get_polygon_area( poly POLYGON )
+RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_polygon_area';
+
 CREATE OR REPLACE FUNCTION fn_line_segments_intersect( a LSEG, b LSEG )
 RETURNS BOOLEAN IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_intersect';
 

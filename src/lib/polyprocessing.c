@@ -430,11 +430,48 @@ void remove_colinear_point( POLYGON ** poly, Point * colinear_point )
     return;
 }
 
+double get_polygon_area( POLYGON * p )
+{
+    double       p_area = 0.0;
+    double       n_area = 0.0;
+    unsigned int i      = 0;
+
+    if( p == NULL )
+    {
+        return 0.0;
+    }
+
+    // Points and lines have 0 area
+    if( p->npts <= 2 )
+    {
+        return 0.0;
+    }
+
+    // Use Gauss' Area formula (shoelace formula)
+    for( i = 0; i < p->npts - 1; i++ )
+    {
+        p_area += p->p[i].x * p->p[i + 1].y;
+        n_area += p->p[i + 1].x * p->p[i].y;
+    }
+
+    p_area += p->p[p->npts - 1].x * p->p[1].y;
+    n_area += p->p[1].x * p->p[p->npts - 1].y;
+
+    p_area = 0.5 * fabs( p_area - n_area );
+
+    if( p_area < DBL_EPSILON )
+    {
+        return 0.0;
+    }
+
+    return p_area;
+}
+
 void set_polygon_boundbox( POLYGON * p )
 {
     double       max_x = -DBL_MAX;
-    double       min_x = DBL_MAX;
     double       max_y = -DBL_MAX;
+    double       min_x = DBL_MAX;
     double       min_y = DBL_MAX;
     unsigned int i     = 0;
 

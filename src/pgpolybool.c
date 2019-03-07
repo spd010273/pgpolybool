@@ -48,6 +48,7 @@ PG_FUNCTION_INFO_V1( fn_rotate_polygon );
 PG_FUNCTION_INFO_V1( fn_get_polygon_points );
 PG_FUNCTION_INFO_V1( fn_get_polygon_line_segs );
 PG_FUNCTION_INFO_V1( fn_get_polygon_lseg_distance );
+PG_FUNCTION_INFO_V1( fn_get_polygon_area );
 
 // LSEG functions
 PG_FUNCTION_INFO_V1( fn_lseg_intersect );
@@ -160,7 +161,6 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
             elog( ERROR, "Polygon type conversion failed" );
         }
 
-        
         new_polygon = result_polys[0];
 
         if( new_polygon == NULL )
@@ -537,7 +537,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
     }
 
     new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
-    set_polygon_boundbox( new_polygon );    
+    set_polygon_boundbox( new_polygon );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
@@ -610,7 +610,7 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
             )
         );
     }
-    
+
     new_polygon = sorted_polys[0];
 
     for( i = 1; i < num_poly; i++ )
@@ -1586,4 +1586,23 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
     );
 
     PG_RETURN_ARRAYTYPE_P( result );
+}
+
+Datum fn_get_polygon_area( PG_FUNCTION_ARGS )
+{
+    POLYGON * poly = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    poly = PG_GETARG_POLYGON_P(0);
+
+    if( poly == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_FLOAT8( get_polygon_area( poly ) );
 }
