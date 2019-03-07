@@ -80,30 +80,25 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
         &num_poly
     );
 
-    for( i = 0; i < num_poly; i++ )
+    // Free centers, we only want sorting
+    if( centers != NULL )
     {
-        pfree( centers[i] );
-    }
+        for( i = 0; i < num_poly; i++ )
+        {
+            if( centers[i] != NULL )
+            {
+                pfree( centers[i] );
+                centers[i] = NULL;
+            }
+        }
 
-    pfree( centers );
+        pfree( centers );
+        centers = NULL;
+    }
 
     if( sorted_polys == NULL )
     {
-        elog( WARNING, "poly preprocessing failure" );
-        PG_RETURN_NULL();
-    }
-
-    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
-
-    if( result_polys == NULL )
-    {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        elog( ERROR, "Polygon pre-processing failure" );
     }
 
     if( num_poly == 1 )
@@ -119,6 +114,20 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_POLYGON_P( new_polygon );
     }
 
+    // Allocate space for our result
+    result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
+
+    if( result_polys == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create result polygon array" )
+            )
+        );
+    }
+
     new_polygon = sorted_polys[0];
 
     for( i = 1; i < num_poly; i++ )
@@ -127,8 +136,11 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
         dump_polygon( new_polygon );
         dump_polygon( sorted_polys[i] );
 #endif
+        // We're going to re-use new_polygon for our running result
         mp_subj = poly_to_mpoly( new_polygon );
+        new_polygon = NULL;
         mp_clip = poly_to_mpoly( sorted_polys[i] );
+        sorted_polys[i] = NULL;
         mp_result = compute(
             mp_subj,
             mp_clip,
@@ -137,7 +149,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 
         if( mp_result == NULL )
         {
-            elog( WARNING, "Polygons have no intersection" );
+            elog( DEBUG, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -145,15 +157,15 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 
         if( result_polys == NULL )
         {
-            elog( WARNING, "Polygon type conversion failed" );
-            PG_RETURN_NULL();
+            elog( ERROR, "Polygon type conversion failed" );
         }
 
-        new_polygon  = result_polys[0];
+        
+        new_polygon = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( WARNING, "Polygons have no intersection" );
+            elog( DEBUG, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -168,6 +180,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    set_polygon_boundbox( new_polygon );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
@@ -207,8 +220,15 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
         &centers[1]
     );
 
-    pfree( centers[0] );
-    pfree( centers[1] );
+    if( centers[0] != NULL )
+    {
+        pfree( centers[0] );
+    }
+
+    if( centers[1] != NULL )
+    {
+        pfree( centers[1] );
+    }
 
     result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
 
@@ -225,16 +245,20 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
     {
-        elog( WARNING, "poly preprocessing failure" );
-        PG_RETURN_NULL();
+        elog( ERROR, "Polygon pre-processing failure" );
     }
 
 #ifdef DEBUG
     dump_polygon( buff_polys[0] );
     dump_polygon( buff_polys[1] );
 #endif
+    // Type conversion prior to computation
     mp_subj = poly_to_mpoly( buff_polys[0] );
     mp_clip = poly_to_mpoly( buff_polys[1] );
+
+    buff_polys[0] = NULL;
+    buff_polys[1] = NULL;
+
     mp_result = compute(
         mp_subj,
         mp_clip,
@@ -243,7 +267,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     if( mp_result == NULL )
     {
-        elog( WARNING, "Polygons have no intersection" );
+        elog( DEBUG, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -251,8 +275,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        elog( WARNING, "Polygon type conversion failed" );
-        PG_RETURN_NULL();
+        elog( ERROR, "Polygon type conversion failed" );
     }
 
     new_polygon  = result_polys[0];
@@ -260,11 +283,18 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
-        elog( WARNING, "Polygons have no intersection" );
+        elog( DEBUG, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
     new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
+
+    if( new_polygon == NULL )
+    {
+        elog( ERROR, "Polygon post-processing error" );
+    }
+
+    set_polygon_boundbox( new_polygon );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
@@ -302,12 +332,26 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
         &num_poly
     );
 
-    for( i = 0; i < num_poly; i++ )
+    if( centers != NULL )
     {
-        pfree( centers[i] );
+        for( i = 0; i < num_poly; i++ )
+        {
+            if( centers[i] != NULL )
+            {
+                pfree( centers[i] );
+                centers[i] = NULL;
+            }
+        }
+
+        pfree( centers );
+        centers = NULL;
     }
 
-    pfree( centers );
+    if( sorted_polys == NULL )
+    {
+        elog( ERROR, "Polygon pre-processing failure"
+        );
+    }
 
     result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
 
@@ -335,12 +379,6 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_POLYGON_P( new_polygon );
     }
 
-    if( sorted_polys == NULL )
-    {
-        elog( WARNING, "poly preprocessing failure" );
-        PG_RETURN_NULL();
-    }
-
     new_polygon = sorted_polys[0];
 
     for( i = 1; i < num_poly; i++ )
@@ -351,6 +389,8 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
 #endif
         mp_subj = poly_to_mpoly( sorted_polys[0] );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
+        sorted_polys[0] = NULL;
+        sorted_polys[i] = NULL;
         mp_result = compute(
             mp_subj,
             mp_clip,
@@ -359,7 +399,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
 
         if( mp_result == NULL )
         {
-            elog( WARNING, "Polygons have no intersection" );
+            elog( DEBUG, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -367,15 +407,14 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
 
         if( result_polys == NULL )
         {
-            elog( WARNING, "Polygon type conversion failed" );
-            PG_RETURN_NULL();
+            elog( ERROR, "Polygon type conversion failed" );
         }
 
-        new_polygon  = result_polys[0];
+        new_polygon = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( WARNING, "Polygons have no intersection" );
+            elog( DEBUG, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -390,6 +429,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    set_polygon_boundbox( new_polygon );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
@@ -429,8 +469,15 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
         &centers[1]
     );
 
-    pfree( centers[0] );
-    pfree( centers[1] );
+    if( centers[0] != NULL )
+    {
+        pfree( centers[0] );
+    }
+
+    if( centers[1] != NULL )
+    {
+        pfree( centers[1] );
+    }
 
     result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
 
@@ -447,8 +494,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
     {
-        elog( WARNING, "poly preprocessing failure" );
-        PG_RETURN_NULL();
+        elog( ERROR, "Polygon post-processing failure" );
     }
 
 #ifdef DEBUG
@@ -457,6 +503,9 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 #endif
     mp_subj = poly_to_mpoly( buff_polys[0] );
     mp_clip = poly_to_mpoly( buff_polys[1] );
+    buff_polys[0] = NULL;
+    buff_polys[1] = NULL;
+
     mp_result = compute(
         mp_subj,
         mp_clip,
@@ -467,7 +516,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
     if( mp_result == NULL )
     {
-        elog( WARNING, "Polygons have no intersection" );
+        elog( DEBUG, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -475,8 +524,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        elog( WARNING, "Polygon type conversion failed" );
-        PG_RETURN_NULL();
+        elog( ERROR, "Polygon type conversion failed" );
     }
 
     new_polygon  = result_polys[0];
@@ -484,14 +532,20 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
-        elog( WARNING, "Polygons have no intersection" );
+        elog( DEBUG, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
     new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
+    set_polygon_boundbox( new_polygon );    
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+    if( new_polygon == NULL )
+    {
+        elog( ERROR, "Polygon post-processing error" );
+    }
+
     SET_VARSIZE(
         new_polygon,
         offsetof( POLYGON, p )
@@ -528,8 +582,7 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 
     if( sorted_polys == NULL )
     {
-        elog( WARNING, "poly preprocessing failure" );
-        PG_RETURN_NULL();
+        elog( ERROR, "Polygon pre-processing failure" );
     }
 
     if( num_poly == 1 )
@@ -545,8 +598,6 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
         PG_RETURN_POLYGON_P( new_polygon );
     }
 
-    new_polygon = sorted_polys[0];
-
     result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
 
     if( result_polys == NULL )
@@ -559,6 +610,8 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
             )
         );
     }
+    
+    new_polygon = sorted_polys[0];
 
     for( i = 1; i < num_poly; i++ )
     {
@@ -568,7 +621,8 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 #endif // DEBUG
         mp_subj = poly_to_mpoly( new_polygon );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
-
+        new_polygon     = NULL;
+        sorted_polys[i] = NULL;
         mp_result = compute(
             mp_subj,
             mp_clip,
@@ -581,7 +635,7 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 #endif // DEBUG
         if( mp_result == NULL )
         {
-            elog( WARNING, "Polygons have no intersection" );
+            elog( DEBUG, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -589,14 +643,14 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 
         if( result_polys == NULL )
         {
-            elog( WARNING, "Polygon type conversion failed" );
+            elog( ERROR, "Polygon type conversion failed" );
         }
 
         new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( WARNING, "Polygons have no intersection" );
+            elog( DEBUG, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -614,15 +668,30 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
     // De-scale polygon prior to output
     new_polygon = poly_postprocessing( new_polygon, centers, num_poly, true );
 
-    for( i = 0; i < num_poly; i++ )
+    if( centers != NULL )
     {
-        pfree( centers[i] );
+        for( i = 0; i < num_poly; i++ )
+        {
+            if( centers[i] != NULL )
+            {
+                pfree( centers[i] );
+                centers[i] = NULL;
+            }
+        }
+
+        pfree( centers );
+        centers = NULL;
     }
 
-    pfree( centers );
+    set_polygon_boundbox( new_polygon );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+
+    if( new_polygon == NULL )
+    {
+        elog( ERROR, "Polygon post-processing error" );
+    }
 
     SET_VARSIZE(
         new_polygon,
@@ -662,8 +731,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
     {
-        elog( WARNING, "poly preprocessing failure" );
-        PG_RETURN_NULL();
+        elog( ERROR, "Polygon pre-processing failure" );
     }
 
     result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
@@ -685,6 +753,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 #endif
     mp_subj = poly_to_mpoly( buff_polys[0] );
     mp_clip = poly_to_mpoly( buff_polys[1] );
+
     mp_result = compute(
         mp_subj,
         mp_clip,
@@ -693,7 +762,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     if( mp_result == NULL )
     {
-        elog( WARNING, "Polygons have no intersection" );
+        elog( DEBUG, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -701,8 +770,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        elog( WARNING, "Polygon type conversion failed" );
-        PG_RETURN_NULL();
+        elog( ERROR, "Polygon type conversion failed" );
     }
 
     new_polygon  = result_polys[0];
@@ -710,17 +778,44 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
-        elog( WARNING, "Polygons have no intersection" );
+        elog( DEBUG, "Polygons have no intersection" );
+
+        if( centers[0] != NULL )
+        {
+            pfree( centers[0] );
+        }
+
+        if( centers[1] != NULL )
+        {
+            pfree( centers[1] );
+        }
+
         PG_RETURN_NULL();
     }
 
     new_polygon = poly_postprocessing( new_polygon, centers, 2, true );
 
-    pfree( centers[0] );
-    pfree( centers[1] );
+    if( centers[0] != NULL )
+    {
+        pfree( centers[0] );
+        centers[0] = NULL;
+    }
+
+    if( centers[1] != NULL )
+    {
+        pfree( centers[1] );
+        centers[1] = NULL;
+    }
+
+    set_polygon_boundbox( new_polygon );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+    if( new_polygon == NULL )
+    {
+        elog( ERROR, "Polygon post-processing error" );
+    }
+
     SET_VARSIZE(
         new_polygon,
         offsetof( POLYGON, p )
@@ -757,7 +852,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
     if( sorted_polys == NULL )
     {
-        elog( WARNING, "poly preprocessing failure" );
+        elog( ERROR, "Polygon pre-processing failure" );
         PG_RETURN_NULL();
     }
 
@@ -797,7 +892,8 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 #endif
         mp_subj = poly_to_mpoly( new_polygon );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
-
+        new_polygon     = NULL;
+        sorted_polys[i] = NULL;
         mp_result = compute(
             mp_subj,
             mp_clip,
@@ -811,7 +907,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
         if( mp_result == NULL )
         {
-            elog( WARNING, "Polygons have no intersection" );
+            elog( DEBUG, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -819,15 +915,14 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
         if( result_polys == NULL )
         {
-            elog( WARNING, "Polygon type conversion failed" );
-            PG_RETURN_NULL();
+            elog( ERROR, "Polygon type conversion failed" );
         }
 
         new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( WARNING, "Polygons have no intersection" );
+            elog( DEBUG, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -839,20 +934,48 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
+        if( centers != NULL )
+        {
+            for( i = 0; i < num_poly; i++ )
+            {
+                if( centers[i] != NULL )
+                {
+                    pfree( centers[i] );
+                    centers[i] = NULL;
+                }
+            }
+
+            pfree( centers );
+            centers = NULL;
+        }
         PG_RETURN_NULL();
     }
 
     new_polygon = poly_postprocessing( new_polygon, centers, num_poly, false );
+    set_polygon_boundbox( new_polygon );
 
-    for( i = 0; i < num_poly; i++ )
+    if( centers != NULL )
     {
-        pfree( centers[i] );
-    }
+        for( i = 0; i < num_poly; i++ )
+        {
+            if( centers[i] != NULL )
+            {
+                pfree( centers[i] );
+                centers[i] = NULL;
+            }
+        }
 
-    pfree( centers );
+        pfree( centers );
+        centers = NULL;
+    }
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+
+    if( new_polygon == NULL )
+    {
+        elog( ERROR, "Polygon post-processing error" );
+    }
 
     SET_VARSIZE(
         new_polygon,
@@ -892,8 +1015,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
     {
-        elog( WARNING, "poly preprocessing failure" );
-        PG_RETURN_NULL();
+        elog( ERROR, "Polygon pre-processing failure" );
     }
 
     result_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
@@ -915,6 +1037,8 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 #endif
     mp_subj = poly_to_mpoly( buff_polys[0] );
     mp_clip = poly_to_mpoly( buff_polys[1] );
+    buff_polys[0] = NULL;
+    buff_polys[1] = NULL;
     mp_result = compute(
         mp_subj,
         mp_clip,
@@ -923,7 +1047,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
     if( mp_result == NULL )
     {
-        elog( WARNING, "Polygons have no intersection" );
+        elog( DEBUG, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -931,8 +1055,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        elog( WARNING, "Polygon type conversion failed" );
-        PG_RETURN_NULL();
+        elog( ERROR, "Polygon type conversion failed" );
     }
 
     new_polygon  = result_polys[0];
@@ -940,16 +1063,46 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
-        elog( WARNING, "Polygons have no intersection" );
+        elog( DEBUG, "Polygons have no intersection" );
+
+        if( centers[0] != NULL )
+        {
+            pfree( centers[0] );
+            centers[0] = NULL;
+        }
+
+        if( centers[1] != NULL )
+        {
+            pfree( centers[1] );
+            centers[1] = NULL;
+        }
+
         PG_RETURN_NULL();
     }
 
     new_polygon = poly_postprocessing( new_polygon, centers, 2, true );
-    pfree( centers[0] );
-    pfree( centers[1] );
+
+    if( centers[0] != NULL )
+    {
+        pfree( centers[0] );
+        centers[0] = NULL;
+    }
+
+    if( centers[1] != NULL )
+    {
+        pfree( centers[1] );
+        centers[1] = NULL;
+    }
+
+    set_polygon_boundbox( new_polygon );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+    if( new_polygon == NULL )
+    {
+        elog( ERROR, "Polygon post-processing error" );
+    }
+
     SET_VARSIZE(
         new_polygon,
         offsetof( POLYGON, p )

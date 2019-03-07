@@ -421,11 +421,54 @@ void remove_colinear_point( POLYGON ** poly, Point * colinear_point )
         new_poly->p[i].y = (*poly)->p[i + offset].y;
     }
 
-    pfree( (*poly) );
-
     colinear_point->x = 0;
     colinear_point->y = 0;
+
+    pfree( (*poly) );
+
     (*poly) = new_poly;
+    return;
+}
+
+void set_polygon_boundbox( POLYGON * p )
+{
+    double       max_x = -DBL_MAX;
+    double       min_x = DBL_MAX;
+    double       max_y = -DBL_MAX;
+    double       min_y = DBL_MAX;
+    unsigned int i     = 0;
+
+    if( p == NULL )
+    {
+        return;
+    }
+
+    for( i = 0; i < p->npts; i++ )
+    {
+        if( p->p[i].x > max_x )
+        {
+            max_x = p->p[i].x;
+        }
+        else if( p->p[i].x < min_x )
+        {
+            min_x = p->p[i].x;
+        }
+
+        if( p->p[i].y > max_y )
+        {
+            max_y = p->p[i].y;
+        }
+        else if( p->p[i].y < min_y )
+        {
+            min_y = p->p[i].y;
+        }
+    }
+
+    p->boundbox.high.x = max_x;
+    p->boundbox.high.y = max_y;
+    p->boundbox.low.x  = min_x;
+    p->boundbox.low.y  = min_y;
+
     return;
 }
 

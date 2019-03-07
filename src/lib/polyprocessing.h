@@ -36,6 +36,7 @@ extern POLYGON * poly_preprocessing( POLYGON *, bool, Point ** );
 extern POLYGON * poly_postprocessing( POLYGON *, Point **, unsigned int, bool );
 extern bool points_colinear( Point *, Point *, Point * );
 extern void remove_colinear_point( POLYGON **, Point * );
+extern void set_polygon_boundbox( POLYGON * );
 #ifdef DEBUG
 extern void dump_polygon( POLYGON * );
 #endif // DEBUG
