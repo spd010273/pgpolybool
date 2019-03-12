@@ -20,6 +20,26 @@
  * in the disk buffer.
  */
 
+/*
+ * POLYGON * poly_preprocessing( POLYGON *, bool, Point ** )
+ *
+ *      Polygon preprocessing function that scales the input polygon by ZOOM_RATE.
+ *      This is useful for UNION and INTERSECTION ops, where the polygons may
+ *      share a boarder that can impact the output, where the underlying algorithm
+ *      requires an intersection of > 0 area to exist in order to produce
+ *      meaningful output
+ *
+ * Arguments:
+ *     POLYGON * current_poly: Input polygon to be scaled
+ *     bool      scale:        Flag that indicates scaling should take place.
+ *     Point **  center:       Pass-by-reference center of the scaled polygon.
+ *                             This is used to accurately scale the polygon to
+ *                             its original size.
+ * Return:
+ *     POLYGON * buff_poly:    Scaled / buffered polygon
+ * Error Conditions:
+ *     Emits error on failure to allocate memory
+ */
 POLYGON * poly_preprocessing(
     POLYGON * current_poly,
     bool scale,
@@ -84,6 +104,38 @@ POLYGON * poly_preprocessing(
     return buff_poly;
 }
 
+/*
+ * POLYGON ** poly_preprocessing_array(
+ *     ArrayType *,
+ *     bool,
+ *     bool,
+ *     Point ***,
+ *     unsigned int *
+ * )
+ *
+ *      Polygon preprocessing function that:
+ *      - scales the input polygons by ZOOM_RATE.
+ *      - sorts the polygons by their centroid distances from element 0
+ *      This is useful for UNION and INTERSECTION ops, where the polygons may
+ *      share a boarder that can impact the output, where the underlying algorithm
+ *      requires an intersection of > 0 area to exist in order to produce
+ *      meaningful output.
+ *      The sorting is useful for all ops other than XOR and DIFFERENCE.
+ *
+ * Arguments:
+ *     ArrayType * polyarray:   Input polygon array to be sorted / scaled
+ *     bool      scale:         Flag that indicates scaling should take place.
+ *     bool      sort           Flag that indicates the elements of the array
+ *                              should be sorted
+ *     Point *** center:        Pass-by-reference array of polygon centroids.
+ *     unsigned int * num_poly: Number of polygons allocated in the output
+ *                              array.
+ * Return:
+ *     POLYGON ** buff_poly:    Scaled / buffered polygon array
+ * Error Conditions:
+ *     Emits error on failure to allocate memory
+ *     Emits error on NULL input array element
+ */
 POLYGON ** poly_preprocessing_array(
     ArrayType * polyarray,
     bool sort,
@@ -254,6 +306,31 @@ POLYGON ** poly_preprocessing_array(
     return ret;
 }
 
+/*
+ * POLYGON * poly_postprocessing(
+ *     POLYGON *,
+ *     Point **,
+ *     unsigned int *
+ *     bool
+ * )
+ *
+ *     This function rescales the output by ZOOM_RATE relative to the previous
+ *     centroid of the polygon. This function also removes colinear points from
+ *     output polygon.
+ *
+ * Arguments:
+ *     POLYGON * poly:           Input polygon to be de-scaled.
+ *     Point ** centers:         Array of centroids. Since the polygon may have
+ *                               come from an operation that took > 1 polygon
+ *                               as an input, we select the closest centroid as
+ *                               the rescaling point.
+ *     unsigned int num_centers: Number of centroids in the centers array
+ *     bool         scale:       Flag indicating we should rescale the input
+ * Output:
+ *     POLYGON * poly:           optionally scaled output polygon.
+ * Error Conditions:
+ *     None.
+ */
 POLYGON * poly_postprocessing(
     POLYGON *    poly,
     Point **     centers,
@@ -308,7 +385,6 @@ POLYGON * poly_postprocessing(
         }
     }
 
-    // TODO: Eliminate duplicate points and points that are coincident / colinear
     if( poly->npts < 3 )
     {
         return poly;
@@ -362,6 +438,24 @@ POLYGON * poly_postprocessing(
     return poly;
 }
 
+/*
+ *  bool points_colinear(
+ *      Point *,
+ *      Point *,
+ *      Point *
+ *  )
+ *
+ *      Function for testing if three points lie on the same line
+ *
+ *  Arguments:
+ *      Point * p0: First point under test
+ *      Point * p1: Second point under test
+ *      Point * p2: Third point under test
+ *  Result:
+ *      bool result: True indicates that the point lie on the same line
+ *  Error Conditions:
+ *      None
+ */
 bool points_colinear( Point * p0, Point * p1, Point * p2 )
 {
     double area = 0.0;
@@ -381,6 +475,19 @@ bool points_colinear( Point * p0, Point * p1, Point * p2 )
     return false;
 }
 
+/*
+ * void remove_colinear_point( POLYGON **, Point * )
+ *
+ *     Removes the specified point from a polygon
+ *
+ * Arguments:
+ *     Polygon ** poly:        Polygon from which the point in being removed.
+ *     Point * colinear_point: Point to be removed
+ * Return:
+ *     None
+ * Error Conditions:
+ *     Emits error on failure to allocate a new polygon
+ */
 void remove_colinear_point( POLYGON ** poly, Point * colinear_point )
 {
     POLYGON *    new_poly = NULL;
@@ -430,6 +537,18 @@ void remove_colinear_point( POLYGON ** poly, Point * colinear_point )
     return;
 }
 
+/*
+ * double get_polygon_area( POLYGON * )
+ *
+ *     Returns the area of a given polygon using Gauss' area formula
+ *
+ * Arguments:
+ *     Polygon * p: The polygon for which we are finding the area
+ * Return
+ *     double area: The area of the polygon
+ * Error Conditions:
+ *     None
+ */
 double get_polygon_area( POLYGON * p )
 {
     double       p_area = 0.0;
@@ -467,6 +586,18 @@ double get_polygon_area( POLYGON * p )
     return p_area;
 }
 
+/*
+ * void set_polygon_boundbox( POLYGON * )
+ *
+ *     Sets the polygon's boundingbox based on the polygons points
+ *
+ * Arguments:
+ *     POLYGON * p: The polygon we are finding a bounding box for
+ * Return:
+ *     None
+ * Error Conditions:
+ *     None
+ */
 void set_polygon_boundbox( POLYGON * p )
 {
     double       max_x = -DBL_MAX;
@@ -509,10 +640,27 @@ void set_polygon_boundbox( POLYGON * p )
     return;
 }
 
+/*
+ * void dump_polygon( POLYGON * )
+ *
+ *     Dump the POLYGON struct for inspection
+ *
+ * Arguments:
+ *     POLYGON * p: The polygon to be inspected
+ * Return:
+ *     None
+ * Error Conditions:
+ *     None
+ */
 #ifdef DEBUG
 void dump_polygon( POLYGON * p )
 {
     unsigned int i = 0;
+
+    if( p == NULL )
+    {
+        return;
+    }
 
     elog( DEBUG1,
         "\nDumping POLYGON======================== ADDR: %9p\n"\
