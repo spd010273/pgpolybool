@@ -48,9 +48,4 @@ extern unsigned int find_intersection(
 
 extern bool points_equal( Point *, Point * );
 extern double dot_product( Point *, Point * );
-extern bool _fp_gte( double, double );
-extern bool _fp_gt( double, double );
-extern bool _fp_lte( double, double );
-extern bool _fp_lt( double, double );
-extern bool _fp_eq( double, double );
 #endif // UTIL_H
