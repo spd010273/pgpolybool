@@ -1126,6 +1126,8 @@ Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
     float8       max_x    = -DBL_MAX;
     float8       min_y    = DBL_MAX;
     float8       max_y    = -DBL_MAX;
+    float8       x        = 0.0;
+    float8       y        = 0.0;
 
     if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
     {
@@ -1171,8 +1173,11 @@ Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
 
     for( i = 0; i < poly->npts; i++ )
     {
-        poly->p[i].x = ( poly->p[i].x * cos( radians ) )
-                     - ( poly->p[i].y * sin( radians ) )
+        x = poly->p[i].x;
+        y = poly->p[i].y;
+
+        poly->p[i].x = ( x * cos( radians ) )
+                     - ( y * sin( radians ) )
                      + (
                           center.x
                         - (
@@ -1180,8 +1185,8 @@ Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
                             - center.y * sin( radians )
                           )
                        );
-        poly->p[i].y = ( poly->p[i].x * sin( radians ) )
-                     + ( poly->p[i].y * cos( radians ) )
+        poly->p[i].y = ( x * sin( radians ) )
+                     + ( y * cos( radians ) )
                      + (
                           center.y
                         - (
