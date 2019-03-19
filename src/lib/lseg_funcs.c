@@ -353,26 +353,20 @@ LSEG ** line_segment_orthogonal_line_segment(
     double  length
 )
 {
-    LSEG **      result = NULL;
-    double       A      = 0.0;
-    double       B      = 0.0;
-    double       C      = 0.0;
-    double       D      = 0.0;
-    double       E      = 0.0;
-    double       F      = 0.0;
-    double       curr_s = 0.0; // For orth slope
-    double       targ_s = 0.0;
-    double       y_int  = 0.0;
-    double       d1     = 0.0; // For distance comp
-    double       d2     = 0.0;
-    double       a      = 0.0; // For quadratic solution
-    double       b      = 0.0;
-    double       c      = 0.0;
-    double       x1     = 0.0;
-    double       x2     = 0.0;
-    double       y1     = 0.0;
-    double       y2     = 0.0;
-    unsigned int size   = 0;
+    LSEG **      result     = NULL;
+    double       curr_slope = 0.0; // input line slope
+    double       targ_slope = 0.0; // output line slope
+    double       y_int      = 0.0;
+    double       d1         = 0.0; // For distance comp
+    double       d2         = 0.0;
+    double       a          = 0.0; // For quadratic solution
+    double       b          = 0.0;
+    double       c          = 0.0;
+    double       x1         = 0.0; // For result
+    double       x2         = 0.0;
+    double       y1         = 0.0;
+    double       y2         = 0.0;
+    unsigned int size       = 0;
 
     if( segment == NULL )
     {
@@ -428,91 +422,90 @@ LSEG ** line_segment_orthogonal_line_segment(
         );
     }
 
-    A = segment->p[0].x;
-    B = segment->p[0].y;
-    C = segment->p[1].x;
-    D = segment->p[1].y;
-
-    result[0]->p[0].x = ( A + C ) / 2;
-    result[0]->p[0].y = ( B + D ) / 2;
-
+    // Store midpoint as the origin of our output vector
+    result[0]->p[0].x = ( segment->p[0].x + segment->p[1].x ) / 2;
+    result[0]->p[0].y = ( segment->p[0].y + segment->p[1].y ) / 2;
+    
     if( away_point == NULL )
     {
         result[1]->p[0].x = result[0]->p[0].x;
         result[1]->p[0].y = result[0]->p[0].y;
     }
 
-    E = result[0]->p[0].x;
-    F = result[0]->p[0].y;
-
-    if( A == C ) // Current slope is inf, target slope is 0
+    if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
     {
-        result[0]->p[1].y = F;
+        // Current slope is infinite (vertical line), target slope is 0
+        result[0]->p[1].y = result[0]->p[0].y;
 
         if( away_point != NULL )
         {
-            result[0]->p[1].x = E + length;
+            result[0]->p[1].x = result[0]->p[0].x + length;
             d1 = distance( away_point, &(result[0]->p[1]) );
-            result[0]->p[1].x = E - length;
+            result[0]->p[1].x = result[0]->p[0].x - length;
             d2 = distance( away_point, &(result[0]->p[1]) );
 
             if( d1 > d2 )
             {
-                result[0]->p[1].x = E + length;
+                result[0]->p[1].x = result[0]->p[0].x + length;
             }
         }
         else
         {
-            result[1]->p[1].y = F;
-            result[0]->p[1].x = E + length;
-            result[1]->p[1].x = E - length;
+            result[1]->p[1].y = result[0]->p[0].y;
+            result[0]->p[1].x = result[0]->p[0].x + length;
+            result[1]->p[1].x = result[0]->p[0].x - length;
         }
     }
-    else if( B == D ) // Current slope is 0, target_slope is inf
+    else if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
     {
-        result[0]->p[1].x = E;
+        // Current slope is 0 (horizontal line), target slope is infinite
+        result[0]->p[1].x = result[0]->p[0].x;
 
         if( away_point != NULL )
         {
-            result[0]->p[1].y = F + length;
+            result[0]->p[1].y = result[0]->p[0].y + length;
             d1 = distance( away_point, &(result[0]->p[1]) );
-            result[0]->p[1].y = F - length;
+            result[0]->p[1].y = result[0]->p[0].y - length;
             d2 = distance( away_point, &(result[0]->p[1]) );
 
             if( d1 > d2 )
             {
-                result[0]->p[1].y = F + length;
+                result[0]->p[1].y = result[0]->p[0].y + length;
             }
         }
         else
         {
-            result[1]->p[1].x = E;
-            result[0]->p[1].y = F + length;
-            result[1]->p[1].y = F - length;
+            result[1]->p[1].x = result[0]->p[0].x;
+            result[0]->p[1].y = result[0]->p[0].y + length;
+            result[1]->p[1].y = result[0]->p[0].y - length;
         }
     }
     else
     {
         // Solve for y = mx + b
-        curr_s = ( A - C ) / ( B - D );
-        targ_s = pow( curr_s, -1 ) * -1;
-        y_int  = F - ( E * targ_s );
+        curr_slope = ( segment->p[0].y - segment->p[1].y ) / ( segment->p[0].x - segment->p[1].x );
+        targ_slope = curr_slope * -1;
+        y_int      = result[0]->p[0].y - ( result[0]->p[0].x * targ_slope );
 
-        // Find quadratic solution to sqrt( ( E - x )^2 + ( F - y )^2 ) = length
-        a = 1 + ( targ_s * targ_s );
-        b = ( 2 * targ_s * y_int ) - ( 2 * F * targ_s ) - ( 2 * E );
-        c = ( E * E ) + ( F * F ) - ( 2 * F * y_int ) + ( y_int * y_int ) - ( length * length );
+        // Find quadratic solution to sqrt( ( midpoint_x - x )^2 + ( midpoint_y - y )^2 ) = length
+        a = 1 + pow( targ_slope, 2 );
+        b = ( 2 * targ_slope * y_int )
+          - ( 2 * result[0]->p[0].y * targ_slope )
+          - ( 2 * result[0]->p[0].x );
+        c = pow( result[0]->p[0].x, 2 ) + pow( result[0]->p[0].y, 2 )
+          - ( 2 * result[0]->p[0].y * y_int ) + pow( y_int, 2 )
+          - pow( length, 2 );
 
-        if( ( b * b ) < ( 4 * a * c ) )
+        if( pow( b, 2 ) < ( 4 * a * c ) )
         {
             elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
             return NULL;
         }
 
-        x1 = ( -b + sqrt( ( b * b ) - ( 4 * a * c ) ) ) / ( 2 * a );
-        x2 = ( -b - sqrt( ( b * b ) - ( 4 * a * c ) ) ) / ( 2 * a );
-        y1 = targ_s * x1 + y_int;
-        y2 = targ_s * x2 + y_int;
+        x1 = ( -b + sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
+        x2 = ( -b - sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
+        y1 = targ_slope * x1 + y_int;
+        y2 = targ_slope * x2 + y_int;
 
         result[0]->p[1].x = x1;
         result[0]->p[1].y = y1;

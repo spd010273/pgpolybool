@@ -54,3 +54,6 @@ RETURNS LSEG IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_orth
 
 CREATE OR REPLACE FUNCTION fn_get_orthogonal_segments( seg LSEG, length DOUBLE PRECISION DEFAULT 1.0 )
 RETURNS LSEG[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_orthogonal_segments';
+
+CREATE OR REPLACE FUNCTION fn_create_reflected_box( line LSEG, ortho LSEG )
+RETURNS BOX IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_create_reflected_box';

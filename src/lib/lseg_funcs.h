@@ -1,6 +1,6 @@
 /*------------------------------------------------------------------------------
  * lseg_funcs.h
- *      Header File for PostgreSQL LSEG functions
+ *      Header File for pgpolybool LSEG functions
  *
  * Copyright (c) 2018, Nead Werx, Inc.
  * Copyright (c) 2018, Chris Autry

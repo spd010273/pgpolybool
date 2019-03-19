@@ -21,6 +21,8 @@
 #include "martinez.h"
 #include "polyprocessing.h"
 #include "lseg_funcs.h"
+#include "box_funcs.h"
+#include "poly_funcs.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -55,6 +57,7 @@ PG_FUNCTION_INFO_V1( fn_lseg_intersect );
 PG_FUNCTION_INFO_V1( fn_lseg_intersect_point );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segment );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segments );
+PG_FUNCTION_INFO_V1( fn_create_reflected_box );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -1118,16 +1121,8 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
 Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
 {
-    POLYGON *    poly     = NULL;
-    float8       radians  = 0.0;
-    int32        i        = 0;
-    Point        center   = {0.0};
-    float8       min_x    = DBL_MAX;
-    float8       max_x    = -DBL_MAX;
-    float8       min_y    = DBL_MAX;
-    float8       max_y    = -DBL_MAX;
-    float8       x        = 0.0;
-    float8       y        = 0.0;
+    POLYGON * poly    = NULL;
+    float8    radians = 0.0;
 
     if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
     {
@@ -1137,75 +1132,7 @@ Datum fn_rotate_polygon( PG_FUNCTION_ARGS )
     poly    = PG_GETARG_POLYGON_P_COPY(0);
     radians = PG_GETARG_FLOAT8(1);
 
-    if(
-            radians > ( 2 * PI + DBL_EPSILON )
-         || radians < - ( 2 * PI - DBL_EPSILON )
-      )
-    {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE ),
-                errmsg( "radians argument must be between -2pi and 2pi" )
-            )
-        );
-    }
-
-    if( poly == NULL )
-    {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_NULL_VALUE_NOT_ALLOWED ),
-                errmsg( "Polygon may not be NULL" )
-            )
-        );
-    }
-
-    if( fabs( radians ) <= DBL_EPSILON )
-    {
-        PG_RETURN_POLYGON_P( poly );
-    }
-
-    // Get center from boundingbox
-    center.x = ( poly->boundbox.high.x + poly->boundbox.low.x ) / 2;
-    center.y = ( poly->boundbox.high.y + poly->boundbox.low.y ) / 2;
-
-    for( i = 0; i < poly->npts; i++ )
-    {
-        x = poly->p[i].x;
-        y = poly->p[i].y;
-
-        poly->p[i].x = ( x * cos( radians ) )
-                     - ( y * sin( radians ) )
-                     + (
-                          center.x
-                        - (
-                              center.x * cos( radians )
-                            - center.y * sin( radians )
-                          )
-                       );
-        poly->p[i].y = ( x * sin( radians ) )
-                     + ( y * cos( radians ) )
-                     + (
-                          center.y
-                        - (
-                              center.x * sin( radians )
-                            + center.y * cos( radians )
-                          )
-                       );
-
-        // Generate new bounding box inline
-        max_x = ( poly->p[i].x > max_x ) ? poly->p[i].x : max_x;
-        min_x = ( poly->p[i].x < min_x ) ? poly->p[i].x : min_x;
-        max_y = ( poly->p[i].y > max_y ) ? poly->p[i].y : max_y;
-        min_y = ( poly->p[i].y < min_y ) ? poly->p[i].y : min_y;
-    }
-
-    poly->boundbox.high.x = max_x;
-    poly->boundbox.high.y = max_y;
-    poly->boundbox.low.x  = min_x;
-    poly->boundbox.low.y  = min_y;
+    rotate_polygon( poly, radians );
 
     PG_RETURN_POLYGON_P( poly );
 }
@@ -1216,7 +1143,7 @@ Datum fn_get_polygon_points( PG_FUNCTION_ARGS )
     unsigned int i         = 0;
     ArrayType *  result    = NULL;
     Datum *      elements  = NULL;
-
+    Point **     p_result  = NULL;
     int16        typlen;
     char         typalign;
     bool         typbyval;
@@ -1229,6 +1156,13 @@ Datum fn_get_polygon_points( PG_FUNCTION_ARGS )
     poly = PG_GETARG_POLYGON_P(0);
 
     if( poly == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    p_result = get_polygon_points( poly );
+
+    if( p_result == NULL )
     {
         PG_RETURN_NULL();
     }
@@ -1248,10 +1182,11 @@ Datum fn_get_polygon_points( PG_FUNCTION_ARGS )
 
     for( i = 0; i < poly->npts; i++ )
     {
-        elements[i] = PointPGetDatum( &(poly->p[i]) );
+        elements[i] = PointPGetDatum( p_result[i] );
     }
 
     get_typlenbyvalalign( POINTOID, &typlen, &typbyval, &typalign );
+
     result = construct_array(
         elements,
         poly->npts,
@@ -1593,6 +1528,112 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
     PG_RETURN_ARRAYTYPE_P( result );
 }
 
+Datum fn_create_reflected_box( PG_FUNCTION_ARGS )
+{
+    /*
+     *  Given an input line segment and an orthogonal line segment, we return a
+     *  box that extends from the line segment by the orthogonal line segment's
+     *  length, and has the line segment as one of its sides.
+     *
+     *  EX:
+     *
+     *  |
+     *  |        orthogonal segment
+     *  |          v
+     *  +------------
+     *  |
+     *  |
+     *  |
+     *
+     *  ^ line segment
+     *
+     *  Output:
+     *  
+     *  +-----------+
+     *  |           |
+     *  |           |
+     *  |           |
+     *  |           |
+     *  |           |
+     *  +-----------+
+     */
+    LSEG * line        = NULL;
+    LSEG * ortho_line  = NULL;
+    BOX *  output      = NULL;
+    double ortho_m     = 0.0;
+    double line_m      = 0.0;
+    double ortho_b     = 0.0;
+    double line_b      = 0.0;
+    unsigned int ortho_index = 0;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    line       = PG_GETARG_LSEG_P(0);
+    ortho_line = PG_GETARG_LSEG_P(1);
+
+    if( line == NULL || ortho_line == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    output = palloc0( sizeof( BOX ) );
+
+    if( output == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate structure for result" )
+            )
+        );
+    }
+
+    /*
+     * We have two line segments that are orthogonal (we'll probably need to verify this)
+     * What we actually have are 4 points, We have half of our solution, which is either point
+     * on the input line segment (line). We need to find a point P that is 
+     *
+     */
+
+    output->high.x = line->p[0].x;
+    output->high.y = line->p[0].y;
+
+    ortho_m = ( ortho_line->p[0].y - ortho_line->p[1].y )
+            / ( ortho_line->p[0].x - ortho_line->p[1].x );
+    line_m  = ( line->p[0].y - line->p[1].y )
+            / ( line->p[0].x - line->p[1].x );
+   
+    line_b = line->p[1].y - line_m * line->p[1].x;
+    
+    if( fabs( ortho_line->p[0].y - ( line_m * ortho_line->p[0].x + line_b )) < DBL_EPSILON )
+    {
+        ortho_index = 0;
+    }
+    else if( fabs( ortho_line->p[1].y - ( line_m * ortho_line->p[1].x + line_b )) < DBL_EPSILON )
+    {
+        ortho_index = 1;
+    }
+    else
+    {
+        pfree( output );
+        PG_RETURN_NULL();
+    }
+    // We have the slopes, now we need to find the y-intercepts of the equation y=mx+b with x,y being our points
+    
+    ortho_b = line->p[1].y - ortho_m * line->p[1].x;
+    line_b  = ortho_line->p[ortho_index].y - line_m * ortho_line->p[ortho_index].x;
+
+    // Basically after a gnarley system of linear equations, you arrive at:
+    output->low.y = ( -( ( ortho_b * line_m ) / ortho_m ) + line_b ) / ( 1 - line_m / ortho_m );
+    output->low.x = ( output->low.y - line_b ) / line_m;
+
+    PG_RETURN_BOX_P( output );
+}
+
 Datum fn_get_polygon_area( PG_FUNCTION_ARGS )
 {
     POLYGON * poly = NULL;
@@ -1611,3 +1652,4 @@ Datum fn_get_polygon_area( PG_FUNCTION_ARGS )
 
     PG_RETURN_FLOAT8( get_polygon_area( poly ) );
 }
+
