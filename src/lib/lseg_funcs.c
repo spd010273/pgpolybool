@@ -484,10 +484,11 @@ LSEG ** line_segment_orthogonal_line_segment(
     {
         // Solve for y = mx + b
         curr_slope = ( segment->p[0].y - segment->p[1].y ) / ( segment->p[0].x - segment->p[1].x );
-        targ_slope = curr_slope * -1;
+        targ_slope = -1.0 / curr_slope;
         y_int      = result[0]->p[0].y - ( result[0]->p[0].x * targ_slope );
 
         // Find quadratic solution to sqrt( ( midpoint_x - x )^2 + ( midpoint_y - y )^2 ) = length
+        /*
         a = 1 + pow( targ_slope, 2 );
         b = ( 2 * targ_slope * y_int )
           - ( 2 * result[0]->p[0].y * targ_slope )
@@ -495,7 +496,13 @@ LSEG ** line_segment_orthogonal_line_segment(
         c = pow( result[0]->p[0].x, 2 ) + pow( result[0]->p[0].y, 2 )
           - ( 2 * result[0]->p[0].y * y_int ) + pow( y_int, 2 )
           - pow( length, 2 );
-
+        */
+        a = 1.0 + pow( targ_slope, 2 );
+        b = ( -2.0 * result[0]->p[0].x )
+          * ( 1 - pow( targ_slope, 2 ) );
+        c = pow( result[0]->p[0].x, 2 )
+          * ( 1 + pow( targ_slope, 2 ) );
+        
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
             elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
