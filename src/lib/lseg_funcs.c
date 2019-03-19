@@ -501,7 +501,8 @@ LSEG ** line_segment_orthogonal_line_segment(
         b = ( -2.0 * result[0]->p[0].x )
           * ( 1 - pow( targ_slope, 2 ) );
         c = pow( result[0]->p[0].x, 2 )
-          * ( 1 + pow( targ_slope, 2 ) );
+          * ( 1 + pow( targ_slope, 2 ) )
+          - pow( length, 2 );
         
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
