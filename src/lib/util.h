@@ -19,7 +19,7 @@
 #include "segment.h"
 #include <math.h>
 
-#define FP_FUDGE_FACTOR 128
+#define FP_FUDGE_FACTOR 4096
 
 #ifndef DBL_EPSILON
 #define DBL_EPSILON (2.2204460492503131e-16) * FP_FUDGE_FACTOR

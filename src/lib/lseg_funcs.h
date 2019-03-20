@@ -17,6 +17,7 @@
 #include "postgres.h"
 #include "martinez.h"
 #include "utils/geo_decls.h"
+#include "util.h"
 
 extern bool line_segment_intersect( LSEG *, LSEG * );
 extern double line_segment_distance( LSEG *, LSEG * ); 

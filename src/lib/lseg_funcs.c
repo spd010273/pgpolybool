@@ -513,8 +513,10 @@ LSEG ** line_segment_parallel_line_segment(
         // 0 = ( 1 + targ_slope^2 )( x^2 - 2 * endpoint_x * x + endpoint_x^2 ) - line_distance^2
         // Which feeds into the following quadratic:
         a   = 1.0 + ( targ_slope * targ_slope );
+
         b_0 = -1.0 * a * 2 * segment->p[0].x;
         c_0 = a * segment->p[0].x * segment->p[0].x - line_distance * line_distance;
+
         b_1 = -1.0 * a * 2 * segment->p[1].x;
         c_1 = a * segment->p[1].x * segment->p[1].x - line_distance * line_distance;
 
@@ -550,13 +552,15 @@ LSEG ** line_segment_parallel_line_segment(
         // coordinate<solution #>_<point_index>
 
         x1_0 = ( -b_0 + sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
-        x2_0 = ( -b_0 - sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
         y1_0 = targ_slope * x1_0 + y_int_0;
+
+        x2_0 = ( -b_0 - sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
         y2_0 = targ_slope * x2_0 + y_int_0;
 
         x1_1 = ( -b_1 + sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
-        x2_1 = ( -b_1 - sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
         y1_1 = targ_slope * x1_1 + y_int_1;
+
+        x2_1 = ( -b_1 - sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
         y2_1 = targ_slope * x2_1 + y_int_1;
 
         result[0]->p[0].x = x1_0;
