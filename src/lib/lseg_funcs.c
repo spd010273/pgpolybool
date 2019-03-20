@@ -377,7 +377,7 @@ LSEG ** line_segment_orthogonal_line_segment(
 
     if( away_point == NULL )
     {
-        size = 2;
+        size++;
     }
 
     result = ( LSEG ** ) palloc0( sizeof( LSEG * ) * size );
@@ -423,11 +423,12 @@ LSEG ** line_segment_orthogonal_line_segment(
     }
 
     // Store midpoint as the origin of our output vector
-    result[0]->p[0].x = ( segment->p[0].x + segment->p[1].x ) / 2;
-    result[0]->p[0].y = ( segment->p[0].y + segment->p[1].y ) / 2;
-    
+    result[0]->p[0].x = ( segment->p[0].x + segment->p[1].x ) / 2; // midpoint_x
+    result[0]->p[0].y = ( segment->p[0].y + segment->p[1].y ) / 2; // midpoint_y
+
     if( away_point == NULL )
     {
+        // Set midpoint for our other vector
         result[1]->p[0].x = result[0]->p[0].x;
         result[1]->p[0].y = result[0]->p[0].y;
     }
@@ -444,6 +445,8 @@ LSEG ** line_segment_orthogonal_line_segment(
             result[0]->p[1].x = result[0]->p[0].x - length;
             d2 = distance( away_point, &(result[0]->p[1]) );
 
+            // We've stored the endpoint but if our assumtion was wrong,
+            // swap the points
             if( d1 > d2 )
             {
                 result[0]->p[1].x = result[0]->p[0].x + length;
@@ -451,6 +454,7 @@ LSEG ** line_segment_orthogonal_line_segment(
         }
         else
         {
+            // Come up with both variants
             result[1]->p[1].y = result[0]->p[0].y;
             result[0]->p[1].x = result[0]->p[0].x + length;
             result[1]->p[1].x = result[0]->p[0].x - length;
@@ -488,22 +492,14 @@ LSEG ** line_segment_orthogonal_line_segment(
         y_int      = result[0]->p[0].y - ( result[0]->p[0].x * targ_slope );
 
         // Find quadratic solution to sqrt( ( midpoint_x - x )^2 + ( midpoint_y - y )^2 ) = length
-        /*
-        a = 1 + pow( targ_slope, 2 );
-        b = ( 2 * targ_slope * y_int )
-          - ( 2 * result[0]->p[0].y * targ_slope )
-          - ( 2 * result[0]->p[0].x );
-        c = pow( result[0]->p[0].x, 2 ) + pow( result[0]->p[0].y, 2 )
-          - ( 2 * result[0]->p[0].y * y_int ) + pow( y_int, 2 )
-          - pow( length, 2 );
-        */
-        a = 1.0 + pow( targ_slope, 2 );
-        b = ( -2.0 * result[0]->p[0].x )
-          * ( 1 - pow( targ_slope, 2 ) );
-        c = pow( result[0]->p[0].x, 2 )
-          * ( 1 + pow( targ_slope, 2 ) )
-          - pow( length, 2 );
-        
+        // Plugging back in y = mx + b for both the unknown (y) and known (midpoint_y) values,
+        // this factors to the following equation:
+        // 0 = ( 1 + targ_slope^2 )( x^2 - 2 * midpoint_x * x + x_midpoint^2 ) - length^2
+        // Which feeds into the following quadratic:
+        a = 1.0 + ( targ_slope * targ_slope );
+        b = -1.0 * a * 2 * result[0]->p[0].x;
+        c = a * result[0]->p[0].x * result[0]->p[0].x - length * length;
+
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
             elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
@@ -518,6 +514,8 @@ LSEG ** line_segment_orthogonal_line_segment(
         result[0]->p[1].x = x1;
         result[0]->p[1].y = y1;
 
+        // Similar logic as the special case solution, find the vector end
+        // farthest from away_point
         if( away_point != NULL )
         {
             d1 = distance( away_point, &(result[0]->p[1]) );
