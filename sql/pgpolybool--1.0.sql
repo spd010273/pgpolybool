@@ -49,6 +49,12 @@ RETURNS POINT IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_in
 CREATE OR REPLACE FUNCTION fn_get_polygon_line_segment_distance( poly POLYGON, seg LSEG )
 RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_polygon_lseg_distance';
 
+CREATE OR REPLACE FUNCTION fn_get_parallel_segment( seg LSEG, away_point POINT DEFAULT NULL, distance DOUBLE PRECISION DEFAULT 1.0 )
+RETURNS LSEG IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_parallel_segment';
+
+CREATE OR REPLACE FUNCTION fn_get_parallel_segments( seg LSEG, distance DOUBLE PRECISION DEFAULT 1.0 )
+RETURNS LSEG[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_parallel_segments';
+
 CREATE OR REPLACE FUNCTION fn_get_orthogonal_segment( seg LSEG, away_point POINT DEFAULT NULL, length DOUBLE PRECISION DEFAULT 1.0 )
 RETURNS LSEG IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_orthogonal_segment';
 

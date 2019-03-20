@@ -55,6 +55,8 @@ PG_FUNCTION_INFO_V1( fn_get_polygon_area );
 // LSEG functions
 PG_FUNCTION_INFO_V1( fn_lseg_intersect );
 PG_FUNCTION_INFO_V1( fn_lseg_intersect_point );
+PG_FUNCTION_INFO_V1( fn_get_parallel_segment );
+PG_FUNCTION_INFO_V1( fn_get_parallel_segments );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segment );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segments );
 PG_FUNCTION_INFO_V1( fn_create_reflected_box );
@@ -1400,6 +1402,134 @@ Datum fn_get_polygon_lseg_distance( PG_FUNCTION_ARGS )
     PG_RETURN_FLOAT8( min_dist );
 }
 
+Datum fn_get_parallel_segment( PG_FUNCTION_ARGS )
+{
+    LSEG *  seg        = NULL;
+    Point * away_point = NULL;
+    LSEG ** result     = NULL;
+    LSEG *  result_p   = NULL;
+    double  distance   = 1.0;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    seg = PG_GETARG_LSEG_P(0);
+
+    if( seg == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    if( !PG_ARGISNULL(1) )
+    {
+        away_point = PG_GETARG_POINT_P(1);
+
+        if( away_point == NULL )
+        {
+            PG_RETURN_NULL();
+        }
+    }
+
+    if( !PG_ARGISNULL(2) )
+    {
+        distance = PG_GETARG_FLOAT8(2);
+    }
+
+    result = line_segment_parallel_line_segment( seg, away_point, distance );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+    else
+    {
+        result_p = result[0];
+
+        if( PG_ARGISNULL(1) )
+        {
+            pfree( result[1] );
+        }
+
+        pfree( result );
+
+        PG_RETURN_LSEG_P( result_p );
+    }
+}
+
+Datum fn_get_parallel_segments( PG_FUNCTION_ARGS )
+{
+    LSEG *      seg      = NULL;
+    LSEG **     l_result = NULL;
+    Datum *     elements = NULL;
+    ArrayType * result   = NULL;
+    double      distance = 1.0;
+
+    int16 typlen;
+    char  typalign;
+    bool  typbyval;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    seg = PG_GETARG_LSEG_P(0);
+
+    if( seg == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    if( !PG_ARGISNULL(1) )
+    {
+        distance = PG_GETARG_FLOAT8(1);
+    }
+
+    l_result = line_segment_parallel_line_segment( seg, NULL, distance );
+
+    if( l_result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    elements = ( Datum * ) palloc0( sizeof( Datum ) * 2 );
+
+    if( elements == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg(
+                    "Could not allocate polygon line segment return array"
+                )
+            )
+        );
+    }
+
+    elements[0] = LsegPGetDatum( l_result[0] );
+    elements[1] = LsegPGetDatum( l_result[1] );
+
+    pfree( l_result[0] );
+    pfree( l_result[1] );
+    pfree( l_result );
+
+    get_typlenbyvalalign( LSEGOID, &typlen, &typbyval, &typalign );
+
+    result = construct_array(
+        elements,
+        2,
+        LSEGOID,
+        typlen,
+        typbyval,
+        typalign
+    );
+
+    PG_RETURN_ARRAYTYPE_P( result );
+}
+
 Datum fn_get_orthogonal_segment( PG_FUNCTION_ARGS )
 {
     LSEG *  seg        = NULL;
@@ -1548,7 +1678,7 @@ Datum fn_create_reflected_box( PG_FUNCTION_ARGS )
      *  ^ line segment
      *
      *  Output:
-     *  
+     *
      *  +-----------+
      *  |           |
      *  |           |
@@ -1595,7 +1725,7 @@ Datum fn_create_reflected_box( PG_FUNCTION_ARGS )
     /*
      * We have two line segments that are orthogonal (we'll probably need to verify this)
      * What we actually have are 4 points, We have half of our solution, which is either point
-     * on the input line segment (line). We need to find a point P that is 
+     * on the input line segment (line). We need to find a point P that is
      *
      */
 
@@ -1606,9 +1736,9 @@ Datum fn_create_reflected_box( PG_FUNCTION_ARGS )
             / ( ortho_line->p[0].x - ortho_line->p[1].x );
     line_m  = ( line->p[0].y - line->p[1].y )
             / ( line->p[0].x - line->p[1].x );
-   
+
     line_b = line->p[1].y - line_m * line->p[1].x;
-    
+
     if( fabs( ortho_line->p[0].y - ( line_m * ortho_line->p[0].x + line_b )) < DBL_EPSILON )
     {
         ortho_index = 0;
@@ -1623,7 +1753,7 @@ Datum fn_create_reflected_box( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
     // We have the slopes, now we need to find the y-intercepts of the equation y=mx+b with x,y being our points
-    
+
     ortho_b = line->p[1].y - ortho_m * line->p[1].x;
     line_b  = ortho_line->p[ortho_index].y - line_m * ortho_line->p[ortho_index].x;
 

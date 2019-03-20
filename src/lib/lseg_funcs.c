@@ -347,6 +347,259 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
     return dist;
 }
 
+LSEG ** line_segment_parallel_line_segment(
+    LSEG *  segment,
+    Point * away_point,
+    double  line_distance
+)
+{
+    LSEG **      result     = NULL;
+    double       curr_slope = 0.0; // input line slope
+    double       targ_slope = 0.0; // output line slope
+    double       y_int_0    = 0.0; // y int for point 0 of input
+    double       y_int_1    = 0.0; // y int for point 1 of input
+    double       d1         = 0.0; // For distance comparison w/ away_point
+    double       d2         = 0.0;
+    double       a          = 0.0; // For quadratic solution
+    double       b_0        = 0.0; // quadratic b for point 0
+    double       c_0        = 0.0; // quadratic b for point 1
+    double       b_1        = 0.0; // quadratic c for point 0
+    double       c_1        = 0.0; // quadratic c for point 1
+    double       x1_0       = 0.0; // Solution 1 point 0
+    double       y1_0       = 0.0;
+    double       x1_1       = 0.0; // Solution 1 point 1
+    double       y1_1       = 0.0;
+    double       x2_0       = 0.0; // Solution 2 point 0
+    double       y2_0       = 0.0;
+    double       x2_1       = 0.0; // Solution 2 point 1
+    double       y2_1       = 0.0;
+    unsigned int size       = 0;
+
+    if( segment == NULL )
+    {
+        return NULL;
+    }
+
+    size = 1;
+
+    if( away_point == NULL )
+    {
+        size++;
+    }
+
+    result = ( LSEG ** ) palloc0( sizeof( LSEG * ) * size );
+
+    if( result == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create output segment" )
+            )
+        );
+    }
+
+    result[0] = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+    if( away_point == NULL )
+    {
+        result[1] = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+        if( result[1] == NULL )
+        {
+            ereport(
+                ERROR,
+                (
+                    errcode( ERRCODE_OUT_OF_MEMORY ),
+                    errmsg( "Could not create orthogonal root" )
+                )
+            );
+        }
+    }
+
+    if( result[0] == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create orthogonal root" )
+            )
+        );
+    }
+
+    if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
+    {
+        // Current slope is infinite (vertical line)
+        result[0]->p[0].y = segment->p[0].y;
+        result[0]->p[1].y = segment->p[1].y;
+
+        if( away_point != NULL )
+        {
+            result[0]->p[0].x = segment->p[0].x + line_distance;
+            d1 = distance( away_point, &(result[0]->p[0]) );
+            result[0]->p[0].x = segment->p[0].x - line_distance;
+            d2 = distance( away_point, &(result[0]->p[0]) );
+
+            if( d1 > d2 )
+            {
+                result[0]->p[0].x = segment->p[0].x + line_distance;
+                result[0]->p[1].x = segment->p[1].x + line_distance;
+            }
+            else
+            {
+                result[0]->p[1].x = segment->p[1].x - line_distance;
+            }
+
+        }
+        else
+        {
+            result[1]->p[0].y = segment->p[0].y;
+            result[1]->p[1].y = segment->p[1].y;
+
+            result[0]->p[0].x = segment->p[0].x - line_distance;
+            result[0]->p[1].x = segment->p[1].x - line_distance;
+            result[1]->p[0].x = segment->p[0].x + line_distance;
+            result[1]->p[1].x = segment->p[1].x + line_distance;
+        }
+    }
+    else if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
+    {
+        // Current slope is 0 (horizontal line)
+        result[0]->p[0].x = segment->p[0].x;
+        result[0]->p[1].x = segment->p[1].x;
+
+        if( away_point != NULL )
+        {
+            result[0]->p[0].y = segment->p[0].y + line_distance;
+            d1 = distance( away_point, &(result[0]->p[0]) );
+            result[0]->p[0].y = segment->p[0].y - line_distance;
+            d2 = distance( away_point, &(result[0]->p[0]) );
+
+            if( d1 > d2 )
+            {
+                result[0]->p[0].y = segment->p[0].y + line_distance;
+                result[0]->p[1].y = segment->p[1].y + line_distance;
+            }
+            else
+            {
+                result[0]->p[1].y = segment->p[1].y - line_distance;
+            }
+
+        }
+        else
+        {
+            result[1]->p[0].x = segment->p[0].x;
+            result[1]->p[1].x = segment->p[1].x;
+
+            result[0]->p[0].y = segment->p[0].y - line_distance;
+            result[0]->p[1].y = segment->p[1].y - line_distance;
+            result[1]->p[0].y = segment->p[0].y + line_distance;
+            result[1]->p[1].y = segment->p[1].y + line_distance;
+        }
+    }
+    else
+    {
+        // Solve for y = mx + b for a line extending orthogonally from one of the input's endpoints
+        curr_slope = ( segment->p[0].y - segment->p[1].y ) / ( segment->p[0].x - segment->p[1].x );
+        targ_slope = -1.0 / curr_slope;
+        y_int_0    = segment->p[0].y - ( segment->p[0].x * targ_slope );
+        y_int_1    = segment->p[1].y - ( segment->p[1].x * targ_slope );
+
+        // Find quadratic solution to sqrt( ( endpoint_x - x )^2 + ( endpoint_y - y )^2 ) = length
+        // Plugging back in y = mx + b for both the unknown (y) and known (endpoint_y) values,
+        // this factors to the following equation:
+        // 0 = ( 1 + targ_slope^2 )( x^2 - 2 * endpoint_x * x + endpoint_x^2 ) - line_distance^2
+        // Which feeds into the following quadratic:
+        a   = 1.0 + ( targ_slope * targ_slope );
+        b_0 = -1.0 * a * 2 * segment->p[0].x;
+        c_0 = a * segment->p[0].x * segment->p[0].x - line_distance * line_distance;
+        b_1 = -1.0 * a * 2 * segment->p[1].x;
+        c_1 = a * segment->p[1].x * segment->p[1].x - line_distance * line_distance;
+
+        if( pow( b_0, 2 ) < ( 4 * a * c_0 ) )
+        {
+            elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b_0, c_0 );
+
+            pfree( result[0] );
+
+            if( away_point == NULL )
+            {
+                pfree( result[1] );
+            }
+
+            pfree( result );
+            return NULL;
+        }
+
+        if( pow( b_1, 2 ) < ( 4 * a * c_1 ) )
+        {
+            elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b_1, c_1 );
+            pfree( result[0] );
+
+            if( away_point == NULL )
+            {
+                pfree( result[1] );
+            }
+
+            pfree( result );
+            return NULL;
+        }
+
+        // coordinate<solution #>_<point_index>
+
+        x1_0 = ( -b_0 + sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
+        x2_0 = ( -b_0 - sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
+        y1_0 = targ_slope * x1_0 + y_int_0;
+        y2_0 = targ_slope * x2_0 + y_int_0;
+
+        x1_1 = ( -b_1 + sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
+        x2_1 = ( -b_1 - sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
+        y1_1 = targ_slope * x1_1 + y_int_1;
+        y2_1 = targ_slope * x2_1 + y_int_1;
+
+        result[0]->p[0].x = x1_0;
+        result[0]->p[0].y = y1_0;
+        result[0]->p[1].x = x1_1;
+        result[0]->p[1].y = y1_1;
+
+        // Similar logic as the special case solution, find the vector end
+        // farthest from away_point
+        if( away_point != NULL )
+        {
+            d1 = distance( away_point, &(result[0]->p[0]) );
+            result[0]->p[0].x = x2_0;
+            result[0]->p[0].y = y2_0;
+            d2 = distance( away_point, &(result[0]->p[0]) );
+
+            if( d1 > d2 )
+            {
+                // Keep solution originally assigned
+                result[0]->p[0].x = x1_0;
+                result[0]->p[0].y = y1_0;
+            }
+            else
+            {
+                // Swap solutions
+                result[0]->p[0].x = x2_0;
+                result[0]->p[0].y = y2_0;
+                result[0]->p[1].x = x2_1;
+                result[0]->p[1].y = y2_1;
+            }
+        }
+        else
+        {
+            result[1]->p[0].x = x2_0;
+            result[1]->p[0].y = y2_0;
+            result[1]->p[1].x = x2_1;
+            result[1]->p[1].y = y2_1;
+        }
+    }
+
+    return result;
+}
+
 LSEG ** line_segment_orthogonal_line_segment(
     LSEG *  segment,
     Point * away_point,
