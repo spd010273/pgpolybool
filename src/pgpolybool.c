@@ -51,7 +51,7 @@ PG_FUNCTION_INFO_V1( fn_get_polygon_points );
 PG_FUNCTION_INFO_V1( fn_get_polygon_line_segs );
 PG_FUNCTION_INFO_V1( fn_get_polygon_lseg_distance );
 PG_FUNCTION_INFO_V1( fn_get_polygon_area );
-
+PG_FUNCTION_INFO_V1( fn_lseg_to_polygon );
 // LSEG functions
 PG_FUNCTION_INFO_V1( fn_lseg_intersect );
 PG_FUNCTION_INFO_V1( fn_lseg_intersect_point );
@@ -1762,6 +1762,41 @@ Datum fn_create_reflected_box( PG_FUNCTION_ARGS )
     output->low.x = ( output->low.y - line_b ) / line_m;
 
     PG_RETURN_BOX_P( output );
+}
+
+Datum fn_lseg_to_polygon( PG_FUNCTION_ARGS )
+{
+    POLYGON * poly    = NULL;
+    LSEG *    segment = NULL;
+    double    width   = 0.0;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    segment = PG_GETARG_LSEG_P(0);
+    width   = PG_GETARG_FLOAT8(1);
+
+    if( segment == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    poly = line_segment_to_polygon( segment, width );
+
+    if( poly == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    SET_VARSIZE(
+        poly,
+        offsetof( POLYGON, p )
+      + ( poly->npts * sizeof( Point ) )
+    );
+
+    PG_RETURN_POLYGON_P( poly );
 }
 
 Datum fn_get_polygon_area( PG_FUNCTION_ARGS )

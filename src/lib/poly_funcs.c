@@ -291,6 +291,115 @@ POLYGON * box_to_polygon( BOX * b )
     return result;
 }
 
+// Similar to the helpers in lseg_funcs, we use a quadratic to find points
+POLYGON * line_segment_to_polygon( LSEG * segment, double width )
+{
+    POLYGON * result  = NULL;
+    double a          = 0.0;
+    double b_0        = 0.0;
+    double c_0        = 0.0;
+    double b_1        = 0.0;
+    double c_1        = 0.0;
+    double curr_slope = 0.0;
+    double targ_slope = 0.0;
+    double y_int_0    = 0.0;
+    double y_int_1    = 0.0;
+    Point  p1p        = {0}; // Solution 1, positive quad. soln
+    Point  p1n        = {0}; // Solution 1, negative quad. soln
+    Point  p2p        = {0}; // Solution 2, positive quad. soln
+    Point  p2n        = {0}; // Solution 2, negative quad. soln
+
+    if( segment == NULL )
+    {
+        return NULL;
+    }
+
+    result = ( POLYGON * ) palloc0(
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * 4
+    );
+
+    if( result == NULL )
+    {
+        return NULL;
+    }
+
+    if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
+    {
+        // Slope is 0, line is horizontal
+        result->p[0].x = segment->p[0].x;
+        result->p[1].x = segment->p[1].x;
+        result->p[2].x = segment->p[1].x;
+        result->p[3].x = segment->p[0].x;
+        result->p[0].y = segment->p[0].y + ( width / 2 );
+        result->p[1].y = segment->p[1].y + ( width / 2 );
+        result->p[2].y = segment->p[1].y - ( width / 2 );
+        result->p[3].y = segment->p[0].y - ( width / 2 );
+    }
+    else if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
+    {
+        // Slope is infinite, line is vertica;
+        result->p[0].y = segment->p[0].y;
+        result->p[1].y = segment->p[1].y;
+        result->p[2].y = segment->p[1].y;
+        result->p[3].y = segment->p[0].y;
+        result->p[0].x = segment->p[0].x + ( width / 2 );
+        result->p[1].x = segment->p[1].x + ( width / 2 );
+        result->p[2].x = segment->p[1].x - ( width / 2 );
+        result->p[3].x = segment->p[0].x - ( width / 2 );
+    }
+    else
+    {
+        // Solve for y = mx + b for our current line (we just need m)
+        curr_slope = ( segment->p[0].y - segment->p[1].y )
+                   / ( segment->p[0].x - segment->p[1].x );
+        // Invert && negate slope, solve for y=mx+b for two lines orthogonal to
+        // the endpoints of our input
+        targ_slope = -1.0 / curr_slope;
+        y_int_0    = segment->p[0].y - ( segment->p[0].x * targ_slope );
+        y_int_1    = segment->p[1].y - ( segment->p[0].x * targ_slope );
+
+        a   = 1.0 + ( targ_slope * targ_slope );
+
+        b_0 = -1.0 * a * 2 * segment->p[0].x;
+        b_1 = -1.0 * a * 2 * segment->p[1].x;
+
+        c_0 = a * segment->p[0].x * segment->p[0].x - width;
+        c_1 = a * segment->p[1].x * segment->p[1].x - width;
+
+        if(
+               pow( b_0, 2 ) < ( 4 * a * c_0 )
+            || pow( b_1, 2 ) < ( 4 * a * c_1 )
+          )
+        {
+            elog(
+                DEBUG1,
+                "Solution(s) for quadratic:\na=%f\nb_0=%f\nc_0=%f\nb_1=%f\nc_1=%f\nare degenerate!",
+                a,
+                b_0,
+                c_0,
+                b_1,
+                c_1
+            );
+            pfree( result );
+            return NULL;
+        }
+
+        result->p[0].x = ( - b_0 + sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
+        result->p[1].x = ( - b_1 + sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
+        result->p[2].x = ( - b_0 - sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
+        result->p[3].x = ( - b_1 - sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
+        result->p[0].y = targ_slope * result->p[0].x + y_int_0;
+        result->p[1].y = targ_slope * result->p[1].x + y_int_1;
+        result->p[2].y = targ_slope * result->p[2].x + y_int_0;
+        result->p[3].y = targ_slope * result->p[3].x + y_int_1;
+    }
+    
+    result->npts = 4;
+    set_polygon_boundbox( result );
+    return result;
+}
+
 /*
  * void dump_polygon( POLYGON * )
  *
