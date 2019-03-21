@@ -226,7 +226,7 @@ Point ** get_polygon_points( POLYGON * p )
     for( i = 0; i < p->npts; i++ )
     {
         result[i] = ( Point * ) palloc0( sizeof( Point ) );
-        
+
         if( result[i] == NULL )
         {
             for( j = 0; j < i; j-- )
@@ -304,10 +304,6 @@ POLYGON * line_segment_to_polygon( LSEG * segment, double width )
     double targ_slope = 0.0;
     double y_int_0    = 0.0;
     double y_int_1    = 0.0;
-    Point  p1p        = {0}; // Solution 1, positive quad. soln
-    Point  p1n        = {0}; // Solution 1, negative quad. soln
-    Point  p2p        = {0}; // Solution 2, positive quad. soln
-    Point  p2n        = {0}; // Solution 2, negative quad. soln
 
     if( segment == NULL )
     {
@@ -324,7 +320,7 @@ POLYGON * line_segment_to_polygon( LSEG * segment, double width )
         return NULL;
     }
 
-    if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
+    if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
     {
         // Slope is 0, line is horizontal
         result->p[0].x = segment->p[0].x;
@@ -336,9 +332,9 @@ POLYGON * line_segment_to_polygon( LSEG * segment, double width )
         result->p[2].y = segment->p[1].y - ( width / 2 );
         result->p[3].y = segment->p[0].y - ( width / 2 );
     }
-    else if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
+    else if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
     {
-        // Slope is infinite, line is vertica;
+        // Slope is infinite, line is horizontal
         result->p[0].y = segment->p[0].y;
         result->p[1].y = segment->p[1].y;
         result->p[2].y = segment->p[1].y;
@@ -357,7 +353,7 @@ POLYGON * line_segment_to_polygon( LSEG * segment, double width )
         // the endpoints of our input
         targ_slope = -1.0 / curr_slope;
         y_int_0    = segment->p[0].y - ( segment->p[0].x * targ_slope );
-        y_int_1    = segment->p[1].y - ( segment->p[0].x * targ_slope );
+        y_int_1    = segment->p[1].y - ( segment->p[1].x * targ_slope );
 
         a   = 1.0 + ( targ_slope * targ_slope );
 
@@ -387,14 +383,14 @@ POLYGON * line_segment_to_polygon( LSEG * segment, double width )
 
         result->p[0].x = ( - b_0 + sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
         result->p[1].x = ( - b_1 + sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
-        result->p[2].x = ( - b_0 - sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
-        result->p[3].x = ( - b_1 - sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
+        result->p[2].x = ( - b_1 - sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
+        result->p[3].x = ( - b_0 - sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
         result->p[0].y = targ_slope * result->p[0].x + y_int_0;
         result->p[1].y = targ_slope * result->p[1].x + y_int_1;
-        result->p[2].y = targ_slope * result->p[2].x + y_int_0;
-        result->p[3].y = targ_slope * result->p[3].x + y_int_1;
+        result->p[2].y = targ_slope * result->p[2].x + y_int_1;
+        result->p[3].y = targ_slope * result->p[3].x + y_int_0;
     }
-    
+
     result->npts = 4;
     set_polygon_boundbox( result );
     return result;
