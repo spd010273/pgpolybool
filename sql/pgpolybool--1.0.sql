@@ -64,5 +64,8 @@ RETURNS LSEG[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_or
 CREATE OR REPLACE FUNCTION fn_lseg_to_polygon( seg LSEG, width DOUBLE PRECISION DEFAULT 1.0 )
 RETURNS POLYGON IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_to_polygon';
 
+CREATE OR REPLACE FUNCTION fn_scale_lseg( seg LSEG, scale_factor DOUBLE PRECISION DEFAULT 1.0, reference_point POINT DEFAULT NULL )
+RETURNS LSEG IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_scale_lseg';
+
 CREATE OR REPLACE FUNCTION fn_create_reflected_box( line LSEG, ortho LSEG )
 RETURNS BOX IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_create_reflected_box';

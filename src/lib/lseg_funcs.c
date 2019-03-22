@@ -172,7 +172,6 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
     denominator   = sqrt( cross_product * cross_product );
     denominator   = denominator * denominator;
 
-
     // If lines are parallel (denom=0) test if lines overlap.
     // If they don't overlap then there is a closest point solution.
     // If they do overlap, there are infinite closest positions, but there is a closest distance
@@ -248,8 +247,6 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
 
         return dist;
     }
-
-
 
     // Lines intersect: Calculate the projected closest points
     t->x = l2->p[0].x - l1->p[0].x;
@@ -514,10 +511,10 @@ LSEG ** line_segment_parallel_line_segment(
         // Which feeds into the following quadratic:
         a   = 1.0 + ( targ_slope * targ_slope );
 
-        b_0 = -1.0 * a * 2 * segment->p[0].x;
+        b_0 = -2.0 * a * segment->p[0].x;
         c_0 = a * segment->p[0].x * segment->p[0].x - line_distance * line_distance;
 
-        b_1 = -1.0 * a * 2 * segment->p[1].x;
+        b_1 = -2.0 * a * segment->p[1].x;
         c_1 = a * segment->p[1].x * segment->p[1].x - line_distance * line_distance;
 
         if( pow( b_0, 2 ) < ( 4 * a * c_0 ) )
@@ -754,7 +751,7 @@ LSEG ** line_segment_orthogonal_line_segment(
         // 0 = ( 1 + targ_slope^2 )( x^2 - 2 * midpoint_x * x + x_midpoint^2 ) - length^2
         // Which feeds into the following quadratic:
         a = 1.0 + ( targ_slope * targ_slope );
-        b = -1.0 * a * 2 * result[0]->p[0].x;
+        b = -2.0 * a * result[0]->p[0].x;
         c = a * result[0]->p[0].x * result[0]->p[0].x - length * length;
 
         if( pow( b, 2 ) < ( 4 * a * c ) )
@@ -790,6 +787,116 @@ LSEG ** line_segment_orthogonal_line_segment(
         {
             result[1]->p[1].x = x2;
             result[1]->p[1].y = y2;
+        }
+    }
+
+    return result;
+}
+
+LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
+{
+    Point  ref_point = {0};
+    LSEG * result    = NULL;
+    double slope     = 0.0;
+    double y_int     = 0.0;
+    double a         = 0.0;
+    double b         = 0.0;
+    double c         = 0.0;
+    double length    = 0.0;
+
+    if( segment == NULL )
+    {
+        return NULL;
+    }
+
+    if( fabs( scale_factor - 1.0 ) < DBL_EPSILON )
+    {
+        return segment;
+    }
+
+    result = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+    if( result == NULL )
+    {
+        return NULL;
+    }
+
+    slope  = ( segment->p[0].y - segment->p[1].y )
+           / ( segment->p[0].x - segment->p[1].x );
+    y_int  = segment->p[0].y - ( slope * segment->p[0].x );
+    length = sqrt(
+        pow( segment->p[0].x - segment->p[1].x, 2 )
+      + pow( segment->p[0].y - segment->p[1].y, 2 )
+    );
+    length = ( length / 2 ) * scale_factor;
+
+    if( reference == NULL )
+    {
+        ref_point.x = ( segment->p[0].x + segment->p[1].x ) / 2;
+        ref_point.y = ( segment->p[0].y + segment->p[1].y ) / 2;
+    }
+    else
+    {
+        ref_point.x = reference->x;
+        ref_point.y = reference->y;
+
+        if( fabs( ref_point.y - ( slope * ref_point.x + y_int ) ) >= DBL_EPSILON )
+        {
+            // Reference point does not lie on the line
+            return NULL;
+        }
+    }
+
+    if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
+    {
+        // Line is vertical
+        result->p[0].x = segment->p[0].x;
+        result->p[1].x = segment->p[1].x;
+        result->p[0].y = ref_point.y - length;
+        result->p[1].y = ref_point.y + length;
+    }
+    else if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
+    {
+        // Line is horizontal
+        result->p[0].y = segment->p[0].y;
+        result->p[1].y = segment->p[1].y;
+        result->p[0].x = ref_point.x - length;
+        result->p[1].x = ref_point.x + length;
+    }
+    else
+    {
+        a = 1.0 + ( slope * slope );
+        b = -2.0 * a * ref_point.x;
+        c = a * ref_point.x * ref_point.x - length * length;
+
+        if( pow( b, 2 ) < ( 4 * a * c ) )
+        {
+            pfree( result );
+        }
+
+        result->p[0].x = ( -b - sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
+        result->p[0].y = slope * result->p[0].x + y_int;
+        result->p[1].x = ( -b + sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
+        result->p[1].y = slope * result->p[1].x + y_int;
+
+        if( fabs( result->p[0].x ) < DBL_EPSILON )
+        {
+            result->p[0].x = 0.0;
+        }
+
+        if( fabs( result->p[1].x ) < DBL_EPSILON )
+        {
+            result->p[1].x = 0.0;
+        }
+
+        if( fabs( result->p[0].y ) < DBL_EPSILON )
+        {
+            result->p[0].y = 0.0;
+        }
+
+        if( fabs( result->p[1].y ) < DBL_EPSILON )
+        {
+            result->p[1].y = 0.0;
         }
     }
 

@@ -24,5 +24,6 @@ extern double line_segment_distance( LSEG *, LSEG * );
 extern Point * line_segment_intersection( LSEG *, LSEG * );
 extern LSEG ** line_segment_parallel_line_segment( LSEG *, Point *, double );
 extern LSEG ** line_segment_orthogonal_line_segment( LSEG *, Point *, double );
+extern LSEG * scale_lseg( LSEG *, double, Point * );
 
 #endif // LSEG_FUNCS_H

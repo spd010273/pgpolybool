@@ -60,6 +60,7 @@ PG_FUNCTION_INFO_V1( fn_get_parallel_segments );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segment );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segments );
 PG_FUNCTION_INFO_V1( fn_create_reflected_box );
+PG_FUNCTION_INFO_V1( fn_scale_lseg );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -1818,3 +1819,41 @@ Datum fn_get_polygon_area( PG_FUNCTION_ARGS )
     PG_RETURN_FLOAT8( get_polygon_area( poly ) );
 }
 
+Datum fn_scale_lseg( PG_FUNCTION_ARGS )
+{
+    LSEG *  segment = NULL;
+    float8  scale   = 0.0;
+    Point * ref     = NULL;
+    LSEG *  result  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    segment = PG_GETARG_LSEG_P(0);
+
+    if( segment == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    if( !PG_ARGISNULL(1) )
+    {
+        scale = PG_GETARG_FLOAT8(1);
+    }
+
+    if( !PG_ARGISNULL(2) )
+    {
+        ref = PG_GETARG_POINT_P(2);
+    }
+
+    result = scale_lseg( segment, scale, ref );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LSEG_P( result );
+}
