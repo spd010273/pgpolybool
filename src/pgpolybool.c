@@ -61,6 +61,7 @@ PG_FUNCTION_INFO_V1( fn_get_orthogonal_segment );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segments );
 PG_FUNCTION_INFO_V1( fn_create_reflected_box );
 PG_FUNCTION_INFO_V1( fn_scale_lseg );
+PG_FUNCTION_INFO_V1( fn_get_lseg_angle );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -1856,4 +1857,22 @@ Datum fn_scale_lseg( PG_FUNCTION_ARGS )
     }
 
     PG_RETURN_LSEG_P( result );
+}
+
+Datum fn_get_lseg_angle( PG_FUNCTION_ARGS )
+{
+    LSEG * segment_a = NULL;
+    LSEG * segment_b = NULL;
+    float8 result    = 0.0;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    segment_a = PG_GETARG_LSEG_P(0);
+    segment_b = PG_GETARG_LSEG_P(1);
+    result = get_angle_of_intersection( segment_a, segment_b );
+    
+    PG_RETURN_FLOAT8( result );
 }
