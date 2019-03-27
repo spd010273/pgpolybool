@@ -63,6 +63,8 @@ PG_FUNCTION_INFO_V1( fn_create_reflected_box );
 PG_FUNCTION_INFO_V1( fn_scale_lseg );
 PG_FUNCTION_INFO_V1( fn_get_lseg_angle );
 
+PG_FUNCTION_INFO_V1( float_test );
+
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
     POLYGON **       sorted_polys = NULL;
@@ -1872,7 +1874,16 @@ Datum fn_get_lseg_angle( PG_FUNCTION_ARGS )
 
     segment_a = PG_GETARG_LSEG_P(0);
     segment_b = PG_GETARG_LSEG_P(1);
-    result = get_angle_of_intersection( segment_a, segment_b );
-    
+
+    if( segment_a == NULL || segment_b == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = get_angle_of_intersection(
+        segment_a,
+        segment_b
+    );
+
     PG_RETURN_FLOAT8( result );
 }

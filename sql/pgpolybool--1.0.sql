@@ -71,4 +71,4 @@ CREATE OR REPLACE FUNCTION fn_create_reflected_box( line LSEG, ortho LSEG )
 RETURNS BOX IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_create_reflected_box';
 
 CREATE OR REPLACE FUNCTION fn_get_lseg_angle( line LSEG, reference LSEG )
-RETURNS BOX IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_lseg_angle';
+RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_lseg_angle';

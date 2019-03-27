@@ -920,8 +920,7 @@ double get_angle_of_intersection( LSEG * segment_a, LSEG * segment_b )
             / ( segment_a->p[0].x - segment_a->p[1].x );
     slope_b = ( segment_b->p[0].y - segment_b->p[1].y )
             / ( segment_b->p[0].x - segment_b->p[1].x );
-
-    result = atan( slope_a ) - atan( slope_b );
+    result  = atan( slope_a ) - atan( slope_b );
 
     return result;
 }
