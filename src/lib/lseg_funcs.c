@@ -1039,7 +1039,7 @@ bool lseg_points_right_of( LSEG * segment, LSEG * reference )
         return false;
     }
 
-    if( cross_product( seg_vector, ref_vector ) < 0 )
+    if( cross_product( seg_vector, ref_vector ) > 0 )
     {
         return true;
     }
@@ -1075,7 +1075,7 @@ bool lseg_points_left_of( LSEG * segment, LSEG * reference )
         return false;
     }
 
-    if( cross_product( seg_vector, ref_vector ) > 0 )
+    if( cross_product( seg_vector, ref_vector ) < 0 )
     {
         return true;
     }
