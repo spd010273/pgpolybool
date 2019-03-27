@@ -72,3 +72,15 @@ RETURNS BOX IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_create_re
 
 CREATE OR REPLACE FUNCTION fn_get_lseg_angle( line LSEG, reference LSEG )
 RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_lseg_angle';
+
+CREATE OR REPLACE FUNCTION fn_lseg_points_right_of( segment LSEG, reference LSEG )
+RETURNS BOOLEAN IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_points_right_of';
+
+CREATE OR REPLACE FUNCTION fn_lseg_points_left_of( segment LSEG, reference LSEG )
+RETURNS BOOLEAN IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_points_left_of';
+
+CREATE OR REPLACE FUNCTION fn_cross_product( POINT, POINT )
+RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_cross_product';
+
+CREATE OR REPLACE FUNCTION fn_lseg_to_vector( LSEG )
+RETURNS POINT IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_to_vector';

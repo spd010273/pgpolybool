@@ -924,3 +924,161 @@ double get_angle_of_intersection( LSEG * segment_a, LSEG * segment_b )
 
     return result;
 }
+
+Point * lseg_to_vector( LSEG * segment )
+{
+    Point * result = NULL;
+    double  slope  = 0.0;
+    //double  y_int  = 0.0;
+    double  length = 0.0;
+
+    if( segment == NULL )
+    {
+        return NULL;
+    }
+
+    result = ( Point * ) palloc0( sizeof( Point ) );
+
+    if( result == NULL )
+    {
+        return NULL;
+    }
+
+    length = sqrt(
+        pow( segment->p[0].x - segment->p[1].x, 2 )
+      + pow( segment->p[0].y - segment->p[1].y, 2 )
+    );
+
+    if( abs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
+    {
+        // Line is vertical
+        result->x = 0;
+
+        if( segment->p[1].y < segment->p[0].y )
+        {
+            result->y = -length;
+        }
+        else
+        {
+            result->y = length;
+        }
+
+        return result;
+    }
+    else if( abs( segment->p[1].y - segment->p[0].y ) < DBL_EPSILON )
+    {
+        result->y = 0;
+
+        if( segment->p[1].x < segment->p[0].x )
+        {
+            result->x = -length;
+        }
+        else
+        {
+            result->x = length;
+        }
+
+        return result;
+    }
+
+    slope = ( segment->p[1].y - segment->p[0].y )
+          / ( segment->p[1].x - segment->p[0].x );
+    //y_int = segment->p[0].y - slope * segment->p[0].x;
+
+    if( segment->p[1].x > segment->p[0].x )
+    {
+        result->x = sqrt( pow( length, 2 ) / ( 1 + pow( slope, 2 ) ) );
+    }
+    else
+    {
+        result->x = -sqrt( pow( length, 2 ) / ( 1 + pow( slope, 2 ) ) );
+    }
+
+    result->y = result->x * slope;
+
+    return result;
+}
+
+double cross_product( Point * p1, Point * p2 )
+{
+    if( p1 == NULL || p2 == NULL )
+    {
+        return 0.0;
+    }
+
+    return ( p1->x * p2->y - p1->y * p2->x );
+}
+
+// For these two functions, the order of the points implies the lseg's direction
+// component
+bool lseg_points_right_of( LSEG * segment, LSEG * reference )
+{
+    Point * seg_vector = NULL;
+    Point * ref_vector = NULL;
+
+    if( segment == NULL || reference == NULL )
+    {
+        return false;
+    }
+
+    seg_vector = lseg_to_vector( segment );
+    ref_vector = lseg_to_vector( reference );
+
+    if( seg_vector == NULL || ref_vector == NULL )
+    {
+        if( seg_vector != NULL )
+        {
+            pfree( seg_vector );
+        }
+
+        if( ref_vector != NULL )
+        {
+            pfree( ref_vector );
+        }
+
+        return false;
+    }
+
+    if( cross_product( seg_vector, ref_vector ) < 0 )
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool lseg_points_left_of( LSEG * segment, LSEG * reference )
+{
+    Point * seg_vector = NULL;
+    Point * ref_vector = NULL;
+
+    if( segment == NULL || reference == NULL )
+    {
+        return false;
+    }
+
+    seg_vector = lseg_to_vector( segment );
+    ref_vector = lseg_to_vector( reference );
+
+    if( seg_vector == NULL || ref_vector == NULL )
+    {
+        if( seg_vector != NULL )
+        {
+            pfree( seg_vector );
+        }
+
+        if( ref_vector != NULL )
+        {
+            pfree( ref_vector );
+        }
+
+        return false;
+    }
+
+    if( cross_product( seg_vector, ref_vector ) > 0 )
+    {
+        return true;
+    }
+
+    return false;
+}

@@ -62,8 +62,10 @@ PG_FUNCTION_INFO_V1( fn_get_orthogonal_segments );
 PG_FUNCTION_INFO_V1( fn_create_reflected_box );
 PG_FUNCTION_INFO_V1( fn_scale_lseg );
 PG_FUNCTION_INFO_V1( fn_get_lseg_angle );
-
-PG_FUNCTION_INFO_V1( float_test );
+PG_FUNCTION_INFO_V1( fn_lseg_points_right_of );
+PG_FUNCTION_INFO_V1( fn_lseg_points_left_of );
+PG_FUNCTION_INFO_V1( fn_cross_product );
+PG_FUNCTION_INFO_V1( fn_lseg_to_vector );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -1886,4 +1888,94 @@ Datum fn_get_lseg_angle( PG_FUNCTION_ARGS )
     );
 
     PG_RETURN_FLOAT8( result );
+}
+
+Datum fn_lseg_points_right_of( PG_FUNCTION_ARGS )
+{
+    LSEG * seg = NULL;
+    LSEG * ref = NULL;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    seg = PG_GETARG_LSEG_P(0);
+    ref = PG_GETARG_LSEG_P(1);
+
+    if( seg == NULL || ref == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    return lseg_points_right_of( seg, ref );
+}
+
+Datum fn_lseg_points_left_of( PG_FUNCTION_ARGS )
+{
+    LSEG * seg = NULL;
+    LSEG * ref = NULL;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    seg = PG_GETARG_LSEG_P(0);
+    ref = PG_GETARG_LSEG_P(1);
+
+    if( seg == NULL || ref == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    return lseg_points_left_of( seg, ref );
+}
+
+Datum fn_cross_product( PG_FUNCTION_ARGS )
+{
+    Point * a = NULL;
+    Point * b = NULL;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    a = PG_GETARG_POINT_P(0);
+    b = PG_GETARG_POINT_P(1);
+
+    if( a == NULL || b == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    return cross_product( a, b );
+}
+
+Datum fn_lseg_to_vector( PG_FUNCTION_ARGS )
+{
+    Point * result = NULL;
+    LSEG *  input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_LSEG_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = lseg_to_vector( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_POINT_P( result );
 }
