@@ -2006,5 +2006,13 @@ Datum fn_box_to_polygon( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    set_polygon_boundbox( result );
+
+    SET_VARSIZE(
+        result,
+        offsetof( POLYGON, p )
+      + ( result->npts * sizeof( Point ) )
+    );
+
     PG_RETURN_POLYGON_P( result );
 }
