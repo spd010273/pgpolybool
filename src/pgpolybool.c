@@ -52,6 +52,8 @@ PG_FUNCTION_INFO_V1( fn_get_polygon_line_segs );
 PG_FUNCTION_INFO_V1( fn_get_polygon_lseg_distance );
 PG_FUNCTION_INFO_V1( fn_get_polygon_area );
 PG_FUNCTION_INFO_V1( fn_lseg_to_polygon );
+PG_FUNCTION_INFO_V1( fn_box_to_polygon );
+
 // LSEG functions
 PG_FUNCTION_INFO_V1( fn_lseg_intersect );
 PG_FUNCTION_INFO_V1( fn_lseg_intersect_point );
@@ -1978,4 +1980,31 @@ Datum fn_lseg_to_vector( PG_FUNCTION_ARGS )
     }
 
     PG_RETURN_POINT_P( result );
+}
+
+Datum fn_box_to_polygon( PG_FUNCTION_ARGS )
+{
+    POLYGON * result = NULL;
+    BOX *     input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_BOX_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = box_to_polygon( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_POLYGON_P( result );
 }
