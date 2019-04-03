@@ -19,9 +19,7 @@
 #include "utils/geo_decls.h"
 #include "util.h"
 
-extern bool line_segment_intersect( LSEG *, LSEG * );
 extern double line_segment_distance( LSEG *, LSEG * ); 
-extern Point * line_segment_intersection( LSEG *, LSEG * );
 extern LSEG ** line_segment_parallel_line_segment( LSEG *, Point *, double );
 extern LSEG ** line_segment_orthogonal_line_segment( LSEG *, Point *, double );
 extern LSEG * scale_lseg( LSEG *, double, Point * );

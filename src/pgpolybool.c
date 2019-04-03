@@ -56,13 +56,10 @@ PG_FUNCTION_INFO_V1( fn_box_to_polygon );
 PG_FUNCTION_INFO_V1( fn_points_to_polygon );
 
 // LSEG functions
-PG_FUNCTION_INFO_V1( fn_lseg_intersect );
-PG_FUNCTION_INFO_V1( fn_lseg_intersect_point );
 PG_FUNCTION_INFO_V1( fn_get_parallel_segment );
 PG_FUNCTION_INFO_V1( fn_get_parallel_segments );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segment );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segments );
-PG_FUNCTION_INFO_V1( fn_create_reflected_box );
 PG_FUNCTION_INFO_V1( fn_scale_lseg );
 PG_FUNCTION_INFO_V1( fn_get_lseg_angle );
 PG_FUNCTION_INFO_V1( fn_lseg_points_right_of );
@@ -1286,61 +1283,6 @@ Datum fn_get_polygon_line_segs( PG_FUNCTION_ARGS )
     PG_RETURN_ARRAYTYPE_P( result );
 }
 
-Datum fn_lseg_intersect_point( PG_FUNCTION_ARGS )
-{
-    LSEG *  a     = NULL;
-    LSEG *  b     = NULL;
-    Point * isect = NULL;
-
-    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    a = PG_GETARG_LSEG_P(0);
-    b = PG_GETARG_LSEG_P(1);
-
-    if( a == NULL || b == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    isect = line_segment_intersection( a, b );
-
-    if( isect == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_POINT_P( isect );
-}
-
-Datum fn_lseg_intersect( PG_FUNCTION_ARGS )
-{
-    LSEG * a = NULL;
-    LSEG * b = NULL;
-
-    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    a = PG_GETARG_LSEG_P(0);
-    b = PG_GETARG_LSEG_P(1);
-
-    if( a == NULL || b == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    if( line_segment_intersect( a, b ) )
-    {
-        PG_RETURN_BOOL( true );
-    }
-
-    PG_RETURN_BOOL( false );
-}
-
 Datum fn_get_polygon_lseg_distance( PG_FUNCTION_ARGS )
 {
     POLYGON *    poly     = NULL;
@@ -1665,112 +1607,6 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
     );
 
     PG_RETURN_ARRAYTYPE_P( result );
-}
-
-Datum fn_create_reflected_box( PG_FUNCTION_ARGS )
-{
-    /*
-     *  Given an input line segment and an orthogonal line segment, we return a
-     *  box that extends from the line segment by the orthogonal line segment's
-     *  length, and has the line segment as one of its sides.
-     *
-     *  EX:
-     *
-     *  |
-     *  |        orthogonal segment
-     *  |          v
-     *  +------------
-     *  |
-     *  |
-     *  |
-     *
-     *  ^ line segment
-     *
-     *  Output:
-     *
-     *  +-----------+
-     *  |           |
-     *  |           |
-     *  |           |
-     *  |           |
-     *  |           |
-     *  +-----------+
-     */
-    LSEG * line        = NULL;
-    LSEG * ortho_line  = NULL;
-    BOX *  output      = NULL;
-    double ortho_m     = 0.0;
-    double line_m      = 0.0;
-    double ortho_b     = 0.0;
-    double line_b      = 0.0;
-    unsigned int ortho_index = 0;
-
-    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    line       = PG_GETARG_LSEG_P(0);
-    ortho_line = PG_GETARG_LSEG_P(1);
-
-    if( line == NULL || ortho_line == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    output = palloc0( sizeof( BOX ) );
-
-    if( output == NULL )
-    {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate structure for result" )
-            )
-        );
-    }
-
-    /*
-     * We have two line segments that are orthogonal (we'll probably need to verify this)
-     * What we actually have are 4 points, We have half of our solution, which is either point
-     * on the input line segment (line). We need to find a point P that is
-     *
-     */
-
-    output->high.x = line->p[0].x;
-    output->high.y = line->p[0].y;
-
-    ortho_m = ( ortho_line->p[0].y - ortho_line->p[1].y )
-            / ( ortho_line->p[0].x - ortho_line->p[1].x );
-    line_m  = ( line->p[0].y - line->p[1].y )
-            / ( line->p[0].x - line->p[1].x );
-
-    line_b = line->p[1].y - line_m * line->p[1].x;
-
-    if( fabs( ortho_line->p[0].y - ( line_m * ortho_line->p[0].x + line_b )) < DBL_EPSILON )
-    {
-        ortho_index = 0;
-    }
-    else if( fabs( ortho_line->p[1].y - ( line_m * ortho_line->p[1].x + line_b )) < DBL_EPSILON )
-    {
-        ortho_index = 1;
-    }
-    else
-    {
-        pfree( output );
-        PG_RETURN_NULL();
-    }
-    // We have the slopes, now we need to find the y-intercepts of the equation y=mx+b with x,y being our points
-
-    ortho_b = line->p[1].y - ortho_m * line->p[1].x;
-    line_b  = ortho_line->p[ortho_index].y - line_m * ortho_line->p[ortho_index].x;
-
-    // Basically after a gnarley system of linear equations, you arrive at:
-    output->low.y = ( -( ( ortho_b * line_m ) / ortho_m ) + line_b ) / ( 1 - line_m / ortho_m );
-    output->low.x = ( output->low.y - line_b ) / line_m;
-
-    PG_RETURN_BOX_P( output );
 }
 
 Datum fn_lseg_to_polygon( PG_FUNCTION_ARGS )
