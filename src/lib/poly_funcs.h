@@ -26,6 +26,7 @@ extern void rotate_polygon( POLYGON *, double );
 extern Point ** get_polygon_points( POLYGON * );
 extern POLYGON * box_to_polygon( BOX * );
 extern POLYGON * line_segment_to_polygon( LSEG *, double );
+extern POLYGON * polygon_from_points( Point **, unsigned int );
 
 #ifdef DEBUG
 extern void dump_polygon( POLYGON * );

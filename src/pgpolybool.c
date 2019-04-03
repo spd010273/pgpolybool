@@ -53,6 +53,7 @@ PG_FUNCTION_INFO_V1( fn_get_polygon_lseg_distance );
 PG_FUNCTION_INFO_V1( fn_get_polygon_area );
 PG_FUNCTION_INFO_V1( fn_lseg_to_polygon );
 PG_FUNCTION_INFO_V1( fn_box_to_polygon );
+PG_FUNCTION_INFO_V1( fn_points_to_polygon );
 
 // LSEG functions
 PG_FUNCTION_INFO_V1( fn_lseg_intersect );
@@ -1798,12 +1799,6 @@ Datum fn_lseg_to_polygon( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    SET_VARSIZE(
-        poly,
-        offsetof( POLYGON, p )
-      + ( poly->npts * sizeof( Point ) )
-    );
-
     PG_RETURN_POLYGON_P( poly );
 }
 
@@ -2006,13 +2001,78 @@ Datum fn_box_to_polygon( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    set_polygon_boundbox( result );
+    PG_RETURN_POLYGON_P( result );
+}
 
-    SET_VARSIZE(
-        result,
-        offsetof( POLYGON, p )
-      + ( result->npts * sizeof( Point ) )
+Datum fn_points_to_polygon( PG_FUNCTION_ARGS )
+{
+    POLYGON *    result       = NULL;
+    ArrayType *  input_points = NULL;
+    Datum *      elements     = NULL;
+    Point **     input        = NULL;
+    bool *       nulls        = NULL;
+    int          num_points   = 0;
+    unsigned int i            = 0;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input_points = PG_GETARG_ARRAYTYPE_P(0);
+
+    if( input_points == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    deconstruct_array(
+        input_points,
+        POINTOID,
+        16,
+        false,
+        'd',
+        &elements,
+        &nulls,
+        &num_points
     );
+
+    if( num_points > 1 )
+    {
+        input = ( Point ** ) palloc0(
+            sizeof( Point * ) * num_points
+        );
+
+        if( input == NULL )
+        {
+            PG_RETURN_NULL();
+        }
+
+        for( i = 0; i < num_points; i++ )
+        {
+            if( nulls[i] )
+            {
+                pfree( input );
+                PG_RETURN_NULL();
+            }
+
+            input[i] = DatumGetPointP( elements[i] );
+        }
+    }
+    else
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = polygon_from_points(
+        input,
+        ( unsigned int ) num_points
+    );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
 
     PG_RETURN_POLYGON_P( result );
 }

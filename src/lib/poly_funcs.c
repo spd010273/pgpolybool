@@ -288,6 +288,13 @@ POLYGON * box_to_polygon( BOX * b )
     result->npts = 4;
 
     set_polygon_boundbox( result );
+
+    SET_VARSIZE(
+        result,
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * 4
+    );
+
     return result;
 }
 
@@ -393,7 +400,79 @@ POLYGON * line_segment_to_polygon( LSEG * segment, double width )
 
     result->npts = 4;
     set_polygon_boundbox( result );
+
+    SET_VARSIZE(
+        result,
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * 4
+    );
+
     return result;
+}
+
+/*
+ * POLYGON * polygon_from_points( Point **, unsigned int )
+ *
+ *     Generate a polygon struct from the provided points, This naively
+ *     generates the polygon with the points in the same order as they
+ *     appear in the input array.
+ *
+ * Arguments:
+ *     Point ** array: The points to add to the polygon
+ *     unsigned int i: number of points in the array
+ * Return:
+ *     POLYGON * result: Resulting polygon
+ * Error Conditions:
+ *     Returns NULL on failure to allocate new POLYGON
+ *     Returns NULL on NULL input
+ */
+POLYGON * polygon_from_points( Point ** points, unsigned int size )
+{
+    POLYGON *    p = NULL;
+    unsigned int i = 0;
+
+    if( points == NULL )
+    {
+        return NULL;
+    }
+
+    if( size == 0 )
+    {
+        return NULL;
+    }
+
+    p = ( POLYGON * ) palloc(
+        offsetof( POLYGON, p )
+      + ( sizeof( Point ) * size )
+    );
+
+    if( p == NULL )
+    {
+        return NULL;
+    }
+
+    for( i = 0; i < size; i++ )
+    {
+        if( points[i] == NULL )
+        {
+            return NULL;
+        }
+
+        p->p[i].x = points[i]->x;
+        p->p[i].y = points[i]->y;
+    }
+
+    p->npts = size;
+
+    set_polygon_boundbox( p );
+
+    SET_VARSIZE(
+        p,
+        offsetof( POLYGON, p )
+      + ( p->npts * sizeof( Point ) )
+    );
+
+    return p;
 }
 
 /*

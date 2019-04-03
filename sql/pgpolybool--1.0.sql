@@ -28,6 +28,8 @@ RETURNS POLYGON IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_xor_p
 
 
 /* Helper functions */
+
+/* Polygon Functions */
 CREATE OR REPLACE FUNCTION fn_rotate_polygon( poly POLYGON, radians DOUBLE PRECISION )
 RETURNS POLYGON IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_rotate_polygon';
 
@@ -40,6 +42,20 @@ RETURNS LSEG[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_po
 CREATE OR REPLACE FUNCTION fn_get_polygon_area( poly POLYGON )
 RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_polygon_area';
 
+CREATE OR REPLACE FUNCTION fn_box_to_polygon( BOX )
+RETURNS POLYGON IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_box_to_polygon';
+
+-- Can't overload w/ VARIADIC function as they technically accept the same type :(
+CREATE OR REPLACE FUNCTION fn_points_to_polygon_array( points_array POINT[] )
+RETURNS POLYGON IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_points_to_polygon';
+
+CREATE OR REPLACE FUNCTION fn_points_to_polygon( VARIADIC points_array POINT[] )
+RETURNS POLYGON IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_points_to_polygon'; 
+
+CREATE OR REPLACE FUNCTION fn_lseg_to_polygon( seg LSEG, width DOUBLE PRECISION DEFAULT 1.0 )
+RETURNS POLYGON IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_to_polygon';
+
+/* Line Segment Functions */
 CREATE OR REPLACE FUNCTION fn_line_segments_intersect( a LSEG, b LSEG )
 RETURNS BOOLEAN IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_intersect';
 
@@ -61,9 +77,6 @@ RETURNS LSEG IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_orth
 CREATE OR REPLACE FUNCTION fn_get_orthogonal_segments( seg LSEG, length DOUBLE PRECISION DEFAULT 1.0 )
 RETURNS LSEG[] IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_get_orthogonal_segments';
 
-CREATE OR REPLACE FUNCTION fn_lseg_to_polygon( seg LSEG, width DOUBLE PRECISION DEFAULT 1.0 )
-RETURNS POLYGON IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_to_polygon';
-
 CREATE OR REPLACE FUNCTION fn_scale_lseg( seg LSEG, scale_factor DOUBLE PRECISION DEFAULT 1.0, reference_point POINT DEFAULT NULL )
 RETURNS LSEG IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_scale_lseg';
 
@@ -79,11 +92,10 @@ RETURNS BOOLEAN IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_
 CREATE OR REPLACE FUNCTION fn_lseg_points_left_of( segment LSEG, reference LSEG )
 RETURNS BOOLEAN IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_points_left_of';
 
+/* Vector Functions */
+
 CREATE OR REPLACE FUNCTION fn_cross_product( POINT, POINT )
 RETURNS DOUBLE PRECISION IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_cross_product';
 
 CREATE OR REPLACE FUNCTION fn_lseg_to_vector( LSEG )
 RETURNS POINT IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_lseg_to_vector';
-
-CREATE OR REPLACE FUNCTION fn_box_to_polygon( BOX )
-RETURNS POLYGON IMMUTABLE PARALLEL SAFE LANGUAGE C AS 'pgpolybool.so', 'fn_box_to_polygon';
