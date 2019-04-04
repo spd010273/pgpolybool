@@ -1,3 +1,31 @@
+CREATE OR REPLACE FUNCTION __cast_line_to_point( in_line LINE )
+RETURNS POINT AS
+ 'pgpolybool.so', '__cast_line_to_point'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION __cast_path_to_point( in_path PATH )
+RETURNS POINT AS
+ 'pgpolybool.so', '__cast_path_to_point'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+CREATE OR REPLACE FUNCTION __cast_lseg_to_polygon( in_segment LSEG )
+RETURNS POLYGON AS
+ 'pgpolybool.so', '__cast_lseg_to_polygon'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION __cast_line_to_polygon( in_line LINE )
+RETURNS POLYGON AS
+ 'pgpolybool.so', '__cast_line_to_polygon'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION __cast_point_to_polygon( in_point POINT )
+RETURNS POLYGON AS
+ 'pgpolybool.so', '__cast_point_to_polygon'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+-- Attempt to overwrite the function address of path_center
+CREATE OR REPLACE FUNCTION __overload_path_center()
+RETURNS VOID AS
+ 'pgpolybool.so', '__overload_path_center'
+LANGUAGE C IMMUTABLE PARALLEL UNSAFE;
 /* Line Segment geometric functions */
 CREATE OR REPLACE FUNCTION fn_get_polygon_line_segment_distance( poly POLYGON, seg LSEG )
 RETURNS DOUBLE PRECISION AS
@@ -147,3 +175,51 @@ CREATE OR REPLACE FUNCTION fn_lseg_to_vector( LSEG )
 RETURNS POINT AS
  'pgpolybool.so', 'fn_lseg_to_vector'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+/* Returns the y-intercept of the line */
+CREATE CAST ( LINE AS POINT )
+    WITH FUNCTION __cast_line_to_point( LINE )
+    AS IMPLICIT;
+
+/*
+ *  TODO: This function is defined and has an entry point in src/backend/utils/adt/geo_ops.c
+ *  but is just a stub that emits an error and returns NULL. Because the CREATE CAST functionality
+ *  does not support create or replace syntax styles, we cannot override the existing dummy cast
+ *  which leaves the only way to extend this cast to actually work on the path->point transition
+ *  would be to overwrite the address of Datum path_center( PG_FUNCTION_ARGS ) with our own function
+ *  which is a little dangerous and hacky :(
+-- Returns the centroid of the path
+CREATE CAST ( PATH AS POINT )
+    WITH FUNCTION __cast_path_to_point( PATH )
+    AS IMPLICIT;
+*/
+/*
+ * Generates a BOX as a POLYGON using the LSEG as a diagonal of the BOX. The
+ * resulting polygon will be four points.
+ */
+
+CREATE CAST (LSEG AS POLYGON)
+    WITH FUNCTION __cast_lseg_to_polygon( LSEG )
+    AS IMPLICIT;
+
+/*
+ * Similar to LSEG conversion, the LINE will pass through the diagonal of the
+ * BOX used to form the simple polygon. The center of the box will be at the
+ * y-intercept of the line and the length of the diagonal is sqrt(2), making
+ * the sides have length 1
+ */
+CREATE CAST (LINE AS POLYGON)
+    WITH FUNCTION __cast_line_to_polygon( LINE )
+    AS IMPLICIT;
+
+/*
+ * Generates a polygon circle with twelve points and diameter 1 about the point
+ */
+CREATE CAST (Point AS POLYGON)
+    WITH FUNCTION __cast_point_to_polygon( POINT )
+    AS IMPLICIT;
+
+/*
+CREATE CAST (VECTOR AS POLYGON)
+    WITH FUNCTION fn_vector_to_polygon( VECTOR )
+    AS IMPLICIT; 
+*/

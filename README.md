@@ -16,16 +16,30 @@ pgpolybool provides the following functions for polygon boolean operations:
 * POLYGON fn_xor_polygons( POLYGON[] ): XOR 2..n polygons.
 * POLYGON fn_xor_polygons( POLYGON, POLYGON ): XOR two polygons.
 
+Additionally, pgpolybool rounds out the casting between PostgreSQL geometric types, as described by this matrix:
+
+| From / To | POLYGON | POINT | LSEG | LINE | PATH | BOX | CIRCLE | VECTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| POLYGON | PostgreSQL | PostgreSQL | N/A | N/A | PostgreSQL | PostgreSQL | PostgreSQL | N/A |
+| POINT | pgpolybool | PostgreSQL | N/A | N/A | N/A | PostgreSQL | N/A | N/A |
+| LSEG | pgpolybool | PostgreSQL | PostgreSQL | N/A | N/A | N/A | N/A | N/A |
+| LINE | pgpolybool | pgpolybool | N/A | PostgreSQL | N/A | N/A | N/A | N/A | N/A |
+| PATH | PostgreSQL | pgpolybool | N/A | N/A | PostgreSQL | N/A | N/A | N/A |
+| BOX | PostgreSQL | PostgreSQL | PostgreSQL | N/A | N/A | PostgreSQL | PostgreSQL | N/A |
+| CIRCLE | PostgreSQL | PostgreSQL | N/A | N/A | N/A | PostgreSQL | PostgreSQL | N/A |
+| VECTOR | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | pgpolybool |
+These casts are provided as implicit casts
+
 pgpolybool also provides the following utility functions:
 
 * POLYGON fn_rotate_polygon( POLYGON, DOUBLE PRECISION ): Rotate a polygon by the specified number of radians
 * POINT[] fn_get_polygon_points( POLYGON ): Return the points that comprise a given polygon
 * LSEG[] fn_get_polygon_line_segments( POLYGON ): Return the line segments that comprise a given polygon
-* BOOLEAN fn_line_segments_intersect( LSEG, LSEG ): Return whether or not two line segments intersect
-* POINT fn_line_segments_intersection_point( LSEG, LSEG ): Return the point of intersection between two line segments, NULL if there is no intersection
 * DOUBLE PRECISION fn_get_polygon_line_segment_distance( POLYGON, LSEG ): Get the minimum distance between a polygon and a line segment.
 * LSEG fn_get_orthogonal_segment( LSEG, POINT, DOUBLE PRECISION ): Generate an orthogonal line segment starting at the center of the provided line segment, pointing away from the optional POINT, and of length DOUBLE PRECISION (default length is unit length, or 1.0)
 * LSEG[] fn_get_orthogonal_segments( LSEG, DOUBLE PRECISION ): Generate two orthogonal line segments starting from the center of the provided line segment, scaled to the optional length DOUBLE PRECISION
+* LSEG fn_get_parallel_segment( LSEG, POINT, DOUBLE PRECISION );
+* LSEG fn_get_parallel_segments( LSEG, DOUBLE PRECISION );
 
 pgpolybool implements the clipping algorithm described in Martinez, Rueda, and Feito paper published the Computers & Geosciences Journal, Volume 35, issue 8 (pp. 1177-1185) ( see https://www.sciencedirect.com/science/article/pii/S0098300408002793 ).
 

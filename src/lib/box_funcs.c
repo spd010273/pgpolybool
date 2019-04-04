@@ -22,17 +22,10 @@ Point ** get_box_points( BOX * box )
     double       a            = 0.0;
     double       b            = 0.0;
     double       c            = 0.0;
-    Point *      center       = NULL;
+    Point        center       = {0};
     Point **     result_array = NULL;
 
     if( box == NULL )
-    {
-        return NULL;
-    }
-
-    center = ( Point * ) palloc0( sizeof( Point ) );
-
-    if( center == NULL )
     {
         return NULL;
     }
@@ -42,7 +35,6 @@ Point ** get_box_points( BOX * box )
 
     if( result_array == NULL )
     {
-        pfree( center );
         return NULL;
     }
 
@@ -60,7 +52,6 @@ Point ** get_box_points( BOX * box )
                 }
             }
 
-            pfree( center );
             pfree( result_array );
             return NULL;
         }
@@ -96,31 +87,30 @@ Point ** get_box_points( BOX * box )
      * c = ( Ub - Centery )^2 + Centerx^2 - L^2
      */
 
-    center->x = ( box->high.x - box->low.x ) / 2.0;
-    center->y = ( box->high.y - box->low.y ) / 2.0;
+    center.x = ( box->high.x - box->low.x ) / 2.0;
+    center.y = ( box->high.y - box->low.y ) / 2.0;
 
     L = sqrt(
-        pow( result_array[0]->x - center->x, 2 )
-      + pow( result_array[0]->y - center->y, 2 )
+        pow( result_array[0]->x - center.x, 2 )
+      + pow( result_array[0]->y - center.y, 2 )
     );
 
     Um = -1.0
-       * (
+       * pow(
              ( result_array[0]->y - result_array[2]->y )
-           / ( result_array[0]->x - result_array[2]->x )
+           / ( result_array[0]->x - result_array[2]->x ),
+           -1
          );
 
-    Ub = center->x * Um - center->y;
+    Ub = center.x * Um - center.y;
 
     a = pow( Um, 2 ) + 1.0;
-    b = 2.0 * Um * ( Ub - center->y );
-    c = pow( Ub - center->y, 2 ) + pow( center->x, 2 ) - pow( L, 2 );
+    b = 2.0 * Um * ( Ub - center.y );
+    c = pow( Ub - center.y, 2 ) + pow( center.x, 2 ) - pow( L, 2 );
 
     if( ( b * b ) < ( 4 * a * c ) )
     {
         elog( DEBUG1, "Solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
-
-        pfree( center );
 
         for( i = 0; i < 4; i++ )
         {

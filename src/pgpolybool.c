@@ -18,11 +18,14 @@
 #include "utils/lsyscache.h"
 #include "fmgr.h"
 
+#include "hook.h" // for hooking arbitrary functions
+
 #include "martinez.h"
 #include "polyprocessing.h"
 #include "lseg_funcs.h"
 #include "box_funcs.h"
 #include "poly_funcs.h"
+#include "point_funcs.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -66,6 +69,17 @@ PG_FUNCTION_INFO_V1( fn_lseg_points_right_of );
 PG_FUNCTION_INFO_V1( fn_lseg_points_left_of );
 PG_FUNCTION_INFO_V1( fn_cross_product );
 PG_FUNCTION_INFO_V1( fn_lseg_to_vector );
+
+// Cast Functions
+// x->POLYGON
+PG_FUNCTION_INFO_V1( __cast_lseg_to_polygon );
+PG_FUNCTION_INFO_V1( __cast_line_to_polygon );
+PG_FUNCTION_INFO_V1( __cast_point_to_polygon );
+
+// x->POINT
+PG_FUNCTION_INFO_V1( __cast_line_to_point );
+PG_FUNCTION_INFO_V1( __cast_path_to_point );
+PG_FUNCTION_INFO_V1( __overload_path_center );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -1912,3 +1926,253 @@ Datum fn_points_to_polygon( PG_FUNCTION_ARGS )
 
     PG_RETURN_POLYGON_P( result );
 }
+
+Datum __cast_lseg_to_polygon( PG_FUNCTION_ARGS )
+{
+    POLYGON * result = NULL;
+    LSEG *    input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_LSEG_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = lseg_to_polygon( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_POLYGON_P( result );
+}
+
+Datum __cast_line_to_polygon( PG_FUNCTION_ARGS )
+{
+    POLYGON * result = NULL;
+    LINE *    input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_LINE_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = line_to_polygon( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_POLYGON_P( result );
+}
+
+Datum __cast_point_to_polygon( PG_FUNCTION_ARGS )
+{
+    POLYGON * result = NULL;
+    Point *   input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_POINT_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = point_to_polygon( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_POLYGON_P( result );
+}
+
+Datum __cast_line_to_point( PG_FUNCTION_ARGS )
+{
+    Point * result = NULL;
+    LINE *  input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_LINE_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = line_to_point( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_POINT_P( result );
+}
+
+Datum __cast_path_to_point( PG_FUNCTION_ARGS )
+{
+    Point * result = NULL;
+    PATH *  input  = NULL;
+
+    elog( DEBUG1, "Entry __cast_path_to_point" );
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_PATH_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = path_to_point( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_POINT_P( result );
+}
+
+Datum __overload_path_center( PG_FUNCTION_ARGS )
+{
+    if(
+         hook_function(
+             "path_center",
+             ( uintptr_t ) &__cast_path_to_point
+         )
+      )
+    {
+        elog( DEBUG1, "Hook registered!" );
+    }
+
+    PG_RETURN_VOID();
+}
+
+/*
+Datum __overload_path_center( PG_FUNCTION_ARGS )
+{
+    void *    program_handle    = NULL;
+    int64_t * original_function = NULL;
+    int64_t * new_function      = NULL;
+    //uint64_t  instruction       = 0;
+    uint64_t  instruction[2]    = {0};
+    int32_t   address_offset    = 0;
+    size_t    page_size         = 0;
+    uintptr_t page_start        = 0;
+
+    // Attempt to open the executable's symbol table using the Real Time Dynamic
+    // Linker
+    program_handle = dlopen( NULL, RTLD_NOW );
+
+    if( program_handle == NULL )
+    {
+        elog( ERROR, "Failed to open symbol table" );
+        PG_RETURN_VOID();
+    }
+
+    // Attempt to resolve the symbol 'path_center' in the program's symbol table
+    original_function = dlsym( program_handle, "path_center" );
+
+    if( original_function == NULL )
+    {
+        elog( ERROR, "Failed to resolve 'path_center'" );
+        dlclose( program_handle );
+        PG_RETURN_VOID();
+    }
+
+    new_function   = ( int64_t * ) &__cast_path_to_point;
+    address_offset = ( int64_t ) new_function
+                   - (
+                        ( int64_t ) original_function
+                      + 5 * sizeof( char )
+                     ); // x86 absolute jump is 5 bytes
+
+    // Determine the start of the page our targetted function lies in so we
+    // can change the permissions
+    page_size  = sysconf( _SC_PAGESIZE );
+    page_start = ( ( uintptr_t ) original_function ) & -page_size;
+
+    elog(
+        DEBUG1,
+        "Found the following symbol info:\n"\
+        "    new_function:      0x%lx\n"\
+        "    original_function: 0x%lx\n"\
+        "    address_offset:    0x%lx\n"\
+        "    page_size:         0x%lx\n"\
+        "    page_start:        0x%lx\n",
+        ( long unsigned int ) new_function,
+        ( long unsigned int ) original_function,
+        ( long unsigned int ) address_offset,
+        ( long unsigned int ) page_size,
+        ( long unsigned int ) page_start
+    );
+
+    // Attempt to give ourselves write access to the memory, this might not work :|
+    if(
+        mprotect(
+            ( void * ) page_start,
+            ( ( uintptr_t ) original_function + 1 ) - page_start,
+            PROT_READ | PROT_WRITE | PROT_EXEC
+        ) == 0
+      )
+    {
+        //instruction = 0xE9 | address_offset << 8;
+        //Push the upper DWORD of the address of new_function onto the stack
+        instruction[0] = 0x68 | new_function << 32;
+        //Push the lower DWORD of the address of new_function onto the stack
+        instruction[0] = 0x68 | new_function >> 32;
+        
+         
+        //elog( DEBUG1, "Interting instruction: %lx", ( long unsigned int ) instruction );
+        *( original_function + 0 ) = instruction[0];
+        *( original_function + 1 ) = instruction[1];
+        // If we made it here we survived the SIGSEGV!
+        elog(
+            DEBUG1,
+            "Successfully hooked path_center at 0x%lx",
+            ( long unsigned int ) original_function
+        );
+    }
+    else
+    {
+        elog(
+            ERROR,
+            "Failed to change memory permissions at 0x%lx",
+            ( long unsigned int ) page_start
+        );
+    }
+
+    dlclose( program_handle );
+    PG_RETURN_VOID();
+}
+*/

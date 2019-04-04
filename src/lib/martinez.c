@@ -142,12 +142,12 @@ void divide_segment(
 }
 
 void possible_intersection(
-    struct sweep_event * e0,
-    struct sweep_event * e1,
-    unsigned int * num_int,
-    struct dlpq * phead,
+    struct sweep_event *   e0,
+    struct sweep_event *   e1,
+    unsigned int *         num_int,
+    struct dlpq *          phead,
     struct sweep_event *** ev_set,
-    unsigned int * ev_length
+    unsigned int *         ev_length
 )
 {
     struct sweep_event ** ev                = NULL;
