@@ -2063,12 +2063,14 @@ Datum __cast_path_to_point( PG_FUNCTION_ARGS )
     PG_RETURN_POINT_P( result );
 }
 
+// Hooks src/backend/utils/adt/geo_ops.c:path_center to do something a little
+// more useful than throw an error and return NULL
 Datum __overload_path_center( PG_FUNCTION_ARGS )
 {
     if(
          hook_function(
              "path_center",
-             ( uintptr_t ) &__cast_path_to_point
+             ( uintptr_t ) __cast_path_to_point
          )
       )
     {
@@ -2077,102 +2079,3 @@ Datum __overload_path_center( PG_FUNCTION_ARGS )
 
     PG_RETURN_VOID();
 }
-
-/*
-Datum __overload_path_center( PG_FUNCTION_ARGS )
-{
-    void *    program_handle    = NULL;
-    int64_t * original_function = NULL;
-    int64_t * new_function      = NULL;
-    //uint64_t  instruction       = 0;
-    uint64_t  instruction[2]    = {0};
-    int32_t   address_offset    = 0;
-    size_t    page_size         = 0;
-    uintptr_t page_start        = 0;
-
-    // Attempt to open the executable's symbol table using the Real Time Dynamic
-    // Linker
-    program_handle = dlopen( NULL, RTLD_NOW );
-
-    if( program_handle == NULL )
-    {
-        elog( ERROR, "Failed to open symbol table" );
-        PG_RETURN_VOID();
-    }
-
-    // Attempt to resolve the symbol 'path_center' in the program's symbol table
-    original_function = dlsym( program_handle, "path_center" );
-
-    if( original_function == NULL )
-    {
-        elog( ERROR, "Failed to resolve 'path_center'" );
-        dlclose( program_handle );
-        PG_RETURN_VOID();
-    }
-
-    new_function   = ( int64_t * ) &__cast_path_to_point;
-    address_offset = ( int64_t ) new_function
-                   - (
-                        ( int64_t ) original_function
-                      + 5 * sizeof( char )
-                     ); // x86 absolute jump is 5 bytes
-
-    // Determine the start of the page our targetted function lies in so we
-    // can change the permissions
-    page_size  = sysconf( _SC_PAGESIZE );
-    page_start = ( ( uintptr_t ) original_function ) & -page_size;
-
-    elog(
-        DEBUG1,
-        "Found the following symbol info:\n"\
-        "    new_function:      0x%lx\n"\
-        "    original_function: 0x%lx\n"\
-        "    address_offset:    0x%lx\n"\
-        "    page_size:         0x%lx\n"\
-        "    page_start:        0x%lx\n",
-        ( long unsigned int ) new_function,
-        ( long unsigned int ) original_function,
-        ( long unsigned int ) address_offset,
-        ( long unsigned int ) page_size,
-        ( long unsigned int ) page_start
-    );
-
-    // Attempt to give ourselves write access to the memory, this might not work :|
-    if(
-        mprotect(
-            ( void * ) page_start,
-            ( ( uintptr_t ) original_function + 1 ) - page_start,
-            PROT_READ | PROT_WRITE | PROT_EXEC
-        ) == 0
-      )
-    {
-        //instruction = 0xE9 | address_offset << 8;
-        //Push the upper DWORD of the address of new_function onto the stack
-        instruction[0] = 0x68 | new_function << 32;
-        //Push the lower DWORD of the address of new_function onto the stack
-        instruction[0] = 0x68 | new_function >> 32;
-        
-         
-        //elog( DEBUG1, "Interting instruction: %lx", ( long unsigned int ) instruction );
-        *( original_function + 0 ) = instruction[0];
-        *( original_function + 1 ) = instruction[1];
-        // If we made it here we survived the SIGSEGV!
-        elog(
-            DEBUG1,
-            "Successfully hooked path_center at 0x%lx",
-            ( long unsigned int ) original_function
-        );
-    }
-    else
-    {
-        elog(
-            ERROR,
-            "Failed to change memory permissions at 0x%lx",
-            ( long unsigned int ) page_start
-        );
-    }
-
-    dlclose( program_handle );
-    PG_RETURN_VOID();
-}
-*/

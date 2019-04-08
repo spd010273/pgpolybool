@@ -1,6 +1,16 @@
 #include "hook.h"
 
-// Simple hooking for x86_64 in Linux
+/*
+ * Simple hooking for x86_64 in Linux. This can be made compatible
+ * with other OSes by using a different memory permissions function or
+ * a wrapper for each kernel's implementation of said function. This function
+ * also relies on the program being stored in a page that is the same size as
+ * the system's default page size (4K for most systems), and will most likely
+ * not work on systems with PDPE1GB support (or similar) enabled AND has the
+ * program executable stored in one of those pages.
+ *
+ * Note: This is unsafe for use on functions > 16 bytes in length.
+ */
 
 bool __hook( uintptr_t target_address, uintptr_t hooking_function )
 {
@@ -8,12 +18,6 @@ bool __hook( uintptr_t target_address, uintptr_t hooking_function )
     uint64_t  instruction_two = 0;
     uintptr_t page_start      = 0;
     size_t    page_size       = 0;
-
-    __LOG(
-        "Attempting to hook\n 0x%llx\n with\n 0x%llx\n",
-        ( long long unsigned int ) target_address,
-        ( long long unsigned int ) hooking_function
-    );
 
     if( target_address == 0 || hooking_function == 0 )
     {
@@ -44,24 +48,15 @@ bool __hook( uintptr_t target_address, uintptr_t hooking_function )
          *   0xC3
          *
          *  This is packed and aligned to 64 bits, this ends up spreading the
-         *  mov [rsp+4] across two QWORDS.
+         *  mov [rsp+4] across two QWORDS, so it ends up looking like:
+         *
+         *  0x2444C7<address_00_31>68
+         *  0x0000C3<address_31_63>04
          */
-        // TODO: It seems we aren't getting the appropriate address for the hooking function?
-        instruction_one = 0x2444C70000000068 | ( ( ( uint32_t ) hooking_function ) << 8 );
+        instruction_one = 0x2444C70000000068 | ( ( ( uint64_t ) ( ( uint32_t ) hooking_function ) ) << 8 );
         instruction_two = 0x0000C30000000004 | ( ( ( uint32_t ) ( hooking_function >> 32 ) ) << 8 );
         *( ( uintptr_t * )( target_address     ) ) = ( uintptr_t ) instruction_one;
         *( ( uintptr_t * )( target_address + 8 ) ) = ( uintptr_t ) instruction_two;
-
-        __LOG(
-            "Wrote the following instructions to:\n 0x%llx: 0x%llx\n 0x%llx: 0x%llx\n"\
-            "Actual instructions are\n 0x%llx\n 0x%llx\n",
-            ( long long unsigned int ) ( uintptr_t ) target_address,
-            ( long long unsigned int ) *( ( uintptr_t * ) target_address ),
-            ( long long unsigned int ) ( uintptr_t ) ( target_address + 8 ),
-            ( long long unsigned int ) *( ( uintptr_t * ) (target_address + 8 ) ),
-            ( long long unsigned int ) instruction_one,
-            ( long long unsigned int ) instruction_two
-        );
     }
     else
     {
@@ -69,7 +64,6 @@ bool __hook( uintptr_t target_address, uintptr_t hooking_function )
     }
 
     return true;
-
 }
 
 uintptr_t __get_foreign_function_address( char * function_name )
