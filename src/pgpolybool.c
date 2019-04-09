@@ -12,13 +12,13 @@
  */
 
 #include "postgres.h"
+#include "miscadmin.h"
 #include "utils/array.h"
 #include "utils/geo_decls.h"
 #include "catalog/pg_type.h"
 #include "utils/lsyscache.h"
 #include "fmgr.h"
 
-#include "hook.h" // for hooking arbitrary functions
 
 #include "martinez.h"
 #include "polyprocessing.h"
@@ -26,10 +26,13 @@
 #include "box_funcs.h"
 #include "poly_funcs.h"
 #include "point_funcs.h"
+#include "hook.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
 #endif
+
+void _PG_init( void );
 
 // Intersection
 PG_FUNCTION_INFO_V1( fn_intersect_polygons_array );
@@ -2040,7 +2043,6 @@ Datum __cast_path_to_point( PG_FUNCTION_ARGS )
     Point * result = NULL;
     PATH *  input  = NULL;
 
-    elog( DEBUG1, "Entry __cast_path_to_point" );
     if( PG_ARGISNULL(0) )
     {
         PG_RETURN_NULL();
@@ -2078,4 +2080,37 @@ Datum __overload_path_center( PG_FUNCTION_ARGS )
     }
 
     PG_RETURN_VOID();
+}
+
+void _PG_init( void )
+{
+    if( !process_shared_preload_libraries_in_progress )
+    {
+        ereport(
+            WARNING,
+            (
+                errcode( ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE ),
+                errmsg( "pgpolybool must be loaded via shared_preload_libraries in postgresql.conf to override path_center" ),
+                errhint( "You can override path_center manually by calling __overload_path_center()" )
+            )
+        );
+    }
+
+    elog(
+        LOG,
+        "pgpolybool version %s loaded",
+        PGPOLYBOOL_VERSION
+    );
+
+    if(
+        hook_function(
+            "path_center",
+            ( uintptr_t ) __cast_path_to_point
+        ) == false
+      )
+    {
+        elog( WARNING, "Could not override path_center function" );
+    }
+
+    return;
 }

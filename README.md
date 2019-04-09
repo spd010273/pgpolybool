@@ -104,6 +104,7 @@ Provided that ![Determinant](img/quadratic_determinant_conditional.png) is satis
 * Build the repo 'make'
 * Install with 'make install'
 * Add the extension to your desired database 'CREATE EXTENSION pgpolybool;'
+* If you wish to hook the path path_center for conversion from PATH to most other types, you will need to add pgpolybool.so to the shared_preload_libraries string in your configuration file. Another alternative is to execute the __overload_path_center() function after the server has started.
 
 # Acknowledgements
 

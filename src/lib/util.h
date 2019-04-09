@@ -19,6 +19,8 @@
 #include "segment.h"
 #include <math.h>
 
+#define PGPOLYBOOL_VERSION "1.0"
+
 #define FP_FUDGE_FACTOR 4096
 
 #ifndef DBL_EPSILON
