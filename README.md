@@ -3,7 +3,7 @@ pgpolybool
 
 # Summary
 
-Polygon arithmatic operations for native PostgreSQL POLYGON type.
+Polygon boolean arithmatic operations for native PostgreSQL POLYGON type, as well as more robust type conversions between the native geometric types within PostgreSQL. This extension is still under active development.
 
 pgpolybool provides the following functions for polygon boolean operations:
 
@@ -20,15 +20,16 @@ Additionally, pgpolybool rounds out the casting between PostgreSQL geometric typ
 
 | From / To | POLYGON | POINT | LSEG | LINE | PATH | BOX | CIRCLE | VECTOR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| POLYGON | PostgreSQL | PostgreSQL | N/A | N/A | PostgreSQL | PostgreSQL | PostgreSQL | N/A |
-| POINT | pgpolybool | PostgreSQL | N/A | N/A | N/A | PostgreSQL | N/A | N/A |
-| LSEG | pgpolybool | PostgreSQL | PostgreSQL | N/A | N/A | N/A | N/A | N/A |
-| LINE | pgpolybool | pgpolybool | N/A | PostgreSQL | N/A | N/A | N/A | N/A | N/A |
-| PATH | PostgreSQL | pgpolybool | N/A | N/A | PostgreSQL | N/A | N/A | N/A |
+| POLYGON | PostgreSQL | PostgreSQL | pgpolybool | N/A | PostgreSQL | PostgreSQL | PostgreSQL | N/A |
+| POINT | pgpolybool | PostgreSQL | pgpolybool | N/A | N/A | PostgreSQL | N/A | N/A |
+| LSEG | pgpolybool | PostgreSQL | pgpolybool | N/A | N/A | N/A | N/A | N/A |
+| LINE | pgpolybool | pgpolybool | pgpolybool | PostgreSQL | N/A | N/A | N/A | N/A | N/A |
+| PATH | PostgreSQL | pgpolybool | pgpolybool | N/A | PostgreSQL | N/A | N/A | N/A |
 | BOX | PostgreSQL | PostgreSQL | PostgreSQL | N/A | N/A | PostgreSQL | PostgreSQL | N/A |
-| CIRCLE | PostgreSQL | PostgreSQL | N/A | N/A | N/A | PostgreSQL | PostgreSQL | N/A |
+| CIRCLE | PostgreSQL | PostgreSQL | pgpolybool | N/A | N/A | PostgreSQL | PostgreSQL | N/A |
 | VECTOR | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | pgpolybool |
-These casts are provided as implicit casts
+
+These casts are provided as implicit casts.
 
 pgpolybool also provides the following utility functions:
 

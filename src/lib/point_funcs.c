@@ -66,3 +66,52 @@ Point * path_to_point( PATH * path )
 
     return result;
 }
+
+// Takes in an array of points
+LINE * best_fit_line( Point * p, unsigned int len )
+{
+    LINE *       result     = NULL;
+    unsigned int i          = 0;
+    double       x_avg      = 0.0;
+    double       y_avg      = 0.0;
+    double       n_delta    = 0.0;
+    double       d_delta    = 0.0;
+    double       slope      = 0.0;
+    double       y_int      = 0.0;
+
+    if( p == NULL )
+    {
+        return NULL;
+    }
+
+    result = ( LINE * ) palloc0( sizeof( LINE ) );
+
+    if( result == NULL )
+    {
+        return NULL;
+    }
+
+    for( i = 0; i < len; i++ )
+    {
+        x_avg += p[i].x;
+        y_avg += p[i].y;
+    }
+
+    x_avg = x_avg / len;
+    y_avg = y_avg / len;
+
+    for( i = 0; i < len; i++ )
+    {
+        n_delta = ( p[i].x - x_avg ) * ( p[i].y - y_avg );
+        d_delta = pow( ( p[i].x - x_avg ), 2 );
+    }
+
+    slope = n_delta / d_delta;
+    y_int = y_avg - slope * x_avg;
+
+    result->A = -slope;
+    result->B = 1.0;
+    result->C = -y_int;
+
+    return result;
+}

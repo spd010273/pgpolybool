@@ -229,7 +229,7 @@ Point ** get_polygon_points( POLYGON * p )
 
         if( result[i] == NULL )
         {
-            for( j = 0; j < i; j-- )
+            for( j = 0; j < i; j++ )
             {
                 pfree( result[j] );
             }
@@ -482,12 +482,12 @@ POLYGON * lseg_to_polygon( LSEG * line_segment )
     double       a      = 0.0;
     double       b      = 0.0;
     double       c      = 0.0;
- 
+
     if( line_segment == NULL )
     {
         return NULL;
     }
-    
+
     size   = offsetof( POLYGON, p )
            + sizeof( Point ) * 4;
     result = ( POLYGON * ) palloc0( size );
@@ -574,7 +574,7 @@ POLYGON * line_to_polygon( LINE * line )
     lseg.p[0].y = slope * lseg.p[0].x + y_int;
     lseg.p[1].y = slope * lseg.p[1].x + y_int;
 
-    result = lseg_to_polygon( &lseg ); 
+    result = lseg_to_polygon( &lseg );
     return result;
 }
 
@@ -613,6 +613,57 @@ POLYGON * point_to_polygon( Point * point )
 
     set_polygon_boundbox( result );
     SET_VARSIZE( result, size );
+    return result;
+}
+
+LSEG ** get_polygon_lsegs( POLYGON * poly )
+{
+    LSEG **      result = NULL;
+    unsigned int i      = 0;
+    unsigned int next_i = 0;
+
+    if( poly == NULL )
+    {
+        return NULL;
+    }
+
+    result = ( LSEG ** ) palloc0( sizeof( LSEG * ) * poly->npts );
+
+    if( result == NULL )
+    {
+        return NULL;
+    }
+
+    for( i = 0; i < poly->npts; i++ )
+    {
+        result[i] = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+        if( result[i] == NULL )
+        {
+            for( next_i = 0; next_i < i; next_i++ )
+            {
+                pfree( result[i] );
+            }
+
+            pfree( result );
+            return NULL;
+        }
+
+        if( i == poly->npts - 1 )
+        {
+            next_i = 0;
+        }
+        else
+        {
+            next_i = i + 1;
+        }
+
+        result[i]->p[0].x = poly->p[i].x;
+        result[i]->p[0].y = poly->p[i].y;
+        result[i]->p[1].x = poly->p[next_i].x;
+        result[i]->p[1].y = poly->p[next_i].y;
+    }
+
     return result;
 }
 

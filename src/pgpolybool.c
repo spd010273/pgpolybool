@@ -84,6 +84,13 @@ PG_FUNCTION_INFO_V1( __cast_line_to_point );
 PG_FUNCTION_INFO_V1( __cast_path_to_point );
 PG_FUNCTION_INFO_V1( __overload_path_center );
 
+// x->LSEG
+PG_FUNCTION_INFO_V1( __cast_polygon_to_lseg );
+PG_FUNCTION_INFO_V1( __cast_point_to_lseg );
+PG_FUNCTION_INFO_V1( __cast_line_to_lseg );
+PG_FUNCTION_INFO_V1( __cast_path_to_lseg );
+PG_FUNCTION_INFO_V1( __cast_circle_to_lseg );
+
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
     POLYGON **       sorted_polys = NULL;
@@ -1230,8 +1237,7 @@ Datum fn_get_polygon_line_segs( PG_FUNCTION_ARGS )
     Datum *      elements = NULL;
     ArrayType *  result   = NULL;
     unsigned int i        = 0;
-    unsigned int next_i   = 0;
-    LSEG *       segment  = NULL;
+    LSEG **      segments = NULL;
 
     int16 typlen;
     char  typalign;
@@ -1269,22 +1275,22 @@ Datum fn_get_polygon_line_segs( PG_FUNCTION_ARGS )
         );
     }
 
+    segments = get_polygon_lsegs( poly );
+
+    if( segments == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could to allocate line segments intermediate array" )
+            )
+        );
+    }
+
     for( i = 0; i < poly->npts; i++ )
     {
-        if( i == poly->npts - 1 )
-        {
-            next_i = 0;
-        }
-        else
-        {
-            next_i = i + 1;
-        }
-
-        segment = ( LSEG * ) palloc0( sizeof( LSEG ) );
-
-        segment->p[0] = poly->p[i];
-        segment->p[1] = poly->p[next_i];
-        elements[i] = LsegPGetDatum( segment );
+        elements[i] = LsegPGetDatum( segments[i] );
     }
 
     get_typlenbyvalalign( LSEGOID, &typlen, &typbyval, &typalign );
@@ -2080,6 +2086,141 @@ Datum __overload_path_center( PG_FUNCTION_ARGS )
     }
 
     PG_RETURN_VOID();
+}
+
+Datum __cast_polygon_to_lseg( PG_FUNCTION_ARGS )
+{
+    LSEG *    result = NULL;
+    POLYGON * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_POLYGON_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = polygon_to_lseg( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LSEG_P( result );
+}
+
+Datum __cast_point_to_lseg( PG_FUNCTION_ARGS )
+{
+    LSEG *  result = NULL;
+    Point * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_POINT_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = point_to_lseg( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LSEG_P( result );
+}
+
+Datum __cast_line_to_lseg( PG_FUNCTION_ARGS )
+{
+    LSEG * result = NULL;
+    LINE * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_LINE_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = line_to_lseg( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LSEG_P( result );
+}
+
+Datum __cast_path_to_lseg( PG_FUNCTION_ARGS )
+{
+    LSEG * result = NULL;
+    PATH * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_PATH_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = path_to_lseg( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LSEG_P( result );
+}
+
+Datum __cast_circle_to_lseg( PG_FUNCTION_ARGS )
+{
+    LSEG *   result = NULL;
+    CIRCLE * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_CIRCLE_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = circle_to_lseg( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LSEG_P( result );
 }
 
 void _PG_init( void )

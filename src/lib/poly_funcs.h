@@ -33,6 +33,7 @@ extern POLYGON * polygon_from_points( Point **, unsigned int );
 extern POLYGON * lseg_to_polygon( LSEG * );
 extern POLYGON * line_to_polygon( LINE * );
 extern POLYGON * point_to_polygon( Point * );
+extern LSEG ** get_polygon_lsegs( POLYGON * );
 
 #ifdef DEBUG
 extern void dump_polygon( POLYGON * );

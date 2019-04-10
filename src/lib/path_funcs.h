@@ -1,26 +1,26 @@
 /*------------------------------------------------------------------------------
- * point_funcs.h
- *      Helper functions of pgpolybool point functions
+ * path_funcs.h
+ *      Helper functions of pgpolybool path functions
  *
  * Copyright (c) 2018, Nead Werx, Inc.
  * Copyright (c) 2018, Chris Autry
  *
  * IDENTIFICATION
- *      point_funcs.h
+ *      path_funcs.h
  *
  *------------------------------------------------------------------------------
  */
 
-#ifndef POINT_FUNCS_H
-#define POINT_FUNCS_H
+#ifndef PATH_FUNCS_H
+#define PATH_FUNCS_H
 
 #include "postgres.h"
 #include "utils/geo_decls.h"
 #include <math.h>
+#include "util.h"
+#include "box_funcs.h"
 
-extern Point * line_to_point( LINE * );
-extern Point * path_to_point( PATH * );
+extern Point ** get_path_points( PATH * );
+extern LSEG ** get_path_lsegs( PATH * );
 
-extern LINE * best_fit_line( Point *, unsigned int );
-
-#endif // POINT_FUNCS_H
+#endif // PATH_FUNCS_H

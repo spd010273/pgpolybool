@@ -19,4 +19,6 @@
 #include "math.h"
 
 extern Point ** get_box_points( BOX * );
+extern LSEG ** get_box_lsegs( BOX * );
+
 #endif // BOX_FUNCS_H

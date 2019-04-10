@@ -128,3 +128,58 @@ Point ** get_box_points( BOX * box )
 
     return result_array;
 }
+
+LSEG ** get_box_lsegs( BOX * b )
+{
+    LSEG **      result      = NULL;
+    Point **     lseg_points = NULL;
+    unsigned int i           = 0;
+    unsigned int next_i      = 0;
+
+    if( b == NULL )
+    {
+        return NULL;
+    }
+
+    lseg_points = get_box_points( b );
+
+    if( lseg_points == NULL )
+    {
+        return NULL;
+    }
+
+    result = ( LSEG ** ) palloc0( sizeof( LSEG * ) * 4 );
+
+    if( result == NULL )
+    {
+        pfree( lseg_points );
+        return NULL;
+    }
+
+    for( i = 0; i < 4; i++ )
+    {
+        if( i == 3 )
+        {
+            next_i = 0;
+        }
+        else
+        {
+            next_i = i + 1;
+        }
+
+        result[i]->p[0].x = lseg_points[i]->x;
+        result[i]->p[0].y = lseg_points[i]->y;
+        result[i]->p[1].x = lseg_points[next_i]->x;
+        result[i]->p[1].y = lseg_points[next_i]->y;
+    }
+
+    for( i = 0; i < 4; i++ )
+    {
+        pfree( lseg_points[i] );
+    }
+
+    pfree( lseg_points );
+
+    return result;
+}
+
