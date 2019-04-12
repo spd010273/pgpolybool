@@ -503,23 +503,22 @@ POLYGON * lseg_to_polygon( LSEG * line_segment )
     result->p[2].x = line_segment->p[1].x;
     result->p[2].y = line_segment->p[1].y;
 
-    center.x = ( line_segment->p[0].x - line_segment->p[1].x ) / 2.0;
-    center.y = ( line_segment->p[0].y - line_segment->p[1].y ) / 2.0;
+    center.x = ( line_segment->p[1].x + line_segment->p[0].x ) / 2.0;
+    center.y = ( line_segment->p[1].y + line_segment->p[0].y ) / 2.0;
 
     L = sqrt(
         pow( line_segment->p[0].x - center.x, 2 )
       + pow( line_segment->p[0].y - center.y, 2 )
     );
 
-    Um = -1.0
-       / (
-            ( line_segment->p[0].y - line_segment->p[1].y )
-          / ( line_segment->p[0].x - line_segment->p[1].x )
+    Um = (
+            -( line_segment->p[0].x - line_segment->p[1].x )
+           / ( line_segment->p[0].y - line_segment->p[1].y )
          );
-    Ub = center.x * Um - center.y;
+    Ub = center.y - center.x * Um;
     a  = pow( Um, 2 ) + 1.0;
-    b  = 2.0 * Um * ( Ub - center.y );
-    c  = pow( Ub - center.y, 2 ) + pow( center.x, 2 ) - pow( L, 2 );
+    b = -2.0 * center.x - 2 * Um * ( center.y - Ub );
+    c = pow( center.x, 2 ) + pow( center.y - Ub, 2 ) - pow( L, 2 );
 
     if( ( b * b ) < ( 4 * a * c ) )
     {
@@ -567,10 +566,10 @@ POLYGON * line_to_polygon( LINE * line )
      * or x = +/- ( 0.5 ) / ( ( A/B )**2 + 1 )
      */
     slope = - line->A / line->B;
-    y_int = - line->C / line->C;
+    y_int = - line->C / line->B;
 
-    lseg.p[0].x = -0.5 / ( pow( slope, 2 ) + 1 );
-    lseg.p[1].x = 0.5 / ( pow( slope, 2 ) + 1 );
+    lseg.p[0].x = -sqrt( 0.5 / ( pow( slope, 2 ) + 1 ) );
+    lseg.p[1].x = sqrt( 0.5 / ( pow( slope, 2 ) + 1 ) );
     lseg.p[0].y = slope * lseg.p[0].x + y_int;
     lseg.p[1].y = slope * lseg.p[1].x + y_int;
 

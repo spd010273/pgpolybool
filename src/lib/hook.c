@@ -24,12 +24,22 @@
  *
  *     The long jump consists of the following:
  *
- *       push &hook_address[00-31]
- *       mov [rsp + 4] &hook_address[32-63]
- *       ret
+ *       PUSH immediate
+ *       MOV [ESP + 4] immediate
+ *       RET
  *
- *     Because this uses the a full 64-bit address, we can jump anywhere in memory
- *     using this method, and unlike others, does not dirty RAX or RSP.
+ *     Because this uses the a full 64-bit address, we can jump anywhere in
+ *     memory using this method, and unlike others, does not dirty RAX or RSP.
+ *     
+ *     PUSH: 0x68: push the 32-bit immediate value onto the stack
+ *     MOV:  0xC7: move a value
+ *           MOV is modified (mod r/m)'s by the two following bytes:
+ *           0x44: change addressing mode of MOV to register indirect
+ *                 addressing using scaled index byte (SIB) with a
+ *                 displacement.
+ *           0x24: SIB - ESP (Stack Pointer)
+ *           0x04: With offset of 4
+ *     RET:  0xC3: Returns, ABI dictates the return address comes from the stack.
  *
  *     This translates to the following machine code, which is constant
  *     ( we merely shift in the high and low DWORD addresses ):

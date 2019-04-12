@@ -19,13 +19,13 @@
 #include "utils/lsyscache.h"
 #include "fmgr.h"
 
-
 #include "martinez.h"
 #include "polyprocessing.h"
 #include "lseg_funcs.h"
 #include "box_funcs.h"
 #include "poly_funcs.h"
 #include "point_funcs.h"
+#include "line_funcs.h"
 #include "hook.h"
 
 #ifdef PG_MODULE_MAGIC
@@ -90,6 +90,14 @@ PG_FUNCTION_INFO_V1( __cast_point_to_lseg );
 PG_FUNCTION_INFO_V1( __cast_line_to_lseg );
 PG_FUNCTION_INFO_V1( __cast_path_to_lseg );
 PG_FUNCTION_INFO_V1( __cast_circle_to_lseg );
+
+// x->LINE
+PG_FUNCTION_INFO_V1( __cast_polygon_to_line );
+PG_FUNCTION_INFO_V1( __cast_point_to_line );
+PG_FUNCTION_INFO_V1( __cast_lseg_to_line );
+PG_FUNCTION_INFO_V1( __cast_path_to_line );
+PG_FUNCTION_INFO_V1( __cast_box_to_line );
+PG_FUNCTION_INFO_V1( __cast_circle_to_line );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -1738,7 +1746,7 @@ Datum fn_get_lseg_angle( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    result = get_angle_of_intersection(
+    result = get_angle_of_lseg_intersection(
         segment_a,
         segment_b
     );
@@ -2221,6 +2229,168 @@ Datum __cast_circle_to_lseg( PG_FUNCTION_ARGS )
     }
 
     PG_RETURN_LSEG_P( result );
+}
+
+Datum __cast_polygon_to_line( PG_FUNCTION_ARGS )
+{
+    LINE *    result = NULL;
+    POLYGON * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_POLYGON_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = polygon_to_line( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LINE_P( result );
+}
+
+Datum __cast_point_to_line( PG_FUNCTION_ARGS )
+{
+    LINE *  result = NULL;
+    Point * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_POINT_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = point_to_line( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LINE_P( result );
+}
+
+Datum __cast_lseg_to_line( PG_FUNCTION_ARGS )
+{
+    LINE * result = NULL;
+    LSEG * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_LSEG_P(0);
+    
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = lseg_to_line( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LINE_P( result );
+}
+
+Datum __cast_path_to_line( PG_FUNCTION_ARGS )
+{
+    LINE * result = NULL;
+    PATH * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_PATH_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = path_to_line( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LINE_P( result );
+}
+
+Datum __cast_box_to_line( PG_FUNCTION_ARGS )
+{
+    LINE * result = NULL;
+    BOX *  input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_BOX_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = box_to_line( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LINE_P( result );
+}
+
+Datum __cast_circle_to_line( PG_FUNCTION_ARGS )
+{
+    LINE *   result = NULL;
+    CIRCLE * input  = NULL;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_CIRCLE_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = circle_to_line( input );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LINE_P( result );
 }
 
 void _PG_init( void )

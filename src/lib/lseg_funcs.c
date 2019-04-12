@@ -905,7 +905,7 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
 
 // Note: segment_b here is the reference line, the angle given is based off
 // of its orientation.
-double get_angle_of_intersection( LSEG * segment_a, LSEG * segment_b )
+double get_angle_of_lseg_intersection( LSEG * segment_a, LSEG * segment_b )
 {
     double slope_a = 0.0;
     double slope_b = 0.0;

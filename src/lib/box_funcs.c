@@ -87,22 +87,19 @@ Point ** get_box_points( BOX * box )
      * c = ( Ub - Centery )^2 + Centerx^2 - L^2
      */
 
-    center.x = ( box->high.x - box->low.x ) / 2.0;
-    center.y = ( box->high.y - box->low.y ) / 2.0;
+    center.x = ( box->high.x + box->low.x ) / 2.0;
+    center.y = ( box->high.y + box->low.y ) / 2.0;
 
     L = sqrt(
         pow( result_array[0]->x - center.x, 2 )
       + pow( result_array[0]->y - center.y, 2 )
     );
 
-    Um = -1.0
-       * pow(
-             ( result_array[0]->y - result_array[2]->y )
-           / ( result_array[0]->x - result_array[2]->x ),
-           -1
+    Um = (
+            -( result_array[0]->x - result_array[2]->x )
+           / ( result_array[0]->y - result_array[2]->y )
          );
-
-    Ub = center.x * Um - center.y;
+    Ub = center.y - center.x * Um;
 
     a = pow( Um, 2 ) + 1.0;
     b = 2.0 * Um * ( Ub - center.y );

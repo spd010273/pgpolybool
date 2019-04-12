@@ -20,13 +20,13 @@ Additionally, pgpolybool rounds out the casting between PostgreSQL geometric typ
 
 | From / To | POLYGON | POINT | LSEG | LINE | PATH | BOX | CIRCLE | VECTOR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| POLYGON | PostgreSQL | PostgreSQL | pgpolybool | N/A | PostgreSQL | PostgreSQL | PostgreSQL | N/A |
-| POINT | pgpolybool | PostgreSQL | pgpolybool | N/A | N/A | PostgreSQL | N/A | N/A |
-| LSEG | pgpolybool | PostgreSQL | pgpolybool | N/A | N/A | N/A | N/A | N/A |
+| POLYGON | PostgreSQL | PostgreSQL | pgpolybool | pgpolybool | PostgreSQL | PostgreSQL | PostgreSQL | N/A |
+| POINT | pgpolybool | PostgreSQL | pgpolybool | pgpolybool | N/A | PostgreSQL | N/A | N/A |
+| LSEG | pgpolybool | PostgreSQL | pgpolybool | pgpolybool | N/A | N/A | N/A | N/A |
 | LINE | pgpolybool | pgpolybool | pgpolybool | PostgreSQL | N/A | N/A | N/A | N/A | N/A |
-| PATH | PostgreSQL | pgpolybool | pgpolybool | N/A | PostgreSQL | N/A | N/A | N/A |
-| BOX | PostgreSQL | PostgreSQL | PostgreSQL | N/A | N/A | PostgreSQL | PostgreSQL | N/A |
-| CIRCLE | PostgreSQL | PostgreSQL | pgpolybool | N/A | N/A | PostgreSQL | PostgreSQL | N/A |
+| PATH | PostgreSQL | pgpolybool | pgpolybool | pgpolybool | PostgreSQL | N/A | N/A | N/A |
+| BOX | PostgreSQL | PostgreSQL | PostgreSQL | pgpolybool | N/A | PostgreSQL | PostgreSQL | N/A |
+| CIRCLE | PostgreSQL | PostgreSQL | pgpolybool | pgpolybool | N/A | PostgreSQL | PostgreSQL | N/A |
 | VECTOR | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | pgpolybool |
 
 These casts are provided as implicit casts.
