@@ -73,6 +73,7 @@ PG_FUNCTION_INFO_V1( fn_lseg_points_right_of );
 PG_FUNCTION_INFO_V1( fn_lseg_points_left_of );
 PG_FUNCTION_INFO_V1( fn_cross_product );
 PG_FUNCTION_INFO_V1( fn_lseg_to_vector );
+PG_FUNCTION_INFO_V1( fn_get_root_orthogonal_segment );
 
 PG_FUNCTION_INFO_V1( fn_get_alpha_shape );
 
@@ -2061,6 +2062,42 @@ Datum fn_points_to_polygon( PG_FUNCTION_ARGS )
     }
 
     PG_RETURN_POLYGON_P( result );
+}
+
+Datum fn_get_root_orthogonal_segment( PG_FUNCTION_ARGS )
+{
+    LSEG *  input    = NULL;
+    LSEG *  result   = NULL;
+    float8  length   = 0.0;
+    Point * endpoint = NULL;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(2) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_LSEG_P(0);
+    endpoint = PG_GETARG_POINT_P(1);
+    length = PG_GETARG_FLOAT8(2);
+
+    if( input == NULL || endpoint == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    if( length <= 0.0 )
+    {
+        length = fabs( length );
+    }
+
+    result = get_root_orthogonal_segment( input, endpoint, length );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LSEG_P( result );
 }
 
 Datum __cast_lseg_to_polygon( PG_FUNCTION_ARGS )

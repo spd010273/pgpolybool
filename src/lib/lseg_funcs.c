@@ -1083,6 +1083,92 @@ bool lseg_points_left_of( LSEG * segment, LSEG * reference )
     return false;
 }
 
+LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double length )
+{
+    /*
+     *  Returns a segment orthogonal to the input at the endpoint (the endpoint forms the midpoint of the output)
+     *  The result is of the specified length
+     */
+    LSEG * result     = NULL;
+    double curr_slope = 0.0;
+    double targ_slope = 0.0;
+    double y_int      = 0.0;
+    double a          = 0.0;
+    double b          = 0.0;
+    double c          = 0.0;
+
+    if( segment == NULL || endpoint == NULL )
+    {
+        return NULL;
+    }
+
+    if(
+           !(
+               fabs( endpoint->x - segment->p[0].x ) < DBL_EPSILON
+            && fabs( endpoint->y - segment->p[0].y ) < DBL_EPSILON
+           )
+        && !(
+               fabs( endpoint->x - segment->p[1].x ) < DBL_EPSILON
+            && fabs( endpoint->y - segment->p[1].y ) < DBL_EPSILON
+           )
+      )
+    {
+        // Endpoint is not an endpoint of the input line segment
+        elog( DEBUG1, "Specified endpoint is not an endpoint on the input line segment!" );
+        return NULL;
+    }
+
+    result = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+    if( result == NULL )
+    {
+        elog( DEBUG1, "Out of memory" );
+        return NULL;
+    }
+
+    if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
+    {
+        // Current slope is infinite, target slope is 0
+        result->p[0].y = endpoint->y;
+        result->p[1].y = endpoint->y;
+        result->p[0].x = endpoint->x - ( length / 2.0 );
+        result->p[1].x = endpoint->x + ( length / 2.0 );
+    }
+    else if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
+    {
+        result->p[0].x = endpoint->x;
+        result->p[1].x = endpoint->x;
+        result->p[0].y = endpoint->y - ( length / 2.0 );
+        result->p[1].y = endpoint->y + ( length / 2.0 );
+    }
+    else
+    {
+        elog( DEBUG1, "normal_case" );
+        curr_slope = ( segment->p[0].y - segment->p[1].y )
+                   / ( segment->p[0].x - segment->p[1].x );
+        targ_slope = -1.0 / curr_slope;
+        y_int      = endpoint->y - ( endpoint->x * targ_slope );
+
+        elog( DEBUG1, "curr slope is %f, targ is %f", curr_slope, targ_slope );
+        a = 1.0 + ( targ_slope * targ_slope );
+        b = -2.0 * a * endpoint->x;
+        c = a * endpoint->x * endpoint->x - pow( length / 2.0, 2 );
+
+        if( pow( b, 2 ) < ( 4 * a * c ) )
+        {
+            elog( DEBUG1, "Solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
+            pfree( result );
+            return NULL;
+        }
+
+        result->p[0].x = ( -b + sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+        result->p[0].y = targ_slope * result->p[0].x + y_int;
+        result->p[1].x = ( -b - sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+        result->p[1].y = targ_slope * result->p[1].x + y_int;
+    }
+    return result;
+}
+
 // Find the best-fit line for the points, and return the segment that extends
 // through the interior of the polygon, along the best-fit line
 LSEG * polygon_to_lseg( POLYGON * poly )
