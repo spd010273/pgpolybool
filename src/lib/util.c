@@ -154,7 +154,7 @@ unsigned int find_intersection(
     E->x = isect_s1->x - isect_s0->x;
     E->y = isect_s1->y - isect_s0->y;
 
-    cross_prod = d0->x * d1->y - d0->y * d1->x;
+    cross_prod = cross_product( d0, d1 );
     sq_len0    = d0->x * d0->x + d0->y * d0->y;
     sq_len1    = d1->x * d1->x + d1->y * d1->y;
 
@@ -327,7 +327,7 @@ bool points_equal( Point * a, Point * b )
     return false;
 }
 
-double dot_product( Point * a, Point * b )
+inline double dot_product( Point * a, Point * b )
 {
     if( a == NULL || b == NULL )
     {
@@ -336,4 +336,15 @@ double dot_product( Point * a, Point * b )
     }
 
     return ( a->x * b->x + a->y * b->y );
+}
+
+inline double cross_product( Point * a, Point * b )
+{
+    if( a == NULL || b == NULL )
+    {
+        elog( DEBUG1, "Cross product inputs are null!" );
+        return 0.0;
+    }
+
+    return ( a->x * b->y - a->y * b->x );
 }

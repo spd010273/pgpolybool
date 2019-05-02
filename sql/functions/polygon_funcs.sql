@@ -42,3 +42,24 @@ CREATE OR REPLACE FUNCTION fn_lseg_to_polygon( seg LSEG, width DOUBLE PRECISION 
 RETURNS POLYGON AS
  'pgpolybool.so', 'fn_lseg_to_polygon'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION fn_get_points_ombb( in_poly POLYGON )
+RETURNS POINT[] AS
+ 'pgpolybool.so', 'fn_get_points_ombb'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION fn_get_polygon_ombb( in_poly POLYGON )
+RETURNS POLYGON AS
+ 'pgpolybool.so', 'fn_get_polygon_ombb'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION fn_get_ombb( in_poly POLYGON )
+RETURNS TABLE
+(
+    bounding_box    POLYGON,
+    width           DOUBLE PRECISION,
+    height          DOUBLE PRECISION,
+    angle           DOUBLE PRECISION
+) AS
+ 'pgpolybool.so', 'fn_get_ombb'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;

@@ -111,7 +111,7 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
 {
     double  mag_A         = 0.0;
     double  mag_B         = 0.0;
-    double  cross_product = 0.0;
+    double  cross_prod    = 0.0;
     double  denominator   = 0.0;
     double  dot           = 0.0;
     double  d0            = 0.0;
@@ -168,9 +168,9 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
     _B->x = B->x / mag_B;
     _B->y = B->y / mag_B;
 
-    cross_product = _A->x * _B->y - _A->y * _B->x;
-    denominator   = sqrt( cross_product * cross_product );
-    denominator   = denominator * denominator;
+    cross_prod  = cross_product( _A, _B );
+    denominator = sqrt( cross_prod * cross_prod );
+    denominator = denominator * denominator;
 
     // If lines are parallel (denom=0) test if lines overlap.
     // If they don't overlap then there is a closest point solution.
@@ -254,10 +254,10 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
 
     det_a = t->x * ( _B->y - 1 )
           - _B->x * ( t->y - 1 )
-          + cross_product * ( t->y - _B->y );
+          + cross_prod * ( t->y - _B->y );
     det_b = t->x * ( _A->y - 1 )
           - _A->x * ( t->y - 1 )
-          + cross_product * ( t->y - _A->y );
+          + cross_prod * ( t->y - _A->y );
 
     t0 = det_a / denominator;
     t1 = det_b / denominator;
@@ -997,16 +997,6 @@ Point * lseg_to_vector( LSEG * segment )
     result->y = result->x * slope;
 
     return result;
-}
-
-double cross_product( Point * p1, Point * p2 )
-{
-    if( p1 == NULL || p2 == NULL )
-    {
-        return 0.0;
-    }
-
-    return ( p1->x * p2->y - p1->y * p2->x );
 }
 
 // For these two functions, the order of the points implies the lseg's direction

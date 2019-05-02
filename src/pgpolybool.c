@@ -18,6 +18,8 @@
 #include "catalog/pg_type.h"
 #include "utils/lsyscache.h"
 #include "fmgr.h"
+#include "funcapi.h"
+#include "access/htup_details.h"
 
 #include "martinez.h"
 #include "polyprocessing.h"
@@ -27,6 +29,7 @@
 #include "point_funcs.h"
 #include "line_funcs.h"
 #include "hook.h"
+#include "ombb.h"
 #include "alpha.h"
 
 #ifdef PG_MODULE_MAGIC
@@ -61,6 +64,9 @@ PG_FUNCTION_INFO_V1( fn_get_polygon_area );
 PG_FUNCTION_INFO_V1( fn_lseg_to_polygon );
 PG_FUNCTION_INFO_V1( fn_box_to_polygon );
 PG_FUNCTION_INFO_V1( fn_points_to_polygon );
+PG_FUNCTION_INFO_V1( fn_get_polygon_ombb );
+PG_FUNCTION_INFO_V1( fn_get_points_ombb );
+PG_FUNCTION_INFO_V1( fn_get_ombb );
 
 // LSEG functions
 PG_FUNCTION_INFO_V1( fn_get_parallel_segment );
@@ -2064,6 +2070,215 @@ Datum fn_points_to_polygon( PG_FUNCTION_ARGS )
     PG_RETURN_POLYGON_P( result );
 }
 
+Datum fn_get_polygon_ombb( PG_FUNCTION_ARGS )
+{
+    POLYGON *    input  = NULL;
+    POLYGON *    result = NULL;
+    Point **     output = NULL;
+    unsigned int i      = 0;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_POLYGON_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    output = get_ombb( input, NULL, NULL, NULL, false );
+
+    if( output == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = ( POLYGON * ) palloc0(
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * 4
+    );
+
+    if( result == NULL )
+    {
+        for( i = 0; i < 4; i++ )
+        {
+            pfree( output[i] );
+        }
+
+        pfree( output );
+        PG_RETURN_NULL();
+    }
+
+    for( i = 0; i < 4; i++ )
+    {
+        result->p[i].x = output[i]->x;
+        result->p[i].y = output[i]->y;
+        pfree( output[i] );
+    }
+
+    pfree( output );
+    result->npts = 4;
+    set_polygon_boundbox( result );
+    SET_VARSIZE(
+        result,
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * 4
+    );
+
+    PG_RETURN_POLYGON_P( result );
+}
+
+Datum fn_get_points_ombb( PG_FUNCTION_ARGS )
+{
+    POLYGON *    input    = NULL;
+    Point **     output   = NULL;
+    ArrayType *  result   = NULL;
+    Datum *      elements = NULL;
+    int16        typlen   = 0;
+    char         typalign = 0;
+    bool         typbyval = false;
+    unsigned int i        = 0;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_POLYGON_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    output = get_ombb( input, NULL, NULL, NULL, false );
+
+    if( output == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    elements = ( Datum * ) palloc0( sizeof( Datum ) * 4 );
+
+    if( elements == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not allocate OMBB point array" )
+            )
+        );
+    }
+
+    for( i = 0; i < 4; i++ )
+    {
+        elements[i] = PointPGetDatum( output[i] );
+    }
+
+    get_typlenbyvalalign( POINTOID, &typlen, &typbyval, &typalign );
+
+    result = construct_array(
+        elements,
+        4,
+        POINTOID,
+        typlen,
+        typbyval,
+        typalign
+    );
+
+    PG_RETURN_ARRAYTYPE_P( result );
+}
+
+// This is a little more complex as we're returning a tuple
+Datum fn_get_ombb( PG_FUNCTION_ARGS )
+{
+    TupleDesc    tuple_descriptor  = {0};
+    Datum        values[4]         = {0};
+    bool         nulls[4]          = {false};
+    HeapTuple    heap_tuple        = {0};
+    double       parallel_length   = 0.0;
+    double       orthogonal_length = 0.0;
+    double       theta             = 0.0;
+    POLYGON *    input             = NULL;
+    Point **     output            = NULL;
+    POLYGON *    result_bb         = NULL;
+    unsigned int i                 = 0;
+
+    if( get_call_result_type( fcinfo, NULL, &tuple_descriptor ) != TYPEFUNC_COMPOSITE )
+    {
+        elog(
+            ERROR,
+            "Return type must be a row"
+        );
+    }
+
+    tuple_descriptor = BlessTupleDesc( tuple_descriptor );
+
+    if( PG_ARGISNULL(0) )
+    {
+        memset( nulls, 1, sizeof( nulls ) );
+        heap_tuple = heap_form_tuple( tuple_descriptor, values, nulls );
+        PG_RETURN_DATUM( HeapTupleGetDatum( heap_tuple ) );
+    }
+
+    input = PG_GETARG_POLYGON_P(0);
+
+    if( input == NULL )
+    {
+        memset( nulls, 1, sizeof( nulls ) );
+        heap_tuple = heap_form_tuple( tuple_descriptor, values, nulls );
+        PG_RETURN_DATUM( HeapTupleGetDatum( heap_tuple ) );
+    }
+
+    output = get_ombb(
+        input,
+        &parallel_length,
+        &orthogonal_length,
+        &theta,
+        false
+    );
+
+    result_bb = ( POLYGON * ) palloc0(
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * 4
+    );
+
+    if( output == NULL || result_bb == NULL )
+    {
+        memset( nulls, 1, sizeof( nulls ) );
+        heap_tuple = heap_form_tuple( tuple_descriptor, values, nulls );
+        PG_RETURN_DATUM( HeapTupleGetDatum( heap_tuple ) );
+    }
+
+    for( i = 0; i < 4; i++ )
+    {
+        result_bb->p[i].x = output[i]->x;
+        result_bb->p[i].y = output[i]->y;
+    }
+
+    result_bb->npts = 4;
+
+    set_polygon_boundbox( result_bb );
+    SET_VARSIZE(
+        result_bb,
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * 4
+    );
+
+    memset( nulls, 0, sizeof( nulls ) );
+    values[0] = PointerGetDatum( result_bb );
+    values[1] = Float8GetDatum( parallel_length );
+    values[2] = Float8GetDatum( orthogonal_length );
+    values[3] = Float8GetDatum( theta );
+
+    heap_tuple = heap_form_tuple( tuple_descriptor, values, nulls );
+    PG_RETURN_DATUM( HeapTupleGetDatum( heap_tuple ) );
+}
+
 Datum fn_get_root_orthogonal_segment( PG_FUNCTION_ARGS )
 {
     LSEG *  input    = NULL;
@@ -2076,9 +2291,9 @@ Datum fn_get_root_orthogonal_segment( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    input = PG_GETARG_LSEG_P(0);
+    input    = PG_GETARG_LSEG_P(0);
     endpoint = PG_GETARG_POINT_P(1);
-    length = PG_GETARG_FLOAT8(2);
+    length   = PG_GETARG_FLOAT8(2);
 
     if( input == NULL || endpoint == NULL )
     {
@@ -2452,7 +2667,7 @@ Datum __cast_lseg_to_line( PG_FUNCTION_ARGS )
     }
 
     input = PG_GETARG_LSEG_P(0);
-    
+
     if( input == NULL )
     {
         PG_RETURN_NULL();

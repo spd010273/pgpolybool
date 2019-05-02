@@ -49,5 +49,6 @@ extern unsigned int find_intersection(
 );
 
 extern bool points_equal( Point *, Point * );
-extern double dot_product( Point *, Point * );
+extern inline double dot_product( Point *, Point * );
+extern inline double cross_product( Point *, Point * );
 #endif // UTIL_H
