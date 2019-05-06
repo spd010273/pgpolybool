@@ -97,14 +97,11 @@ double get_polygon_area( POLYGON * p )
     }
 
     // Use Gauss' Area formula (shoelace formula)
-    for( i = 0; i < p->npts - 1; i++ )
+    for( i = 0; i < p->npts; i++ )
     {
-        p_area += p->p[i].x * p->p[i + 1].y;
-        n_area += p->p[i + 1].x * p->p[i].y;
+        p_area += p->p[i].x * p->p[( i + 1 ) % p->npts].y;
+        n_area += p->p[( i + 1 ) % p->npts].x * p->p[i].y;
     }
-
-    p_area += p->p[p->npts - 1].x * p->p[1].y;
-    n_area += p->p[1].x * p->p[p->npts - 1].y;
 
     p_area = 0.5 * fabs( p_area - n_area );
 
