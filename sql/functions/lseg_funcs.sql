@@ -40,6 +40,11 @@ RETURNS LSEG AS
  'pgpolybool.so', 'fn_scale_lseg'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
 
+CREATE OR REPLACE FUNCTION fn_extend_lseg( seg LSEG, endpoint POINT, length DOUBLE PRECISION DEFAULT 1.0 )
+RETURNS LSEG AS
+ 'pgpolybool.so', 'fn_extend_lseg'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
 CREATE OR REPLACE FUNCTION fn_lseg_points_right_of( segment LSEG, reference LSEG )
 RETURNS BOOLEAN AS
  'pgpolybool.so', 'fn_lseg_points_right_of'

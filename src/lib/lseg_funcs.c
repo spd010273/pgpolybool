@@ -872,6 +872,7 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
             pfree( result );
+            return NULL;
         }
 
         result->p[0].x = ( -b - sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
@@ -898,6 +899,144 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
         {
             result->p[1].y = 0.0;
         }
+    }
+
+    return result;
+}
+
+// Used for extending a line segment past it's ends in one direction. The reference point
+// is assumed to be one of the segments endpoints
+LSEG * extend_lseg( LSEG * segment, double length, Point * endpoint )
+{
+    LSEG * result  = NULL;
+    double slope   = 0.0;
+    double y_int   = 0.0;
+    double a       = 0.0;
+    double b       = 0.0;
+    double c       = 0.0;
+    Point  other_p = {0.0};
+
+    if( segment == NULL || endpoint == NULL )
+    {
+        return NULL;
+    }
+
+    if(
+        !(
+             (
+                  fabs( endpoint->x - segment->p[0].x ) < DBL_EPSILON
+               && fabs( endpoint->y - segment->p[0].y ) < DBL_EPSILON
+             )
+          || (
+                  fabs( endpoint->x - segment->p[1].x ) < DBL_EPSILON
+               && fabs( endpoint->y - segment->p[1].y ) < DBL_EPSILON
+             )
+         )
+      )
+    {
+        return NULL;
+    }
+
+    result = ( LSEG * ) palloc0( sizeof( LSEG ) );
+
+    if( result == NULL )
+    {
+        return NULL;
+    }
+
+    if(
+            fabs( endpoint->x - segment->p[0].x ) < DBL_EPSILON
+         && fabs( endpoint->y - segment->p[0].y ) < DBL_EPSILON
+      )
+    {
+        other_p.x = segment->p[1].x;
+        other_p.y = segment->p[1].y;
+    }
+    else
+    {
+        other_p.x = segment->p[0].x;
+        other_p.y = segment->p[0].y;
+    }
+
+    result->p[0].x = other_p.x;
+    result->p[0].y = other_p.y;
+
+    if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
+    {
+        // Slope infinite
+        result->p[0].x = other_p.x;
+
+        if( other_p.y > endpoint->y )
+        {
+            // line is pointing down
+            result->p[1].y = other_p.y - length;
+        }
+        else
+        {
+            result->p[1].y = other_p.y + length;
+        }
+    }
+    else if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
+    {
+        // Slope is 0
+        result->p[1].y = other_p.y;
+
+        if( other_p.x > endpoint->x )
+        {
+            // Line is pointing left
+            result->p[1].x = other_p.x - length;
+        }
+        else
+        {
+            result->p[1].x = other_p.x + length;
+        }
+    }
+    else
+    {
+        slope = ( segment->p[1].y - segment->p[0].y )
+              / ( segment->p[1].x - segment->p[0].x );
+        y_int = segment->p[0].y - slope * segment->p[0].x;
+
+        a = slope * slope + 1.0;
+        b = 2.0 * slope * y_int - 2.0 * other_p.x - 2.0 * other_p.y * slope;
+        c = other_p.y * other_p.y - 2.0 * y_int * other_p.y + y_int * y_int + other_p.x * other_p.x - length * length;
+
+        if( pow( b, 2 ) < ( 4 * a * c ) )
+        {
+            pfree( result );
+            return NULL;
+        }
+
+        if( slope > 0 && slope < DBL_MAX ) // Top right & bottom left quadrant
+        {
+            if(
+                    endpoint->x > other_p.x
+                 && endpoint->y > other_p.y
+              ) // Top right quadrant
+            {
+                result->p[1].x = ( -b + sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+            }
+            else
+            { // bottom left quadrant
+                result->p[1].x = ( -b - sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+            }
+        }
+        else
+        {
+            if(
+                    endpoint->x < other_p.x
+                 && endpoint->y > other_p.y
+              ) // Top left quadrant
+            {
+                result->p[1].x = ( -b - sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+            }
+            else
+            { // bottom right quadrant
+                result->p[1].x = ( -b + sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+            }
+        }
+
+        result->p[1].y = slope * result->p[1].x + y_int;
     }
 
     return result;
@@ -1161,6 +1300,7 @@ LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double len
 
 // Find the best-fit line for the points, and return the segment that extends
 // through the interior of the polygon, along the best-fit line
+// TODO: This function is fucked
 LSEG * polygon_to_lseg( POLYGON * poly )
 {
     LSEG *       result        = NULL;

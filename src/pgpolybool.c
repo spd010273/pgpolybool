@@ -74,6 +74,7 @@ PG_FUNCTION_INFO_V1( fn_get_parallel_segments );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segment );
 PG_FUNCTION_INFO_V1( fn_get_orthogonal_segments );
 PG_FUNCTION_INFO_V1( fn_scale_lseg );
+PG_FUNCTION_INFO_V1( fn_extend_lseg );
 PG_FUNCTION_INFO_V1( fn_get_lseg_angle );
 PG_FUNCTION_INFO_V1( fn_lseg_points_right_of );
 PG_FUNCTION_INFO_V1( fn_lseg_points_left_of );
@@ -1728,6 +1729,42 @@ Datum fn_scale_lseg( PG_FUNCTION_ARGS )
     }
 
     result = scale_lseg( segment, scale, ref );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_LSEG_P( result );
+}
+
+Datum fn_extend_lseg( PG_FUNCTION_ARGS )
+{
+    LSEG *  segment  = NULL;
+    float8  length   = 0.0;
+    Point * endpoint = NULL;
+    LSEG *  result   = NULL;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(2) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    segment  = PG_GETARG_LSEG_P(0);
+    endpoint = PG_GETARG_POINT_P(1);
+    length   = PG_GETARG_FLOAT8(2);
+
+    if( segment == NULL || endpoint == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    if( length < DBL_EPSILON )
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = extend_lseg( segment, length, endpoint );
 
     if( result == NULL )
     {
