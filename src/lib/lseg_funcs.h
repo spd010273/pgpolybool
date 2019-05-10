@@ -18,9 +18,7 @@
 #include "martinez.h"
 #include "utils/geo_decls.h"
 #include "poly_funcs.h"
-#include "point_funcs.h"
 #include "box_funcs.h"
-#include "path_funcs.h"
 #include "util.h"
 
 extern bool line_segment_intersect( LSEG *, LSEG * );
@@ -37,11 +35,5 @@ extern bool lseg_points_right_of( LSEG *, LSEG * );
 extern bool lseg_points_left_of( LSEG *, LSEG * );
 extern LSEG * get_polygon_line_segments( POLYGON * );
 extern LSEG * get_root_orthogonal_segment( LSEG *, Point *, double );
-
-extern LSEG * polygon_to_lseg( POLYGON * );
-extern LSEG * point_to_lseg( Point * );
-extern LSEG * line_to_lseg( LINE * );
-extern LSEG * path_to_lseg( PATH * );
-extern LSEG * circle_to_lseg( CIRCLE * );
 
 #endif // LSEG_FUNCS_H
