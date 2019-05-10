@@ -30,9 +30,6 @@ extern Point ** get_polygon_points( POLYGON * );
 extern POLYGON * box_to_polygon( BOX * );
 extern POLYGON * line_segment_to_polygon( LSEG *, double );
 extern POLYGON * polygon_from_points( Point **, unsigned int );
-extern POLYGON * lseg_to_polygon( LSEG * );
-extern POLYGON * line_to_polygon( LINE * );
-extern POLYGON * point_to_polygon( Point * );
 extern LSEG ** get_polygon_lsegs( POLYGON * );
 
 #ifdef DEBUG
