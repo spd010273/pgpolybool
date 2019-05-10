@@ -47,6 +47,7 @@ POLYGON * poly_preprocessing(
 )
 {
     POLYGON * buff_poly    = NULL;
+    POLYGON * poly         = NULL;
     unsigned int npoints   = 0;
     unsigned int palloc_sz = 0;
     unsigned int i         = 0;
@@ -72,34 +73,36 @@ POLYGON * poly_preprocessing(
         );
     }
 
-    for( i = 0; i < current_poly->npts; i++ )
+    poly = remove_duplicate_and_colinear_points( current_poly, false );
+
+    for( i = 0; i < poly->npts; i++ )
     {
-        sum_x += current_poly->p[i].x;
-        sum_y += current_poly->p[i].y;
+        sum_x += poly->p[i].x;
+        sum_y += poly->p[i].y;
         npoints++;
     }
 
-    (*center)->x = sum_x / current_poly->npts;
-    (*center)->y = sum_y / current_poly->npts;
+    (*center)->x = sum_x / poly->npts;
+    (*center)->y = sum_y / poly->npts;
 
-    for( i = 0; i < current_poly->npts; i++ )
+    for( i = 0; i < poly->npts; i++ )
     {
         if( scale )
         {
-            buff_poly->p[i].x = current_poly->p[i].x * ZOOM_RATE
+            buff_poly->p[i].x = poly->p[i].x * ZOOM_RATE
                               - ( ZOOM_RATE - 1 ) * (*center)->x;
-            buff_poly->p[i].y = current_poly->p[i].y * ZOOM_RATE
+            buff_poly->p[i].y = poly->p[i].y * ZOOM_RATE
                               - ( ZOOM_RATE - 1 ) * (*center)->y;
         }
         else
         {
-            buff_poly->p[i].x = current_poly->p[i].x;
-            buff_poly->p[i].y = current_poly->p[i].y;
+            buff_poly->p[i].x = poly->p[i].x;
+            buff_poly->p[i].y = poly->p[i].y;
         }
     }
 
-    buff_poly->npts     = current_poly->npts;
-    buff_poly->boundbox = current_poly->boundbox;
+    buff_poly->npts     = poly->npts;
+    buff_poly->boundbox = poly->boundbox;
 
     return buff_poly;
 }
@@ -344,10 +347,6 @@ POLYGON * poly_postprocessing(
     double       dist                  = 0.0;
     unsigned int i                     = 0;
     unsigned int j                     = 0;
-    bool         colinear_points_found = false;
-    Point *      p0                    = NULL;
-    Point *      p1                    = NULL;
-    Point *      p2                    = NULL;
 
     if( poly == NULL )
     {
@@ -390,51 +389,7 @@ POLYGON * poly_postprocessing(
         return poly;
     }
 
-    colinear_points_found = true;
-
-    while( colinear_points_found )
-    {
-        colinear_points_found = false;
-
-        if( poly->npts < 3 )
-        {
-            break;
-        }
-
-        for( i = 0; i < poly->npts; i++ )
-        {
-            p0 = &(poly->p[i]);
-
-            if( ( i + 1 ) >= poly->npts )
-            {
-                p1 = &(poly->p[0]);
-                p2 = &(poly->p[1]);
-            }
-            else if( ( i + 2 ) >= poly->npts )
-            {
-                p1 = &(poly->p[i + 1]);
-                p2 = &(poly->p[0]);
-            }
-            else
-            {
-                p1 = &(poly->p[i + 1]);
-                p2 = &(poly->p[i + 2]);
-            }
-
-            colinear_points_found = points_colinear( p0, p1, p2 );
-
-            if( colinear_points_found )
-            {
-                remove_colinear_point( &poly, p1 );
-                break;
-            }
-
-            p0 = NULL;
-            p1 = NULL;
-            p2 = NULL;
-        }
-    }
-
+    poly = remove_duplicate_and_colinear_points( poly, true );
     return poly;
 }
 
@@ -535,4 +490,169 @@ void remove_colinear_point( POLYGON ** poly, Point * colinear_point )
 
     (*poly) = new_poly;
     return;
+}
+
+POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input )
+{
+    unsigned int i                     = 0;
+    unsigned int k                     = 0;
+    unsigned int final_size            = 0;
+    POLYGON *    temp_poly             = NULL; // Intermediate Polygon
+    POLYGON *    result_poly           = NULL;
+    Point *      p0                    = NULL;
+    Point *      p1                    = NULL;
+    Point *      p2                    = NULL;
+    Point        max                   = {0.0};
+    Point        min                   = {0.0};
+    bool         colinear_points_found = false;
+
+    if( poly == NULL )
+    {
+        return NULL;
+    }
+
+    elog( DEBUG1, "Input poly size: %lu", poly->npts );
+    final_size = poly->npts;
+
+    temp_poly = ( POLYGON * ) palloc0(
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * ( poly->npts )
+    );
+
+    if( temp_poly == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create buffer polygon for duplicate / colinear point removal" )
+            )
+        );
+    }
+
+    // Scan for duplicate points
+    for( i = 0; i < poly->npts; i++ )
+    {
+        if(
+               fabs( poly->p[i].x - poly->p[( i + 1 ) % poly->npts].x ) < DBL_EPSILON
+            && fabs( poly->p[i].y - poly->p[( i + 1 ) % poly->npts].y ) < DBL_EPSILON
+          )
+        {
+            //i and i+1 | 0 are identical
+            elog(
+                DEBUG1,
+                "Duplicate points detected: [%lu]: (%f,%f), [%lu]: (%f,%f)",
+                i,
+                poly->p[i].x,
+                poly->p[i].y,
+                (i+1)%poly->npts,
+                poly->p[(i+1)%poly->npts].x,
+                poly->p[(i+1)%poly->npts].y
+            );
+            final_size--;
+        }
+        else
+        {
+            temp_poly->p[k].x = poly->p[i].x;
+            temp_poly->p[k].y = poly->p[i].y;
+            k++;
+        }
+    }
+
+    temp_poly->npts = final_size;
+
+    // Scan for colinear points
+
+    colinear_points_found = true;
+
+    while( colinear_points_found )
+    {
+        colinear_points_found = false;
+
+        if( temp_poly->npts < 3 )
+        {
+            break;
+        }
+
+        for( i = 0; i < temp_poly->npts; i++ )
+        {
+            p0 = &(temp_poly->p[i]);
+            p1 = &(temp_poly->p[( i + 1 ) % temp_poly->npts]);
+            p2 = &(temp_poly->p[( i + 2 ) % temp_poly->npts]);
+
+            colinear_points_found = points_colinear( p0, p1, p2 );
+
+            if( colinear_points_found )
+            {
+                remove_colinear_point( &temp_poly, p1 );
+                final_size--;
+                break;
+            }
+
+            p0 = NULL;
+            p1 = NULL;
+            p2 = NULL;
+        }
+    }
+
+    result_poly = ( POLYGON * ) palloc0(
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * final_size
+    );
+
+    if( result_poly == NULL )
+    {
+        pfree( temp_poly );
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "Could not create output polygon for point deduplication result" )
+            )
+        );
+    }
+
+    max.x = -DBL_MAX;
+    max.y = -DBL_MAX;
+    min.x = DBL_MAX;
+    min.y = DBL_MAX;
+
+    // Scan for colinear points
+    for( i = 0; i < final_size; i++ )
+    {
+        if( temp_poly->p[i].x > max.x )
+        {
+            max.x = temp_poly->p[i].x;
+        }
+        else if( temp_poly->p[i].x < min.x )
+        {
+            min.x = temp_poly->p[i].x;
+        }
+
+        if( temp_poly->p[i].y > max.y )
+        {
+            max.y = temp_poly->p[i].y;
+        }
+        else if( temp_poly->p[i].y < min.y )
+        {
+            min.y = temp_poly->p[i].y;
+        }
+
+        result_poly->p[i].x = temp_poly->p[i].x;
+        result_poly->p[i].y = temp_poly->p[i].y;
+    }
+
+    pfree( temp_poly );
+    result_poly->npts = final_size;
+    result_poly->boundbox.high.y = max.y;
+    result_poly->boundbox.high.x = max.x;
+    result_poly->boundbox.low.y = min.y;
+    result_poly->boundbox.low.x = min.x;
+
+    if( final_size != poly->npts && free_input )
+    {
+        pfree( poly );
+    }
+
+    return result_poly;
 }
