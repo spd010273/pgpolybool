@@ -511,7 +511,6 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
         return NULL;
     }
 
-    elog( DEBUG1, "Input poly size: %lu", poly->npts );
     final_size = poly->npts;
 
     temp_poly = ( POLYGON * ) palloc0(
@@ -539,16 +538,6 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
           )
         {
             //i and i+1 | 0 are identical
-            elog(
-                DEBUG1,
-                "Duplicate points detected: [%lu]: (%f,%f), [%lu]: (%f,%f)",
-                i,
-                poly->p[i].x,
-                poly->p[i].y,
-                (i+1)%poly->npts,
-                poly->p[(i+1)%poly->npts].x,
-                poly->p[(i+1)%poly->npts].y
-            );
             final_size--;
         }
         else
@@ -562,7 +551,6 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
     temp_poly->npts = final_size;
 
     // Scan for colinear points
-
     colinear_points_found = true;
 
     while( colinear_points_found )
@@ -616,8 +604,7 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
     max.y = -DBL_MAX;
     min.x = DBL_MAX;
     min.y = DBL_MAX;
-
-    // Scan for colinear points
+    // Copy poly into output and set bounding box in one go
     for( i = 0; i < final_size; i++ )
     {
         if( temp_poly->p[i].x > max.x )
@@ -654,5 +641,10 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
         pfree( poly );
     }
 
+    SET_VARSIZE(
+        result_poly,
+        offsetof( POLYGON, p )
+      + sizeof( Point ) * final_size
+    );
     return result_poly;
 }
