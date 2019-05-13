@@ -348,3 +348,32 @@ inline double cross_product( Point * a, Point * b )
 
     return ( a->x * b->y - a->y * b->x );
 }
+
+void __oom( const char * message )
+{
+    if( message == NULL )
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY )
+            )
+        );
+    }
+    else
+    {
+        ereport(
+            ERROR,
+            (
+                errcode( ERRCODE_OUT_OF_MEMORY ),
+                errmsg( "%s", message )
+            )
+        );
+    }
+}
+
+void __degenerate_solution( double a, double b, double c )
+{
+    elog( ERROR, "Quadratic solution is degenerate: a=%f, b=%f, c=%f", a, b, c );
+    return;
+}

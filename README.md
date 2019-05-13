@@ -3,126 +3,66 @@ pgpolybool
 
 # Summary
 
-Polygon boolean arithmatic operations for native PostgreSQL POLYGON type, as well as more robust type conversions between the native geometric types within PostgreSQL. This extension is still under active development.
+pgpolybool is a geometric library supporting various operations in R2 (2D) Euclidean space using the native PostgreSQL geometric types. This project seeks to round out the geometric feature set in the PostgreSQL codebase
+as well as provide helper functions for common spatial / geometric tasks such as:
 
-pgpolybool provides the following functions for polygon boolean operations:
+* Boolean logic for Polygon types
+* Centroid-based rotation / translation
+* Convex and concave hull algorithms for point fields
 
-* POLYGON fn_union_polygons( POLYGON[] ): UNION 2..n polygons.
-* POLYGON fn_union_polygons( POLYGON, POLYGON ): UNION two polygons.
-* POLYGON fn_intersect_polygons( POLYGON[] ): INTERSECT 2..n polygons.
-* POLYGON fn_intersect_polygons( POLYGON, POLYGON ): INTERSECT two polygons.
-* POLYGON fn_subtract_polygons( POLYGON[] ): Subtract 2..n polygons.
-* POLYGON fn_subtract_polygons( POLYGON, POLYGON ): Subtract two polygons.
-* POLYGON fn_xor_polygons( POLYGON[] ): XOR 2..n polygons.
-* POLYGON fn_xor_polygons( POLYGON, POLYGON ): XOR two polygons.
+# Getting Started
 
-Additionally, pgpolybool rounds out the casting between PostgreSQL geometric types, as described by this matrix:
+## Prerequisites:
 
-| From / To | POLYGON | POINT | LSEG | LINE | PATH | BOX | CIRCLE | VECTOR |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| POLYGON | PostgreSQL | PostgreSQL | pgpolybool | pgpolybool | PostgreSQL | PostgreSQL | PostgreSQL | N/A |
-| POINT | pgpolybool | PostgreSQL | pgpolybool | pgpolybool | N/A | PostgreSQL | N/A | N/A |
-| LSEG | pgpolybool | PostgreSQL | pgpolybool | pgpolybool | N/A | N/A | N/A | N/A |
-| LINE | pgpolybool | pgpolybool | pgpolybool | PostgreSQL | N/A | N/A | N/A | N/A | N/A |
-| PATH | PostgreSQL | pgpolybool | pgpolybool | pgpolybool | PostgreSQL | N/A | N/A | N/A |
-| BOX | PostgreSQL | PostgreSQL | PostgreSQL | pgpolybool | N/A | PostgreSQL | PostgreSQL | N/A |
-| CIRCLE | PostgreSQL | PostgreSQL | pgpolybool | pgpolybool | N/A | PostgreSQL | PostgreSQL | N/A |
-| VECTOR | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | pgpolybool |
+This extension requires the following:
 
-These casts are provided as implicit casts.
+* PostgreSQL 9.4 or greater
+* gcc, make, and PostgreSQL development libraries
 
-pgpolybool also provides the following utility functions:
+## Installing:
 
-* POLYGON fn_rotate_polygon( POLYGON, DOUBLE PRECISION ): Rotate a polygon by the specified number of radians
-* POINT[] fn_get_polygon_points( POLYGON ): Return the points that comprise a given polygon
-* LSEG[] fn_get_polygon_line_segments( POLYGON ): Return the line segments that comprise a given polygon
-* DOUBLE PRECISION fn_get_polygon_line_segment_distance( POLYGON, LSEG ): Get the minimum distance between a polygon and a line segment.
-* LSEG fn_get_orthogonal_segment( LSEG, POINT, DOUBLE PRECISION ): Generate an orthogonal line segment starting at the center of the provided line segment, pointing away from the optional POINT, and of length DOUBLE PRECISION (default length is unit length, or 1.0)
-* LSEG[] fn_get_orthogonal_segments( LSEG, DOUBLE PRECISION ): Generate two orthogonal line segments starting from the center of the provided line segment, scaled to the optional length DOUBLE PRECISION
-* LSEG fn_get_parallel_segment( LSEG, POINT, DOUBLE PRECISION );
-* LSEG fn_get_parallel_segments( LSEG, DOUBLE PRECISION );
+Prior to starting, checkout this repository, perform a build with
 
-pgpolybool implements the clipping algorithm described in Martinez, Rueda, and Feito paper published the Computers & Geosciences Journal, Volume 35, issue 8 (pp. 1177-1185) ( see https://www.sciencedirect.com/science/article/pii/S0098300408002793 ).
+```bash
+make
+```
 
-The UNION operation scales the input polygons in order to increase the odds that intersections between the subject and clipping polygons are found. Once the operation has been completed, the polygons are scaled back to (an approximation of) their original size.
+Verify that pg_config is available in the environment's PATH with:
 
-The work of Martinez et al was originally released into the Public Domain. This author requests that, in the spirit of the original authors, any derivative works be released under a permissive FOSS license or into the public domain as well.
+```bash
+which pg_config
+```
 
-# Details
+This should be present in /usr/pgsql-<version>/bin/pg_config for RHEL/CentOS and /usr/bin/pg_config for Debian/Ubuntu. Once this executable is properly linked, run:
 
-A little more detail on the functions that are not self-explanatory
+```bash
+su - postgres -c make install
+```
 
-### Polygon UNION
+This will install pgpolybool to PostgreSQL's extensions and lib folders. Installation can be completed by logging into the database and running:
 
-As mentioned previously, this operation takes several steps during its computation:
+```SQL
+CREATE EXTENSION pgpolybool;
+```
 
-* Order all input polygons by distance, ascending, from an arbitrary polygon in the set
-* Scale all polygons to 104% of their current size (extends points away from the center of each input polygon)
-* Perform the polygon union, pairwise, until every polygon in the input set has been unioned
-* Scale the output polygon by contracting points back towards their original input polygon's center point. If new points were created during the union computation (read: intersections of line segments), these points are scaled to whichever input centroid they lie closest to.
+# Versions
 
-### fn_get_orthogonal_segment
+## V1.0
+The initial release, version 1.0, consists of the following features:
 
-This generates an orthogonal segment (a perpendicular line segment) to the input line segment. This segment will have one end point at the center of the input line segment.
+* Polygon boolean operations using the Martinez-Reuda-Feito polygon clipping algorithm implementing UNION, INTERSECT, XOR, and DIFFERENCE operations.
+* Polygon and line segment helper functions
 
-For any line segment, there are two orthogonal segments. The function (currently) selects whichever segment is in the positive (x,y) direction as its return value. If a POINT is provided as input, the segment with an endpoint furthest away from that point is returned instead.
+For more information, see docs/V1.0.md
 
-The third argument ( length DOUBLE_PRECISION ), controls the scaling of the output line segment. The default length is 1.0
+# License
 
-This function will return NULL in the case that there is no solution to the quadratic equation below:
+pgpolybool is released under the PostgreSQL license. For more details about this licence, please see LICENSE
 
+# Acknowledgments
 
-Let the input line segment be defined as ![InputLineSegment](img/input_line_segment.png)
-Let ![LengthScalar](img/length_scalar.png) be the desired length of the output line segment, ![OutputLineSegment](img/output_line_segment.png)
-
-We must solve for ![OutputPoint](img/output_point.png) using the following system of equations:
-
-![LengthFunction](img/length_function.png)
-
-![LineEquation](img/line_equation.png)
-
-Where ![SlopeSolution](img/slope_solution.png) and ![YInterceptSolution](img/y_intercept_solution.png)
-
-After some simplification, we arrive at the quadratic system of equations:
-
-![Quadratic](img/quadratic.png)
-
-![LineEquation](img/line_equation.png)
-
-Where:
-
-![QuadraticA](img/quadratic_a_solution.png)
-
-![QuadraticB](img/quadratic_b_solution.png)
-
-![QuadraticC](img/quadratic_c_solution.png)
-
-Provided that ![Determinant](img/quadratic_determinant_conditional.png) is satisfied, there exists real roots and a solution for ![OutputPoint](img/output_point.png)
-
-# Installation
-
-* Checkout the repo 'git clone <repo>'
-* Build the repo 'make'
-* Install with 'make install'
-* Add the extension to your desired database 'CREATE EXTENSION pgpolybool;'
-* If you wish to hook the path path_center for conversion from PATH to most other types, you will need to add pgpolybool.so to the shared_preload_libraries string in your configuration file. Another alternative is to execute the __overload_path_center() function after the server has started.
-
-# Acknowledgements
-
-Francisco Martinez, Antonio Reuda, and Francisco Feito for developing this algorithm, it is extremely versatile and fast. It excelled in cases where both the Vatti algorithm or Greiner-Hormann failed or could not be easily modified to handle collinearity edge cases. The authors also released their original work to the public domain.
-
-Sean Connelly for his work at (http://sean.cm/a/polygon-clipping-pt2). This post contains a very well illustrated and articulated walkthrough of the algorithm's operation. There is also a interactive tool for playing around with polygon inputs to the algorithm.
-
-PostgreSQL Global Development Group, for their finely maintained project, exceptional documentation, and enthusiastic user base.
-
-Richard Davies for encouragements, jokes, insights and tricks in C/C++.
-
-My employer, Nead Werx, Inc., for granting me the time to bring this implementation to PostgreSQL. I hope later to get this into the PostGIS codebase ;)
-
-# Coming Soon
-
-I seek to add the following features in future releases:
-
-* SRF (set returning function) versions of the functions
-* Arrive at state where op enhancements can be added to PostgreSQL core
-* Arrive at state where polybool ops can be added to PostGIS
+*Francisco Martinez, Antonio Reuda, and Francisco Feito for developing this algorithm, it is extremely versatile and fast. It excelled in cases where both the Vatti algorithm or Greiner-Hormann failed or could not be easily modified to handle collinearity edge cases. The authors also released their original work to the public domain.
+*Sean Connelly for his work at (http://sean.cm/a/polygon-clipping-pt2). This post contains a very well illustrated and articulated walkthrough of the algorithm's operation. There is also a interactive tool for playing around with polygon inputs to the algorithm.
+*PostgreSQL Global Development Group, for their finely maintained project, exceptional documentation, and enthusiastic user base.
+*Richard Davies for encouragements, jokes, insights and tricks in C/C++.
+*My employer, Nead Werx, Inc., for granting me the time to bring this implementation to PostgreSQL. I hope later to get this into the PostGIS codebase ;)

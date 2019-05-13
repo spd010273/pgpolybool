@@ -34,13 +34,7 @@ bool line_segment_intersect( LSEG * a, LSEG * b )
 
     if( isect_p0 == NULL || isect_p1 == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Failed to allocate intersection points" )
-            )
-        );
+        __oom( "Failed to allocate intersection points" );
     }
 
     isect_count = find_intersection( mp_sega, mp_segb, isect_p0, isect_p1 );
@@ -84,13 +78,7 @@ Point * line_segment_intersection( LSEG * a, LSEG * b )
 
     if( isect_p0 == NULL || isect_p1 == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Failed to allocate intersection points" )
-            )
-        );
+        __oom( "Failed to allocate intersection points" );
     }
 
     isect_count = find_intersection( mp_sega, mp_segb, isect_p0, isect_p1 );
@@ -144,13 +132,7 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
          || temp == NULL || t == NULL || proj_A == NULL || proj_B == NULL
       )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Failed to allocate delta or projection points" )
-            )
-        );
+        __oom( "Failed to allocate delta or projection points" );
     }
 
     // Calculate denomitator
@@ -388,13 +370,7 @@ LSEG ** line_segment_parallel_line_segment(
 
     if( result == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create output segment" )
-            )
-        );
+        __oom( "Could not create output segment" );
     }
 
     result[0] = ( LSEG * ) palloc0( sizeof( LSEG ) );
@@ -405,25 +381,13 @@ LSEG ** line_segment_parallel_line_segment(
 
         if( result[1] == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not create orthogonal root" )
-                )
-            );
+            __oom( "Could not create orthogonal root" );
         }
     }
 
     if( result[0] == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create orthogonal root" )
-            )
-        );
+        __oom( "Could not create orthogonal root" );
     }
 
     if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
@@ -519,8 +483,7 @@ LSEG ** line_segment_parallel_line_segment(
 
         if( pow( b_0, 2 ) < ( 4 * a * c_0 ) )
         {
-            elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b_0, c_0 );
-
+            __degenerate_solution( a, b_0, c_0 );
             pfree( result[0] );
 
             if( away_point == NULL )
@@ -534,7 +497,7 @@ LSEG ** line_segment_parallel_line_segment(
 
         if( pow( b_1, 2 ) < ( 4 * a * c_1 ) )
         {
-            elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b_1, c_1 );
+            __degenerate_solution( a, b_1, c_1 );
             pfree( result[0] );
 
             if( away_point == NULL )
@@ -638,13 +601,7 @@ LSEG ** line_segment_orthogonal_line_segment(
 
     if( result == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create output segment" )
-            )
-        );
+        __oom( "Could not create output segment" );
     }
 
     result[0] = ( LSEG * ) palloc0( sizeof( LSEG ) );
@@ -655,25 +612,13 @@ LSEG ** line_segment_orthogonal_line_segment(
 
         if( result[1] == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not create orthogonal root" )
-                )
-            );
+            __oom( "Could not create orthogonal root" );
         }
     }
 
     if( result[0] == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create orthogonal root" )
-            )
-        );
+        __oom( "Could not create orthogonal root" );
     }
 
     // Store midpoint as the origin of our output vector
@@ -756,7 +701,7 @@ LSEG ** line_segment_orthogonal_line_segment(
 
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
-            elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
+            __degenerate_solution( a, b, c );
             return NULL;
         }
 
@@ -818,7 +763,7 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
 
     if( result == NULL )
     {
-        return NULL;
+        __oom( "Could not allocate result line segment" );
     }
 
     slope  = ( segment->p[0].y - segment->p[1].y )
@@ -871,6 +816,7 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
 
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
+            __degenerate_solution( a, b, c );
             pfree( result );
             return NULL;
         }
@@ -941,7 +887,7 @@ LSEG * extend_lseg( LSEG * segment, double length, Point * endpoint )
 
     if( result == NULL )
     {
-        return NULL;
+        __oom( "Could not allocate result line segment" );
     }
 
     if(
@@ -1003,6 +949,7 @@ LSEG * extend_lseg( LSEG * segment, double length, Point * endpoint )
 
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
+            __degenerate_solution( a, b, c );
             pfree( result );
             return NULL;
         }
@@ -1080,7 +1027,7 @@ Point * lseg_to_vector( LSEG * segment )
 
     if( result == NULL )
     {
-        return NULL;
+        __oom( "Could no allocate result line segment" );
     }
 
     length = sqrt(
@@ -1251,8 +1198,7 @@ LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double len
 
     if( result == NULL )
     {
-        elog( DEBUG1, "Out of memory" );
-        return NULL;
+        __oom( "Could not allocate result line segment" );
     }
 
     if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
@@ -1285,7 +1231,7 @@ LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double len
 
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
-            elog( DEBUG1, "Solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
+            __degenerate_solution( a, b, c );
             pfree( result );
             return NULL;
         }
