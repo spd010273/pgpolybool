@@ -55,6 +55,16 @@ The initial release, version 1.0, consists of the following features:
 
 For more information, see docs/V1.0.md
 
+## V2.0
+This version is still under active development, and includes the following features:
+
+* Complete casts between all PostgreSQL geometric types.
+* Complete type interoperability with geometric ops.
+* Vector and Normal types
+* Vector operands
+
+For more information, see docs/V2.0.md
+
 # License
 
 pgpolybool is released under the PostgreSQL license. For more details about this licence, please see LICENSE

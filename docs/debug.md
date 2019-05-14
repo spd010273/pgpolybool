@@ -1,6 +1,6 @@
-Debugging tips and tricks:
+# Debugging tips and tricks:
 
-Make sure to build postgresql from source with the following modifications to src/include/pg_config_manual.h:
+Make sure to build postgresql from source with the following modifications to `src/include/pg_config_manual.h`:
 
 ```bash
 #define USE_VALGRIND
@@ -49,4 +49,4 @@ Ensure that
 which pg_config
 ```
 
-is properly symlinked to /usr/local/pgsql/bin/pg_config and that a make install of the extension places the shared library in /usr/local/pgsql/lib/
+is properly symlinked to `/usr/local/pgsql/bin/pg_config` and that a make install of the extension places the shared library in `/usr/local/pgsql/lib/`
