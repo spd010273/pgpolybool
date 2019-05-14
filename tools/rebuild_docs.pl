@@ -67,6 +67,22 @@ foreach my $version( sort { $a cmp $b } @versions )
     my @sections = readdir( SECTIONS );
     closedir( SECTIONS );
 
+    if( -e "${DOC_DIR}${version}/__header.md" )
+    {
+        unless( open( VERSION_HEADER, '<:encoding(UTF-8)', "${DOC_DIR}${version}/__header.md" ) )
+        {
+            croak( "Failed to open version header file '${DOC_DIR}${version}/__header.md': $OS_ERROR" );
+        }
+
+        while( my $line = <VERSION_HEADER> )
+        {
+            print $target_fh $line;
+        }
+
+        close( VERSION_HEADER );
+        print $target_fh "\n\n";
+    }
+
     # Enumerate the sections under the current version
     foreach my $section( sort { $a cmp $b } @sections )
     {
