@@ -51,4 +51,6 @@ extern unsigned int find_intersection(
 extern bool points_equal( Point *, Point * );
 extern inline double dot_product( Point *, Point * );
 extern inline double cross_product( Point *, Point * );
+extern void __oom( const char * );
+extern void __degenerate_solution( double, double, double );
 #endif // UTIL_H

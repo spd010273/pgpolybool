@@ -34,13 +34,7 @@ bool line_segment_intersect( LSEG * a, LSEG * b )
 
     if( isect_p0 == NULL || isect_p1 == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Failed to allocate intersection points" )
-            )
-        );
+        __oom( "Failed to allocate intersection points" );
     }
 
     isect_count = find_intersection( mp_sega, mp_segb, isect_p0, isect_p1 );
@@ -84,13 +78,7 @@ Point * line_segment_intersection( LSEG * a, LSEG * b )
 
     if( isect_p0 == NULL || isect_p1 == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Failed to allocate intersection points" )
-            )
-        );
+        __oom( "Failed to allocate intersection points" );
     }
 
     isect_count = find_intersection( mp_sega, mp_segb, isect_p0, isect_p1 );
@@ -144,13 +132,7 @@ double line_segment_distance( LSEG * l1, LSEG * l2 )
          || temp == NULL || t == NULL || proj_A == NULL || proj_B == NULL
       )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Failed to allocate delta or projection points" )
-            )
-        );
+        __oom( "Failed to allocate delta or projection points" );
     }
 
     // Calculate denomitator
@@ -388,13 +370,7 @@ LSEG ** line_segment_parallel_line_segment(
 
     if( result == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create output segment" )
-            )
-        );
+        __oom( "Could not create output segment" );
     }
 
     result[0] = ( LSEG * ) palloc0( sizeof( LSEG ) );
@@ -405,25 +381,13 @@ LSEG ** line_segment_parallel_line_segment(
 
         if( result[1] == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not create orthogonal root" )
-                )
-            );
+            __oom( "Could not create orthogonal root" );
         }
     }
 
     if( result[0] == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create orthogonal root" )
-            )
-        );
+        __oom( "Could not create orthogonal root" );
     }
 
     if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
@@ -519,8 +483,7 @@ LSEG ** line_segment_parallel_line_segment(
 
         if( pow( b_0, 2 ) < ( 4 * a * c_0 ) )
         {
-            elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b_0, c_0 );
-
+            __degenerate_solution( a, b_0, c_0 );
             pfree( result[0] );
 
             if( away_point == NULL )
@@ -534,7 +497,7 @@ LSEG ** line_segment_parallel_line_segment(
 
         if( pow( b_1, 2 ) < ( 4 * a * c_1 ) )
         {
-            elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b_1, c_1 );
+            __degenerate_solution( a, b_1, c_1 );
             pfree( result[0] );
 
             if( away_point == NULL )
@@ -638,13 +601,7 @@ LSEG ** line_segment_orthogonal_line_segment(
 
     if( result == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create output segment" )
-            )
-        );
+        __oom( "Could not create output segment" );
     }
 
     result[0] = ( LSEG * ) palloc0( sizeof( LSEG ) );
@@ -655,25 +612,13 @@ LSEG ** line_segment_orthogonal_line_segment(
 
         if( result[1] == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not create orthogonal root" )
-                )
-            );
+            __oom( "Could not create orthogonal root" );
         }
     }
 
     if( result[0] == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create orthogonal root" )
-            )
-        );
+        __oom( "Could not create orthogonal root" );
     }
 
     // Store midpoint as the origin of our output vector
@@ -756,7 +701,7 @@ LSEG ** line_segment_orthogonal_line_segment(
 
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
-            elog( DEBUG1, "solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
+            __degenerate_solution( a, b, c );
             return NULL;
         }
 
@@ -818,7 +763,7 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
 
     if( result == NULL )
     {
-        return NULL;
+        __oom( "Could not allocate result line segment" );
     }
 
     slope  = ( segment->p[0].y - segment->p[1].y )
@@ -871,6 +816,7 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
 
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
+            __degenerate_solution( a, b, c );
             pfree( result );
             return NULL;
         }
@@ -941,7 +887,7 @@ LSEG * extend_lseg( LSEG * segment, double length, Point * endpoint )
 
     if( result == NULL )
     {
-        return NULL;
+        __oom( "Could not allocate result line segment" );
     }
 
     if(
@@ -1003,6 +949,7 @@ LSEG * extend_lseg( LSEG * segment, double length, Point * endpoint )
 
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
+            __degenerate_solution( a, b, c );
             pfree( result );
             return NULL;
         }
@@ -1080,7 +1027,7 @@ Point * lseg_to_vector( LSEG * segment )
 
     if( result == NULL )
     {
-        return NULL;
+        __oom( "Could no allocate result line segment" );
     }
 
     length = sqrt(
@@ -1251,8 +1198,7 @@ LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double len
 
     if( result == NULL )
     {
-        elog( DEBUG1, "Out of memory" );
-        return NULL;
+        __oom( "Could not allocate result line segment" );
     }
 
     if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
@@ -1285,7 +1231,7 @@ LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double len
 
         if( pow( b, 2 ) < ( 4 * a * c ) )
         {
-            elog( DEBUG1, "Solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
+            __degenerate_solution( a, b, c );
             pfree( result );
             return NULL;
         }
@@ -1295,395 +1241,5 @@ LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double len
         result->p[1].x = ( -b - sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
         result->p[1].y = targ_slope * result->p[1].x + y_int;
     }
-    return result;
-}
-
-// Find the best-fit line for the points, and return the segment that extends
-// through the interior of the polygon, along the best-fit line
-// TODO: This function is fucked
-LSEG * polygon_to_lseg( POLYGON * poly )
-{
-    LSEG *       result        = NULL;
-    LSEG **      bbox_segments = NULL;
-    LINE *       bf_line       = NULL;
-    Point        isect         = {0};
-    unsigned int i             = 0;
-    unsigned int j             = 0;
-    double       slope         = 0.0;
-    double       y_int         = 0.0;
-    double       test_slope    = 0.0;
-    double       test_y_int    = 0.0;
-
-    if( poly == NULL )
-    {
-        return NULL;
-    }
-
-    result = ( LSEG * ) palloc0( sizeof( Point ) );
-
-    if( result == NULL )
-    {
-        return NULL;
-    }
-
-    bf_line = best_fit_line( poly->p, poly->npts );
-
-    if( bf_line == NULL )
-    {
-        pfree( result );
-        return NULL;
-    }
-
-    slope = -( bf_line->A / bf_line->B );
-    y_int = -( bf_line->C / bf_line->B );
-
-    pfree( bf_line );
-
-    // Locate two points on this line that are within the bounding box
-    bbox_segments = get_polygon_lsegs( poly );
-
-    if( bbox_segments == NULL )
-    {
-        pfree( result );
-        return NULL;
-    }
-
-    for( i = 0; i < poly->npts; i++ )
-    {
-        test_slope = ( bbox_segments[i]->p[1].y - bbox_segments[i]->p[0].y )
-                   / ( bbox_segments[i]->p[1].x - bbox_segments[i]->p[0].x );
-        test_y_int = bbox_segments[i]->p[0].y - test_slope * bbox_segments[i]->p[0].x;
-
-        if( !( fabs( test_slope - slope ) < DBL_EPSILON ) )
-        {
-            // Lines are not parallel
-            isect.x = -( test_y_int / slope );
-            isect.y = y_int - test_y_int;
-
-            if(
-                   ( isect.x < poly->boundbox.high.x || ( fabs( isect.x - poly->boundbox.high.x ) < DBL_EPSILON ) )
-                && ( isect.x > poly->boundbox.low.x  || ( fabs( isect.x - poly->boundbox.low.x  ) < DBL_EPSILON ) )
-                && ( isect.y < poly->boundbox.high.y || ( fabs( isect.y - poly->boundbox.high.y ) < DBL_EPSILON ) )
-                && ( isect.y > poly->boundbox.low.y  || ( fabs( isect.y - poly->boundbox.low.y  ) < DBL_EPSILON ) )
-              )
-            {
-                result->p[j].x = isect.x;
-                result->p[j].y = isect.y;
-                j++;
-
-                if( j > 1 )
-                {
-                    for( i = 0; i < poly->npts; i++ )
-                    {
-                        pfree( bbox_segments[i] );
-                    }
-
-                    pfree( bbox_segments );
-                    return result;
-                }
-            }
-        }
-    }
-
-    for( i = 0; i < poly->npts; i++ )
-    {
-        pfree( bbox_segments[i] );
-    }
-
-    pfree( bbox_segments );
-
-    if( j < 1 )
-    {
-        pfree( result );
-        return NULL;
-    }
-
-    return result;
-}
-
-// Return basically a vector from the origin to the point p
-LSEG * point_to_lseg( Point * p )
-{
-    LSEG * result = NULL;
-
-    if( p == NULL )
-    {
-        return NULL;
-    }
-
-    result = ( LSEG * ) palloc0( sizeof( LSEG ) );
-
-    if( result == NULL )
-    {
-        return NULL;
-    }
-
-    result->p[1].x = p->x;
-    result->p[1].y = p->y;
-    result->p[0].x = 0.0;
-    result->p[0].y = 0.0;
-
-    return result;
-}
-
-// Return a section of the line which passes through an axis, is of unit length
-LSEG * line_to_lseg( LINE * line )
-{
-    LSEG * result      = NULL;
-    double y_intercept = 0.0;
-    double x_intercept = 0.0;
-    double slope       = 0.0;
-    double a           = 0.0;
-    double b           = 0.0;
-    double c           = 0.0;
-    Point  centroid    = {0};
-
-    if( line == NULL )
-    {
-        return NULL;
-    }
-
-    result = ( LSEG * ) palloc0( sizeof( LSEG ) );
-
-    if( result == NULL )
-    {
-        return NULL;
-    }
-
-    // Lines are expressed as Ax + By + c = 0,
-    // Thus m = -A / B, b = -C / B
-    slope       = -( line->A / line->B );
-    y_intercept = -( line->C / line->B );
-    x_intercept = -( y_intercept / slope );
-
-    if(
-         slope > DBL_MAX
-       || ( fabs( slope - DBL_MAX ) < DBL_EPSILON )
-       || slope == INFINITY
-       || slope == -INFINITY
-       || isnan( y_intercept )
-      )
-    {
-        centroid.x = x_intercept;
-        centroid.y = 0.0;
-    }
-    else if( fabs( slope ) < DBL_EPSILON || isnan( x_intercept ) )
-    {
-        centroid.x = 0.0;
-        centroid.y = y_intercept;
-    }
-    else
-    {
-        if( fabs( y_intercept ) < DBL_EPSILON && fabs( x_intercept ) < DBL_EPSILON )
-        {
-            centroid.x = 0.0;
-            centroid.y = 0.0;
-        }
-        else
-        {
-            centroid.x = x_intercept / 2;
-            centroid.y = y_intercept / 2;
-        }
-    }
-
-    a = 1.0 + pow( slope, 2 );
-    b = -2.0 * centroid.x - 2.0 * ( centroid.y + y_intercept ) * slope;
-    c = pow( centroid.x, 2 ) + pow( centroid.y + y_intercept, 2 ) - 1.0;
-
-    if( pow( b, 2 ) < ( 4 * a * c ) )
-    {
-        elog( DEBUG1, "Solution for quadratic a=%f, b=%f, c=%f is degenerate", a, b, c );
-        return NULL;
-    }
-
-    result->p[0].x = ( -b + sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
-    result->p[1].x = ( -b - sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
-    result->p[0].y = slope * result->p[0].x + y_intercept;
-    result->p[1].y = slope * result->p[1].x + y_intercept;
-
-    return result;
-}
-
-LSEG * path_to_lseg( PATH * path )
-{
-    BOX          boundbox      = {{0}};
-    LSEG *       result        = NULL;
-    LSEG **      bbox_segments = NULL;
-    LINE *       bf_line       = NULL;
-    Point        isect         = {0};
-    unsigned int i             = 0;
-    unsigned int j             = 0;
-    double       slope         = 0.0;
-    double       y_int         = 0.0;
-    double       test_slope    = 0.0;
-    double       test_y_int    = 0.0;
-
-    if( path == NULL )
-    {
-        return NULL;
-    }
-
-    result = ( LSEG * ) palloc0( sizeof( LSEG ) );
-
-    if( result == NULL )
-    {
-        return NULL;
-    }
-
-    bf_line = best_fit_line( path->p, path->npts );
-
-    if( bf_line == NULL )
-    {
-        pfree( result );
-        return NULL;
-    }
-
-    slope = -( bf_line->A / bf_line->B );
-    y_int = -( bf_line->C / bf_line->B );
-
-    pfree( bf_line );
-
-    bbox_segments = get_path_lsegs( path );
-
-    boundbox.high.x = -DBL_MAX;
-    boundbox.high.y = -DBL_MAX;
-    boundbox.low.x  = DBL_MAX;
-    boundbox.low.y  = DBL_MAX;
-
-    for( i = 0; i < path->npts; i++ )
-    {
-        if( path->p[i].x > boundbox.high.x )
-        {
-            boundbox.high.x = path->p[i].x;
-        }
-
-        if( path->p[i].x < boundbox.low.x )
-        {
-            boundbox.low.x = path->p[i].x;
-        }
-
-        if( path->p[i].y > boundbox.high.y )
-        {
-            boundbox.high.y = path->p[i].y;
-        }
-
-        if( path->p[i].y < boundbox.low.y )
-        {
-            boundbox.low.y = path->p[i].y;
-        }
-    }
-
-    for( i = 0; i < path->npts; i++ )
-    {
-        test_slope = ( bbox_segments[i]->p[1].y - bbox_segments[i]->p[0].y )
-                   / ( bbox_segments[i]->p[1].x - bbox_segments[i]->p[0].x );
-        test_y_int = bbox_segments[i]->p[0].y - test_slope * bbox_segments[i]->p[0].x;
-
-        if( !( fabs( test_slope - slope ) < DBL_EPSILON ) )
-        {
-            // Segments are not parallel
-            isect.x = -( test_y_int / slope );
-            isect.y = y_int - test_y_int;
-
-            if(
-                  ( isect.x < boundbox.high.x || ( fabs( isect.x - boundbox.high.x ) < DBL_EPSILON ) )
-               && ( isect.x > boundbox.low.x  || ( fabs( isect.x - boundbox.low.x  ) < DBL_EPSILON ) )
-               && ( isect.y < boundbox.high.y || ( fabs( isect.y - boundbox.high.y ) < DBL_EPSILON ) )
-               && ( isect.y > boundbox.low.y  || ( fabs( isect.y - boundbox.low.y  ) < DBL_EPSILON ) )
-              )
-            {
-                result->p[j].x = isect.x;
-                result->p[j].y = isect.y;
-                j++;
-
-                if( j > 1 )
-                {
-                    for( i = 0; i < path->npts; i++ )
-                    {
-                        pfree( bbox_segments[i] );
-                    }
-
-                    pfree( bbox_segments );
-                    return result;
-                }
-            }
-        }
-    }
-
-    for( i = 0; i < path->npts; i++ )
-    {
-        pfree( bbox_segments[i] );
-    }
-
-    pfree( bbox_segments );
-
-    if( j < 1 )
-    {
-        pfree( result );
-        return NULL;
-    }
-
-    return result;
-}
-
-// Segment of legnth 2 * radius which points bisects the center and the direction is towards the origin,
-// if the center is 0,0, the direction is vertical
-LSEG * circle_to_lseg( CIRCLE * cir )
-{
-    LSEG * result = NULL;
-    double a      = 0.0;
-    double b      = 0.0;
-    double c      = 0.0;
-    double slope  = 0.0;
-    double y_int  = 0.0;
-
-    if( cir == NULL )
-    {
-        return NULL;
-    }
-
-    result = ( LSEG * ) palloc0( sizeof( LSEG ) );
-
-    if( result == NULL )
-    {
-        return NULL;
-    }
-
-    slope = cir->center.y / cir->center.x;
-
-    if(
-            slope == INFINITY
-         || slope == -INFINITY
-         || (
-                fabs( cir->center.y ) < DBL_EPSILON
-             && fabs( cir->center.x ) < DBL_EPSILON
-            )
-      )
-    {
-        result->p[0].x = cir->center.x;
-        result->p[1].x = cir->center.x;
-        result->p[0].y = cir->center.y - cir->radius;
-        result->p[1].y = cir->center.y + cir->radius;
-    }
-    else
-    {
-        y_int = cir->center.y - cir->center.x * slope;
-        a = 1.0 + pow( slope, 2 );
-        b = -2.0 * cir->center.x - 2 * ( cir->center.y + y_int ) * slope;
-        c = pow( cir->center.x, 2 ) + pow( cir->center.y + y_int, 2 ) - pow( cir->radius, 2 );
-
-        if( pow( b, 2 ) < ( 4 * a * c ) )
-        {
-            elog( DEBUG1, "Solution for quadratic a=%f, b=%f, c=%f is degenrate", a, b, c );
-            pfree( result );
-            return NULL;
-        }
-
-        result->p[0].x = ( -b + sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
-        result->p[1].x = ( -b - sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
-        result->p[0].y = slope * result->p[0].x + y_int;
-        result->p[1].y = slope * result->p[1].x + y_int;
-    }
-
     return result;
 }

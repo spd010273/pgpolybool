@@ -26,11 +26,8 @@
 #include "lseg_funcs.h"
 #include "box_funcs.h"
 #include "poly_funcs.h"
-#include "point_funcs.h"
 #include "line_funcs.h"
-#include "hook.h"
 #include "ombb.h"
-#include "alpha.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -81,34 +78,6 @@ PG_FUNCTION_INFO_V1( fn_lseg_points_left_of );
 PG_FUNCTION_INFO_V1( fn_cross_product );
 PG_FUNCTION_INFO_V1( fn_lseg_to_vector );
 PG_FUNCTION_INFO_V1( fn_get_root_orthogonal_segment );
-
-PG_FUNCTION_INFO_V1( fn_get_alpha_shape );
-
-// Cast Functions
-// x->POLYGON
-PG_FUNCTION_INFO_V1( __cast_lseg_to_polygon );
-PG_FUNCTION_INFO_V1( __cast_line_to_polygon );
-PG_FUNCTION_INFO_V1( __cast_point_to_polygon );
-
-// x->POINT
-PG_FUNCTION_INFO_V1( __cast_line_to_point );
-PG_FUNCTION_INFO_V1( __cast_path_to_point );
-PG_FUNCTION_INFO_V1( __overload_path_center );
-
-// x->LSEG
-PG_FUNCTION_INFO_V1( __cast_polygon_to_lseg );
-PG_FUNCTION_INFO_V1( __cast_point_to_lseg );
-PG_FUNCTION_INFO_V1( __cast_line_to_lseg );
-PG_FUNCTION_INFO_V1( __cast_path_to_lseg );
-PG_FUNCTION_INFO_V1( __cast_circle_to_lseg );
-
-// x->LINE
-PG_FUNCTION_INFO_V1( __cast_polygon_to_line );
-PG_FUNCTION_INFO_V1( __cast_point_to_line );
-PG_FUNCTION_INFO_V1( __cast_lseg_to_line );
-PG_FUNCTION_INFO_V1( __cast_path_to_line );
-PG_FUNCTION_INFO_V1( __cast_box_to_line );
-PG_FUNCTION_INFO_V1( __cast_circle_to_line );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -174,13 +143,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     new_polygon = sorted_polys[0];
@@ -288,13 +251,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
@@ -411,13 +368,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     if( num_poly == 1 )
@@ -537,13 +488,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
@@ -656,13 +601,7 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     new_polygon = sorted_polys[0];
@@ -792,13 +731,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
 #ifdef DEBUG
@@ -929,13 +862,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     for( i = 1; i < num_poly; i++ )
@@ -1076,13 +1003,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
 #ifdef DEBUG
@@ -1222,13 +1143,7 @@ Datum fn_get_polygon_points( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate polygon point return array" )
-            )
-        );
+        __oom( "Could not allocate polygon point return array" );
     }
 
     for( i = 0; i < poly->npts; i++ )
@@ -1283,15 +1198,7 @@ Datum fn_get_polygon_line_segs( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg(
-                    "Could not allocate polygon line segment return array"
-                )
-            )
-        );
+        __oom( "Could not allocate polygon line segment return array" );
     }
 
     segments = get_polygon_lsegs( poly );
@@ -1358,13 +1265,7 @@ Datum fn_get_polygon_lseg_distance( PG_FUNCTION_ARGS )
 
     if( segment == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not divide polygon into line segment" )
-            )
-        );
+        __oom( "Could not divide polygon into line segment" );
     }
 
     for( i = 0; i < poly->npts; i++ )
@@ -1491,15 +1392,7 @@ Datum fn_get_parallel_segments( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg(
-                    "Could not allocate polygon line segment return array"
-                )
-            )
-        );
+        __oom( "Could not allocate polygon line segment return array" );
     }
 
     elements[0] = LsegPGetDatum( l_result[0] );
@@ -1619,15 +1512,7 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg(
-                    "Could not allocate polygon line segment return array"
-                )
-            )
-        );
+        __oom( "Could not allocate polygon line segment return array" );
     }
 
     elements[0] = LsegPGetDatum( l_result[0] );
@@ -1891,122 +1776,6 @@ Datum fn_lseg_to_vector( PG_FUNCTION_ARGS )
     PG_RETURN_POINT_P( result );
 }
 
-Datum fn_get_alpha_shape( PG_FUNCTION_ARGS )
-{
-    ArrayType *  input_points    = NULL;
-    ArrayType *  output_polygons = NULL;
-    Datum *      elements        = NULL;
-    bool *       nulls           = NULL;
-    POLYGON **   result          = NULL;
-    Point **     input           = NULL;
-    unsigned int result_length   = 0;
-    unsigned int i               = 0;
-    int          num_points      = 0;
-    double       alpha           = 0.0;
-    int16        typlen          = 0;
-    char         typalign        = 0;
-    bool         typbyval        = false;
-
-    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input_points = PG_GETARG_ARRAYTYPE_P(0);
-
-    if( input_points == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    alpha = PG_GETARG_FLOAT8(1);
-
-    deconstruct_array(
-        input_points,
-        POINTOID,
-        16,
-        false,
-        'd',
-        &elements,
-        &nulls,
-        &num_points
-    );
-
-    if( num_points > 1 )
-    {
-        input = ( Point ** ) palloc0(
-            sizeof( Point * )
-          * num_points
-        );
-
-        if( input == NULL )
-        {
-            PG_RETURN_NULL();
-        }
-
-        for( i = 0; i < num_points; i++ )
-        {
-            if( nulls[i] )
-            {
-                pfree( input );
-                PG_RETURN_NULL();
-            }
-
-            input[i] = DatumGetPointP( elements[i] );
-        }
-    }
-    else
-    {
-        PG_RETURN_NULL();
-    }
-
-    if(
-        get_alpha_shape(
-            input,
-            ( unsigned int ) num_points,
-            alpha,
-            result,
-            &result_length
-        )
-      )
-    {
-
-    }
-
-    if( result == NULL || result_length == 0 )
-    {
-        PG_RETURN_NULL();
-    }
-
-    elements = ( Datum * ) palloc0(
-        sizeof( Datum )
-      * result_length
-    );
-
-    if( elements == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    for( i = 0; i < result_length; i++ )
-    {
-        elements[i] = PolygonPGetDatum( result[i] );
-    }
-
-    get_typlenbyvalalign( POLYGONOID, &typlen, &typbyval, &typalign );
-
-    output_polygons = construct_array(
-        elements,
-        result_length,
-        POLYGONOID,
-        typlen,
-        typbyval,
-        typalign
-    );
-
-    PG_RETURN_ARRAYTYPE_P( output_polygons );
-}
-
 Datum fn_box_to_polygon( PG_FUNCTION_ARGS )
 {
     POLYGON * result = NULL;
@@ -2075,7 +1844,7 @@ Datum fn_points_to_polygon( PG_FUNCTION_ARGS )
 
         if( input == NULL )
         {
-            PG_RETURN_NULL();
+            __oom( "Could not buffer point array input" );
         }
 
         for( i = 0; i < num_points; i++ )
@@ -2140,13 +1909,7 @@ Datum fn_get_polygon_ombb( PG_FUNCTION_ARGS )
 
     if( result == NULL )
     {
-        for( i = 0; i < 4; i++ )
-        {
-            pfree( output[i] );
-        }
-
-        pfree( output );
-        PG_RETURN_NULL();
+        __oom( "Could not allocate result bounding box" );
     }
 
     for( i = 0; i < 4; i++ )
@@ -2202,13 +1965,7 @@ Datum fn_get_points_ombb( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate OMBB point array" )
-            )
-        );
+        __oom( "Could not allocate OMBB point array" );
     }
 
     for( i = 0; i < 4; i++ )
@@ -2284,6 +2041,11 @@ Datum fn_get_ombb( PG_FUNCTION_ARGS )
       + sizeof( Point ) * 4
     );
 
+    if( result_bb == NULL )
+    {
+        __oom( "Could not allocate OMBB polygon" );
+    }
+
     if( output == NULL || result_bb == NULL )
     {
         memset( nulls, 1, sizeof( nulls ) );
@@ -2350,486 +2112,4 @@ Datum fn_get_root_orthogonal_segment( PG_FUNCTION_ARGS )
     }
 
     PG_RETURN_LSEG_P( result );
-}
-
-Datum __cast_lseg_to_polygon( PG_FUNCTION_ARGS )
-{
-    POLYGON * result = NULL;
-    LSEG *    input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_LSEG_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = lseg_to_polygon( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_POLYGON_P( result );
-}
-
-Datum __cast_line_to_polygon( PG_FUNCTION_ARGS )
-{
-    POLYGON * result = NULL;
-    LINE *    input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_LINE_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = line_to_polygon( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_POLYGON_P( result );
-}
-
-Datum __cast_point_to_polygon( PG_FUNCTION_ARGS )
-{
-    POLYGON * result = NULL;
-    Point *   input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_POINT_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = point_to_polygon( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_POLYGON_P( result );
-}
-
-Datum __cast_line_to_point( PG_FUNCTION_ARGS )
-{
-    Point * result = NULL;
-    LINE *  input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_LINE_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = line_to_point( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_POINT_P( result );
-}
-
-Datum __cast_path_to_point( PG_FUNCTION_ARGS )
-{
-    Point * result = NULL;
-    PATH *  input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_PATH_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = path_to_point( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_POINT_P( result );
-}
-
-// Hooks src/backend/utils/adt/geo_ops.c:path_center to do something a little
-// more useful than throw an error and return NULL
-Datum __overload_path_center( PG_FUNCTION_ARGS )
-{
-    if(
-         hook_function(
-             "path_center",
-             ( uintptr_t ) __cast_path_to_point
-         )
-      )
-    {
-        elog( DEBUG1, "Hook registered!" );
-    }
-
-    PG_RETURN_VOID();
-}
-
-Datum __cast_polygon_to_lseg( PG_FUNCTION_ARGS )
-{
-    LSEG *    result = NULL;
-    POLYGON * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_POLYGON_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = polygon_to_lseg( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LSEG_P( result );
-}
-
-Datum __cast_point_to_lseg( PG_FUNCTION_ARGS )
-{
-    LSEG *  result = NULL;
-    Point * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_POINT_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = point_to_lseg( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LSEG_P( result );
-}
-
-Datum __cast_line_to_lseg( PG_FUNCTION_ARGS )
-{
-    LSEG * result = NULL;
-    LINE * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_LINE_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = line_to_lseg( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LSEG_P( result );
-}
-
-Datum __cast_path_to_lseg( PG_FUNCTION_ARGS )
-{
-    LSEG * result = NULL;
-    PATH * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_PATH_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = path_to_lseg( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LSEG_P( result );
-}
-
-Datum __cast_circle_to_lseg( PG_FUNCTION_ARGS )
-{
-    LSEG *   result = NULL;
-    CIRCLE * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_CIRCLE_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = circle_to_lseg( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LSEG_P( result );
-}
-
-Datum __cast_polygon_to_line( PG_FUNCTION_ARGS )
-{
-    LINE *    result = NULL;
-    POLYGON * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_POLYGON_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = polygon_to_line( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LINE_P( result );
-}
-
-Datum __cast_point_to_line( PG_FUNCTION_ARGS )
-{
-    LINE *  result = NULL;
-    Point * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_POINT_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = point_to_line( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LINE_P( result );
-}
-
-Datum __cast_lseg_to_line( PG_FUNCTION_ARGS )
-{
-    LINE * result = NULL;
-    LSEG * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_LSEG_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = lseg_to_line( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LINE_P( result );
-}
-
-Datum __cast_path_to_line( PG_FUNCTION_ARGS )
-{
-    LINE * result = NULL;
-    PATH * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_PATH_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = path_to_line( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LINE_P( result );
-}
-
-Datum __cast_box_to_line( PG_FUNCTION_ARGS )
-{
-    LINE * result = NULL;
-    BOX *  input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_BOX_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = box_to_line( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LINE_P( result );
-}
-
-Datum __cast_circle_to_line( PG_FUNCTION_ARGS )
-{
-    LINE *   result = NULL;
-    CIRCLE * input  = NULL;
-
-    if( PG_ARGISNULL(0) )
-    {
-        PG_RETURN_NULL();
-    }
-
-    input = PG_GETARG_CIRCLE_P(0);
-
-    if( input == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    result = circle_to_line( input );
-
-    if( result == NULL )
-    {
-        PG_RETURN_NULL();
-    }
-
-    PG_RETURN_LINE_P( result );
-}
-
-void _PG_init( void )
-{
-    if( !process_shared_preload_libraries_in_progress )
-    {
-        ereport(
-            WARNING,
-            (
-                errcode( ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE ),
-                errmsg( "pgpolybool must be loaded via shared_preload_libraries in postgresql.conf to override path_center" ),
-                errhint( "You can override path_center manually by calling __overload_path_center()" )
-            )
-        );
-    }
-
-    elog(
-        LOG,
-        "pgpolybool version %s loaded",
-        PGPOLYBOOL_VERSION
-    );
-
-    if(
-        hook_function(
-            "path_center",
-            ( uintptr_t ) __cast_path_to_point
-        ) == false
-      )
-    {
-        elog( WARNING, "Could not override path_center function" );
-    }
-
-    return;
 }
