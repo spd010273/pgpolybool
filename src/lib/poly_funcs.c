@@ -450,6 +450,147 @@ POLYGON * polygon_from_points( Point ** points, unsigned int num_points )
     return p;
 }
 
+POLYGON * lseg_to_polygon( LSEG * line_segment )
+{
+    POLYGON *    result = NULL;
+    unsigned int size   = 0;
+    Point        center = {0};
+    double       Um     = 0.0;
+    double       Ub     = 0.0;
+    double       L      = 0.0;
+    double       a      = 0.0;
+    double       b      = 0.0;
+    double       c      = 0.0;
+
+    if( line_segment == NULL )
+    {
+        return NULL;
+    }
+
+    size   = offsetof( POLYGON, p )
+           + sizeof( Point ) * 4;
+    result = ( POLYGON * ) palloc0( size );
+
+    if( result == NULL )
+    {
+        __oom( "Failed to allocate output polygon for cast" );
+    }
+
+    result->npts   = 4;
+    result->p[0].x = line_segment->p[0].x;
+    result->p[0].y = line_segment->p[0].y;
+    result->p[2].x = line_segment->p[1].x;
+    result->p[2].y = line_segment->p[1].y;
+
+    center.x = ( line_segment->p[1].x + line_segment->p[0].x ) / 2.0;
+    center.y = ( line_segment->p[1].y + line_segment->p[0].y ) / 2.0;
+
+    L = sqrt(
+        pow( line_segment->p[0].x - center.x, 2 )
+      + pow( line_segment->p[0].y - center.y, 2 )
+    );
+
+    Um = (
+            -( line_segment->p[0].x - line_segment->p[1].x )
+           / ( line_segment->p[0].y - line_segment->p[1].y )
+         );
+    Ub = center.y - center.x * Um;
+    a  = pow( Um, 2 ) + 1.0;
+    b = -2.0 * center.x - 2 * Um * ( center.y - Ub );
+    c = pow( center.x, 2 ) + pow( center.y - Ub, 2 ) - pow( L, 2 );
+
+    if( ( b * b ) < ( 4 * a * c ) )
+    {
+        __degenerate_solution( a, b, c );
+    }
+
+    result->p[1].x = ( -b + sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
+    result->p[3].x = ( -b - sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
+    result->p[1].y = Um * result->p[1].x + Ub;
+    result->p[3].y = Um * result->p[3].x + Ub;
+
+    set_polygon_boundbox( result );
+    SET_VARSIZE( result, size );
+    return result;
+}
+
+// Cheat, use an lseg that is colinear with the LINE but centered about the
+// y-intercept with a legnth of sqrt(2) (output's sides will have length 1)
+POLYGON * line_to_polygon( LINE * line )
+{
+    POLYGON *    result = NULL;
+    LSEG         lseg   = {{{0.0}}};
+    double       slope  = 0.0;
+    double       y_int  = 0.0;
+
+    if( line == NULL )
+    {
+        return NULL;
+    }
+
+    /* LINE is expressed as Ax+By+C=0,
+     * where in y=mx+b terms,
+     * m = - A / B
+     * b = - C / B
+     *
+     * since each point on our lseg is sqrt(2)/2 away from the y-intercept,
+     * our systems of equations:
+     * sqrt(2)/2 = sqrt( x**2 + ( y - b )**2 ) -- from length equation
+     *
+     * simplifies to:
+     * .5 = (( A / B )**2 + 1) * x**2
+     * or x = +/- ( 0.5 ) / ( ( A/B )**2 + 1 )
+     */
+    slope = - line->A / line->B;
+    y_int = - line->C / line->B;
+
+    lseg.p[0].x = -sqrt( 0.5 / ( pow( slope, 2 ) + 1 ) );
+    lseg.p[1].x = sqrt( 0.5 / ( pow( slope, 2 ) + 1 ) );
+    lseg.p[0].y = slope * lseg.p[0].x + y_int;
+    lseg.p[1].y = slope * lseg.p[1].x + y_int;
+
+    result = lseg_to_polygon( &lseg );
+    return result;
+}
+
+POLYGON * point_to_polygon( Point * point )
+{
+    POLYGON * result  = NULL;
+    double angle      = 0.0;
+    double angle_step = 0.0;
+    unsigned int i    = 0;
+    unsigned int size = 0;
+
+    if( point == NULL )
+    {
+        return NULL;
+    }
+
+    size = offsetof( POLYGON, p )
+         + sizeof( Point ) * DEFAULT_CIRCLE_POLY_POINTS;
+
+    result = ( POLYGON * ) palloc0( size );
+
+    if( result == NULL )
+    {
+        __oom( "Failed to allocate output polygon for point cast" );
+    }
+
+    result->npts = DEFAULT_CIRCLE_POLY_POINTS;
+    angle_step   = ( 2.0 * PI ) / DEFAULT_CIRCLE_POLY_POINTS;
+
+    for( i = 0; i < DEFAULT_CIRCLE_POLY_POINTS; i++ )
+    {
+        angle = i * angle_step;
+        result->p[i].x = point->x - ( DEFAULT_CIRCLE_POLY_RADIUS * cos( angle ) );
+        result->p[i].y = point->y + ( DEFAULT_CIRCLE_POLY_RADIUS * sin( angle ) );
+    }
+
+    set_polygon_boundbox( result );
+    SET_VARSIZE( result, size );
+    return result;
+}
+
 LSEG ** get_polygon_lsegs( POLYGON * poly )
 {
     LSEG **      result = NULL;
