@@ -1,13 +1,13 @@
-# fn_get_lseg_angle
+## fn_get_lseg_angle
 
-## Prototype:
+### Prototype:
 
 DOUBLE PRECISION fn_get_lseg_angle( LSEG, LSEG )
 
-## Description:
+### Description:
 
 Get the angle (in radians) between the supplied line segments.
 
-## Error Conditions:
+### Error Conditions:
 
 This function will return NULL on NULL input.

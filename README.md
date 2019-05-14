@@ -61,8 +61,8 @@ pgpolybool is released under the PostgreSQL license. For more details about this
 
 # Acknowledgments
 
-*Francisco Martinez, Antonio Reuda, and Francisco Feito for developing this algorithm, it is extremely versatile and fast. It excelled in cases where both the Vatti algorithm or Greiner-Hormann failed or could not be easily modified to handle collinearity edge cases. The authors also released their original work to the public domain.
-*Sean Connelly for his work at (http://sean.cm/a/polygon-clipping-pt2). This post contains a very well illustrated and articulated walkthrough of the algorithm's operation. There is also a interactive tool for playing around with polygon inputs to the algorithm.
-*PostgreSQL Global Development Group, for their finely maintained project, exceptional documentation, and enthusiastic user base.
-*Richard Davies for encouragements, jokes, insights and tricks in C/C++.
-*My employer, Nead Werx, Inc., for granting me the time to bring this implementation to PostgreSQL. I hope later to get this into the PostGIS codebase ;)
+* Francisco Martinez, Antonio Reuda, and Francisco Feito for developing this algorithm, it is extremely versatile and fast. It excelled in cases where both the Vatti algorithm or Greiner-Hormann failed or could not be easily modified to handle collinearity edge cases. The authors also released their original work to the public domain.
+* Sean Connelly for his work at (http://sean.cm/a/polygon-clipping-pt2). This post contains a very well illustrated and articulated walkthrough of the algorithm's operation. There is also a interactive tool for playing around with polygon inputs to the algorithm.
+* PostgreSQL Global Development Group, for their finely maintained project, exceptional documentation, and enthusiastic user base.
+* Richard Davies for encouragements, jokes, insights and tricks in C/C++.
+* My employer, Nead Werx, Inc., for granting me the time to bring this implementation to PostgreSQL.

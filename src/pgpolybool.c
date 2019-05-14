@@ -143,13 +143,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     new_polygon = sorted_polys[0];
@@ -257,13 +251,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
@@ -380,13 +368,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     if( num_poly == 1 )
@@ -506,13 +488,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     if( buff_polys[0] == NULL || buff_polys[1] == NULL )
@@ -625,13 +601,7 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     new_polygon = sorted_polys[0];
@@ -761,13 +731,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
 #ifdef DEBUG
@@ -898,13 +862,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
     for( i = 1; i < num_poly; i++ )
@@ -1045,13 +1003,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
     if( result_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create result polygon array" )
-            )
-        );
+        __oom( "Could not create result polygon array" );
     }
 
 #ifdef DEBUG
@@ -1191,13 +1143,7 @@ Datum fn_get_polygon_points( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate polygon point return array" )
-            )
-        );
+        __oom( "Could not allocate polygon point return array" );
     }
 
     for( i = 0; i < poly->npts; i++ )
@@ -1252,15 +1198,7 @@ Datum fn_get_polygon_line_segs( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg(
-                    "Could not allocate polygon line segment return array"
-                )
-            )
-        );
+        __oom( "Could not allocate polygon line segment return array" );
     }
 
     segments = get_polygon_lsegs( poly );
@@ -1327,13 +1265,7 @@ Datum fn_get_polygon_lseg_distance( PG_FUNCTION_ARGS )
 
     if( segment == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not divide polygon into line segment" )
-            )
-        );
+        __oom( "Could not divide polygon into line segment" );
     }
 
     for( i = 0; i < poly->npts; i++ )
@@ -1460,15 +1392,7 @@ Datum fn_get_parallel_segments( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg(
-                    "Could not allocate polygon line segment return array"
-                )
-            )
-        );
+        __oom( "Could not allocate polygon line segment return array" );
     }
 
     elements[0] = LsegPGetDatum( l_result[0] );
@@ -1588,15 +1512,7 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg(
-                    "Could not allocate polygon line segment return array"
-                )
-            )
-        );
+        __oom( "Could not allocate polygon line segment return array" );
     }
 
     elements[0] = LsegPGetDatum( l_result[0] );
@@ -1928,7 +1844,7 @@ Datum fn_points_to_polygon( PG_FUNCTION_ARGS )
 
         if( input == NULL )
         {
-            PG_RETURN_NULL();
+            __oom( "Could not buffer point array input" );
         }
 
         for( i = 0; i < num_points; i++ )
@@ -1993,13 +1909,7 @@ Datum fn_get_polygon_ombb( PG_FUNCTION_ARGS )
 
     if( result == NULL )
     {
-        for( i = 0; i < 4; i++ )
-        {
-            pfree( output[i] );
-        }
-
-        pfree( output );
-        PG_RETURN_NULL();
+        __oom( "Could not allocate result bounding box" );
     }
 
     for( i = 0; i < 4; i++ )
@@ -2055,13 +1965,7 @@ Datum fn_get_points_ombb( PG_FUNCTION_ARGS )
 
     if( elements == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate OMBB point array" )
-            )
-        );
+        __oom( "Could not allocate OMBB point array" );
     }
 
     for( i = 0; i < 4; i++ )
@@ -2136,6 +2040,11 @@ Datum fn_get_ombb( PG_FUNCTION_ARGS )
         offsetof( POLYGON, p )
       + sizeof( Point ) * 4
     );
+
+    if( result_bb == NULL )
+    {
+        __oom( "Could not allocate OMBB polygon" );
+    }
 
     if( output == NULL || result_bb == NULL )
     {

@@ -124,11 +124,6 @@ void rotate_polygon( POLYGON * p, double radians )
     double       x        = 0.0;
     double       y        = 0.0;
 
-    if( p == NULL )
-    {
-        return;
-    }
-
     if(
             radians > ( 2 * PI + DBL_EPSILON )
          || radians < - ( 2 * PI - DBL_EPSILON )
@@ -206,7 +201,6 @@ Point ** get_polygon_points( POLYGON * p )
 {
     Point **     result = NULL;
     unsigned int i      = 0;
-    unsigned int j      = 0;
 
     if( p == NULL || p->npts == 0 )
     {
@@ -217,7 +211,7 @@ Point ** get_polygon_points( POLYGON * p )
 
     if( result == NULL )
     {
-        return NULL;
+        __oom( "Could not allocate point array" );
     }
 
     for( i = 0; i < p->npts; i++ )
@@ -226,13 +220,7 @@ Point ** get_polygon_points( POLYGON * p )
 
         if( result[i] == NULL )
         {
-            for( j = 0; j < i; j++ )
-            {
-                pfree( result[j] );
-            }
-
-            pfree( result );
-            return NULL;
+            __oom( "Could not allocate result point array element" );
         }
 
         result[i]->x = p->p[i].x;
@@ -267,13 +255,7 @@ POLYGON * box_to_polygon( BOX * b )
 
     if( result == NULL )
     {
-        for( i = 0; i < 4; i++ )
-        {
-            pfree( b_points[i] );
-        }
-
-        pfree( b_points );
-        return NULL;
+        __oom( "Could not allocate polygon for box conversion" );
     }
 
     for( i = 0; i < 4; i++ )
@@ -321,7 +303,7 @@ POLYGON * line_segment_to_polygon( LSEG * segment, double width )
 
     if( result == NULL )
     {
-        return NULL;
+        __oom( "Could not allocate polygon for line segment conversion" );
     }
 
     if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
@@ -441,11 +423,11 @@ POLYGON * polygon_from_points( Point ** points, unsigned int num_points )
 
     size = offsetof( POLYGON, p )
          + ( sizeof( Point ) * num_points );
-    p = ( POLYGON * ) palloc( size );
+    p = ( POLYGON * ) palloc0( size );
 
     if( p == NULL )
     {
-        return NULL;
+        __oom( "Could not allocate polygon for point array conversion" );
     }
 
     for( i = 0; i < num_points; i++ )
@@ -483,7 +465,7 @@ LSEG ** get_polygon_lsegs( POLYGON * poly )
 
     if( result == NULL )
     {
-        return NULL;
+        __oom( "Could not allocate line segment array" );
     }
 
     for( i = 0; i < poly->npts; i++ )
@@ -492,13 +474,7 @@ LSEG ** get_polygon_lsegs( POLYGON * poly )
 
         if( result[i] == NULL )
         {
-            for( next_i = 0; next_i < i; next_i++ )
-            {
-                pfree( result[i] );
-            }
-
-            pfree( result );
-            return NULL;
+            __oom( "Could not allocate line segment array element" );
         }
 
         if( i == poly->npts - 1 )
