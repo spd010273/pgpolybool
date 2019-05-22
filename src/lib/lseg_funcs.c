@@ -1159,6 +1159,113 @@ bool lseg_points_left_of( LSEG * segment, LSEG * reference )
     return false;
 }
 
+bool point_is_right_of_with_ref( LSEG * segment, Point * point, Point * front )
+{
+    Point  A             = {0.0};
+    Point  B             = {0.0};
+    Point  P             = {0.0};
+    double cross_product = 0.0;
+
+    if( segment == NULL || point == NULL || front == NULL )
+    {
+        return false;
+    }
+
+    P.x = point->x;
+    P.y = point->y;
+
+    if(
+          sqrt( pow( segment->p[0].x - front->x, 2 ) + pow( segment->p[0].y - front->y, 2 ) )
+        > sqrt( pow( segment->p[1].x - front->x, 2 ) + pow( segment->p[1].y - front->y, 2 ) )
+      )
+    {
+        // p[1] is closest to the 'front'
+        B.x = segment->p[1].x;
+        B.y = segment->p[1].y;
+        A.x = segment->p[0].x;
+        A.y = segment->p[0].y;
+    }
+    else
+    {
+        B.x = segment->p[0].x;
+        B.y = segment->p[0].y;
+        A.x = segment->p[1].x;
+        A.y = segment->p[1].y;
+    }
+
+    // Normalize the segment such that A is at the origin.
+    B.x = B.x - A.x;
+    B.y = B.y - A.y;
+    P.x = P.x - A.x;
+    P.y = P.y - A.y;
+    A.x = 0.0;
+    A.y = 0.0;
+
+    cross_product = B.x * P.y - B.y * P.x;
+
+    if( cross_product > 0 )
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool point_is_left_of_with_ref( LSEG * segment, Point * point, Point * front )
+{
+    Point  A             = {0.0};
+    Point  B             = {0.0};
+    Point  P             = {0.0};
+    double cross_product = 0.0;
+
+    if( segment == NULL || point == NULL || front == NULL )
+    {
+        return false;
+    }
+
+    P.x = point->x;
+    P.y = point->y;
+
+    if(
+          sqrt( pow( segment->p[0].x - front->x, 2 ) + pow( segment->p[0].y - front->y, 2 ) )
+        > sqrt( pow( segment->p[1].x - front->x, 2 ) + pow( segment->p[1].y - front->y, 2 ) )
+      )
+    {
+        B.x = segment->p[1].x;
+        B.y = segment->p[1].y;
+        A.x = segment->p[0].x;
+        A.y = segment->p[0].y;
+    }
+    else
+    {
+        B.x = segment->p[0].x;
+        B.y = segment->p[0].y;
+        A.x = segment->p[1].x;
+        A.y = segment->p[1].y;
+    }
+
+    // Normalize the segment such that A is at the origin.
+    B.x = B.x - A.x;
+    B.y = B.y - A.y;
+    P.x = P.x - A.x;
+    P.y = P.y - A.y;
+    A.x = 0.0;
+    A.y = 0.0;
+
+    cross_product = B.x * P.y - B.y * P.x;
+
+    if( cross_product < 0 )
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double length )
 {
     /*
