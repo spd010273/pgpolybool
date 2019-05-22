@@ -59,3 +59,14 @@ CREATE OR REPLACE FUNCTION fn_get_root_orthogonal_segment( segment LSEG, endpoin
 RETURNS LSEG AS
  'pgpolybool.so', 'fn_get_root_orthogonal_segment'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION fn_point_is_right_of_lseg( segment LSEG, point POINT, front_of_segment POINT )
+RETURNS BOOLEAN AS
+ 'pgpolybool.so', 'fn_point_is_right_of'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION fn_point_is_left_of_lseg( segment LSEG, point POINT, front_of_segment POINT )
+RETURNS BOOLEAN AS
+ 'pgpolybool.so', 'fn_point_is_left_of'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+

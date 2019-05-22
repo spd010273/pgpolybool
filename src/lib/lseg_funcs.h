@@ -33,6 +33,8 @@ extern Point * lseg_to_vector( LSEG * );
 extern double cross_product( Point *, Point * );
 extern bool lseg_points_right_of( LSEG *, LSEG * );
 extern bool lseg_points_left_of( LSEG *, LSEG * );
+extern bool point_is_right_of_with_ref( LSEG *, Point *, Point * );
+extern bool point_is_left_of_with_ref( LSEG *, Point *, Point * );
 extern LSEG * get_polygon_line_segments( POLYGON * );
 extern LSEG * get_root_orthogonal_segment( LSEG *, Point *, double );
 

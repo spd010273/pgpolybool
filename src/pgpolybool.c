@@ -75,6 +75,8 @@ PG_FUNCTION_INFO_V1( fn_extend_lseg );
 PG_FUNCTION_INFO_V1( fn_get_lseg_angle );
 PG_FUNCTION_INFO_V1( fn_lseg_points_right_of );
 PG_FUNCTION_INFO_V1( fn_lseg_points_left_of );
+PG_FUNCTION_INFO_V1( fn_point_is_right_of );
+PG_FUNCTION_INFO_V1( fn_point_is_left_of );
 PG_FUNCTION_INFO_V1( fn_cross_product );
 PG_FUNCTION_INFO_V1( fn_lseg_to_vector );
 PG_FUNCTION_INFO_V1( fn_get_root_orthogonal_segment );
@@ -1726,6 +1728,52 @@ Datum fn_lseg_points_left_of( PG_FUNCTION_ARGS )
     }
 
     return lseg_points_left_of( seg, ref );
+}
+
+Datum fn_point_is_right_of( PG_FUNCTION_ARGS )
+{
+    LSEG *  segment   = NULL;
+    Point * point     = NULL;
+    Point * reference = NULL;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(2) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    segment   = PG_GETARG_LSEG_P(0);
+    point     = PG_GETARG_POINT_P(1);
+    reference = PG_GETARG_POINT_P(2);
+
+    if( segment == NULL || point == NULL || reference == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_BOOL( point_is_right_of_with_ref( segment, point, reference ) );
+}
+
+Datum fn_point_is_left_of( PG_FUNCTION_ARGS )
+{
+    LSEG *  segment   = NULL;
+    Point * point     = NULL;
+    Point * reference = NULL;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(2) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    segment   = PG_GETARG_LSEG_P(0);
+    point     = PG_GETARG_POINT_P(1);
+    reference = PG_GETARG_POINT_P(2);
+
+    if( segment == NULL || point == NULL || reference == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    PG_RETURN_BOOL( point_is_left_of_with_ref( segment, point, reference ) );
 }
 
 Datum fn_cross_product( PG_FUNCTION_ARGS )
