@@ -200,7 +200,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 
         if( mp_result == NULL )
         {
-            elog( DEBUG, "Polygons have no intersection" );
+            elog( DEBUG1, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -215,7 +215,7 @@ Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 
         if( new_polygon == NULL )
         {
-            elog( DEBUG, "Polygons have no intersection" );
+            elog( DEBUG1, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -302,7 +302,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     buff_polys[0] = NULL;
     buff_polys[1] = NULL;
-
+    // mp_result = mp_subj - mp_clip
     mp_result = compute(
         mp_subj,
         mp_clip,
@@ -311,7 +311,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     if( mp_result == NULL )
     {
-        elog( DEBUG, "Polygons have no intersection" );
+        elog( DEBUG1, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -327,7 +327,7 @@ Datum fn_subtract_polygons( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
-        elog( DEBUG, "Polygons have no intersection" );
+        elog( DEBUG1, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -422,10 +422,11 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
     for( i = 1; i < num_poly; i++ )
     {
 #ifdef DEBUG
+        elog( DEBUG1, "array decompose loop %d", i );
         dump_polygon( new_polygon );
         dump_polygon( sorted_polys[i] );
 #endif
-        mp_subj = poly_to_mpoly( sorted_polys[0] );
+        mp_subj = poly_to_mpoly( new_polygon );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
         sorted_polys[0] = NULL;
         sorted_polys[i] = NULL;
@@ -437,7 +438,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
 
         if( mp_result == NULL )
         {
-            elog( DEBUG, "Polygons have no intersection" );
+            elog( DEBUG1, "Polygons have no intersection (mp_result) is null" );
             PG_RETURN_NULL();
         }
 
@@ -446,13 +447,14 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
         if( result_polys == NULL )
         {
             elog( ERROR, "Polygon type conversion failed" );
+            PG_RETURN_NULL();
         }
 
         new_polygon = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( DEBUG, "Polygons have no intersection" );
+            elog( DEBUG1, "Polygons have no intersection (new poly is null)" );
             PG_RETURN_NULL();
         }
 
@@ -464,6 +466,7 @@ Datum fn_intersect_polygons_array( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
+        elog( DEBUG1, "No result" );
         PG_RETURN_NULL();
     }
 
@@ -548,7 +551,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
     if( mp_result == NULL )
     {
-        elog( DEBUG, "Polygons have no intersection" );
+        elog( DEBUG1, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -564,7 +567,7 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
-        elog( DEBUG, "Polygons have no intersection" );
+        elog( DEBUG1, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -661,7 +664,7 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 #endif // DEBUG
         if( mp_result == NULL )
         {
-            elog( DEBUG, "Polygons have no intersection" );
+            elog( DEBUG1, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -670,13 +673,14 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
         if( result_polys == NULL )
         {
             elog( ERROR, "Polygon type conversion failed" );
+            PG_RETURN_NULL();
         }
 
         new_polygon  = result_polys[0];
 
         if( new_polygon == NULL )
         {
-            elog( DEBUG, "Polygons have no intersection" );
+            elog( DEBUG1, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -782,7 +786,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     if( mp_result == NULL )
     {
-        elog( DEBUG, "Polygons have no intersection" );
+        elog( DEBUG1, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -798,7 +802,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
-        elog( DEBUG, "Polygons have no intersection" );
+        elog( DEBUG1, "Polygons have no intersection" );
 
         if( centers[0] != NULL )
         {
@@ -921,7 +925,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
         if( mp_result == NULL )
         {
-            elog( DEBUG, "Polygons have no intersection" );
+            elog( DEBUG1, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -936,7 +940,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
         if( new_polygon == NULL )
         {
-            elog( DEBUG, "Polygons have no intersection" );
+            elog( DEBUG1, "Polygons have no intersection" );
             PG_RETURN_NULL();
         }
 
@@ -1055,7 +1059,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
     if( mp_result == NULL )
     {
-        elog( DEBUG, "Polygons have no intersection" );
+        elog( DEBUG1, "Polygons have no intersection" );
         PG_RETURN_NULL();
     }
 
@@ -1071,7 +1075,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
 
     if( new_polygon == NULL )
     {
-        elog( DEBUG, "Polygons have no intersection" );
+        elog( DEBUG1, "Polygons have no intersection" );
 
         if( centers[0] != NULL )
         {
