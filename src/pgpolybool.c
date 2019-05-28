@@ -2197,6 +2197,122 @@ Datum fn_get_root_orthogonal_segment( PG_FUNCTION_ARGS )
     PG_RETURN_LSEG_P( result );
 }
 
+Datum fn_get_alpha_shape( PG_FUNCTION_ARGS )
+{
+    ArrayType *  input_points    = NULL;
+    ArrayType *  output_polygons = NULL;
+    Datum *      elements        = NULL;
+    bool *       nulls           = NULL;
+    POLYGON **   result          = NULL;
+    Point **     input           = NULL;
+    unsigned int result_length   = 0;
+    unsigned int i               = 0;
+    int          num_points      = 0;
+    double       alpha           = 0.0;
+    int16        typlen          = 0;
+    char         typalign        = 0;
+    bool         typbyval        = false;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input_points = PG_GETARG_ARRAYTYPE_P(0);
+
+    if( input_points == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    alpha = PG_GETARG_FLOAT8(1);
+
+    deconstruct_array(
+        input_points,
+        POINTOID,
+        16,
+        false,
+        'd',
+        &elements,
+        &nulls,
+        &num_points
+    );
+
+    if( num_points > 1 )
+    {
+        input = ( Point ** ) palloc0(
+            sizeof( Point * )
+          * num_points
+        );
+
+        if( input == NULL )
+        {
+            PG_RETURN_NULL();
+        }
+
+        for( i = 0; i < num_points; i++ )
+        {
+            if( nulls[i] )
+            {
+                pfree( input );
+                PG_RETURN_NULL();
+            }
+
+            input[i] = DatumGetPointP( elements[i] );
+        }
+    }
+    else
+    {
+        PG_RETURN_NULL();
+    }
+
+    if(
+        get_alpha_shape(
+            input,
+            ( unsigned int ) num_points,
+            alpha,
+            result,
+            &result_length
+        )
+      )
+    {
+
+    }
+
+    if( result == NULL || result_length == 0 )
+    {
+        PG_RETURN_NULL();
+    }
+
+    elements = ( Datum * ) palloc0(
+        sizeof( Datum )
+      * result_length
+    );
+
+    if( elements == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    for( i = 0; i < result_length; i++ )
+    {
+        elements[i] = PolygonPGetDatum( result[i] );
+    }
+
+    get_typlenbyvalalign( POLYGONOID, &typlen, &typbyval, &typalign );
+
+    output_polygons = construct_array(
+        elements,
+        result_length,
+        POLYGONOID,
+        typlen,
+        typbyval,
+        typalign
+    );
+
+    PG_RETURN_ARRAYTYPE_P( output_polygons );
+}
+
 Datum __cast_lseg_to_polygon( PG_FUNCTION_ARGS )
 {
     POLYGON * result = NULL;
