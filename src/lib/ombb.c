@@ -191,8 +191,8 @@ void get_aa_bounding_box(
         }
     }
 
-    *height = max.y - min.y;
-    *width  = max.x - min.x;
+    *width  = max.y - min.y;
+    *height = max.x - min.x;
     *area   = ( max.y - min.y ) * ( max.x - min.x );
 
     return;
