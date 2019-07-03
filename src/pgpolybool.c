@@ -27,7 +27,7 @@
 #include "box_funcs.h"
 #include "poly_funcs.h"
 #include "line_funcs.h"
-#include "ombb.h" // soon to be deprecated
+#include "ombb.h"
 #include "convex_hull.h"
 
 #ifdef PG_MODULE_MAGIC
