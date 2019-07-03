@@ -2223,7 +2223,7 @@ Datum fn_get_convex_hull_point_array( PG_FUNCTION_ARGS )
     {
         PG_RETURN_NULL();
     }
-    
+
     deconstruct_array(
         input_points,
         POINTOID,
@@ -2562,7 +2562,7 @@ Datum fn_get_convex_hull_polygon( PG_FUNCTION_ARGS )
     POLYGON *    result      = NULL;
     Point **     point_field = NULL;
     unsigned int i           = 0;
-    
+
     if( PG_ARGISNULL(0) )
     {
         PG_RETURN_NULL();
@@ -2574,7 +2574,7 @@ Datum fn_get_convex_hull_polygon( PG_FUNCTION_ARGS )
     {
         PG_RETURN_NULL();
     }
-    
+
     point_field = ( Point ** ) palloc0(
         input->npts * sizeof( Point * )
     );

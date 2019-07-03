@@ -1,13 +1,12 @@
 /*------------------------------------------------------------------------------
  * convex_hull.c
- *     Implementation of a convex hull algorithm using Graham scan without
- *     eliminating colinear points
+ *     Implementation of a convex hull algorithm using Graham scan.
  *
  * Copyright (c) 2019, Nead Werx, Inc.
  * Copyright (c) 2019, Chris Autry
  *
  * IDENTIFICATION
- *      ombb.c
+ *      convex_hull.c
  *
  *------------------------------------------------------------------------------
  */
@@ -70,7 +69,7 @@ POLYGON * get_convex_hull( Point ** point_field, unsigned int num_points )
     }
 
     result->npts = stack_top + 1;
-    
+
     for( i = 0; i < result->npts; i++ )
     {
         result->p[i].x = stack[i]->x;
