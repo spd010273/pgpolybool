@@ -63,3 +63,13 @@ RETURNS TABLE
 ) AS
  'pgpolybool.so', 'fn_get_ombb'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION fn_get_convex_hull( in_poly POLYGON )
+RETURNS POLYGON AS
+ 'pgpolybool.so', 'fn_get_convex_hull_polygon'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION fn_get_convex_hull( in_point_array POINT[] )
+RETURNS POLYGON AS
+ 'pgpolybool.so', 'fn_get_convex_hull_point_array'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;

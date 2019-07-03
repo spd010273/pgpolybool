@@ -31,6 +31,7 @@
 #include "hook.h"
 #include "ombb.h"
 #include "alpha.h"
+#include "convex_hull.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -111,6 +112,10 @@ PG_FUNCTION_INFO_V1( __cast_lseg_to_line );
 PG_FUNCTION_INFO_V1( __cast_path_to_line );
 PG_FUNCTION_INFO_V1( __cast_box_to_line );
 PG_FUNCTION_INFO_V1( __cast_circle_to_line );
+
+// Convex hull
+PG_FUNCTION_INFO_V1( fn_get_convex_hull_polygon );
+PG_FUNCTION_INFO_V1( fn_get_convex_hull_point_array );
 
 Datum fn_subtract_polygons_array( PG_FUNCTION_ARGS )
 {
@@ -2197,6 +2202,84 @@ Datum fn_get_root_orthogonal_segment( PG_FUNCTION_ARGS )
     PG_RETURN_LSEG_P( result );
 }
 
+Datum fn_get_convex_hull_point_array( PG_FUNCTION_ARGS )
+{
+    Point **     input        = NULL;
+    POLYGON *    result       = NULL;
+    ArrayType *  input_points = NULL;
+    Datum *      elements     = NULL;
+    bool *       nulls        = NULL;
+    int          num_points   = 0;
+    unsigned int i            = 0;
+
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input_points = PG_GETARG_ARRAYTYPE_P(0);
+
+    if( input_points == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+    
+    deconstruct_array(
+        input_points,
+        POINTOID,
+        16,
+        false,
+        'd',
+        &elements,
+        &nulls,
+        &num_points
+    );
+
+    if( num_points > 1 )
+    {
+        input = ( Point ** ) palloc0(
+            sizeof( Point * ) * num_points
+        );
+
+        if( input == NULL )
+        {
+            __oom( "Failed to buffer convex hull calculation" );
+        }
+
+        for( i = 0; i < num_points; i++ )
+        {
+            if( nulls[i] )
+            {
+                pfree( input );
+                PG_RETURN_NULL();
+            }
+
+            input[i] = DatumGetPointP( elements[i] );
+        }
+    }
+    else
+    {
+        PG_RETURN_NULL();
+    }
+
+    result = get_convex_hull( input, ( unsigned int ) num_points );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    set_polygon_boundbox( result );
+
+    SET_VARSIZE(
+        result,
+        offsetof( POLYGON, p )
+      + ( result->npts * sizeof( Point ) )
+    );
+
+    PG_RETURN_POLYGON_P( result );
+}
+
 Datum fn_get_alpha_shape( PG_FUNCTION_ARGS )
 {
     ArrayType *  input_points    = NULL;
@@ -2391,6 +2474,14 @@ Datum __cast_point_to_polygon( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    set_polygon_boundbox( result );
+
+    SET_VARSIZE(
+        result,
+        offsetof( POLYGON, p )
+      + ( result->npts * sizeof( Point ) )
+    );
+
     PG_RETURN_POLYGON_P( result );
 }
 
@@ -2463,6 +2554,65 @@ Datum __overload_path_center( PG_FUNCTION_ARGS )
     }
 
     PG_RETURN_VOID();
+}
+
+Datum fn_get_convex_hull_polygon( PG_FUNCTION_ARGS )
+{
+    POLYGON *    input       = NULL;
+    POLYGON *    result      = NULL;
+    Point **     point_field = NULL;
+    unsigned int i           = 0;
+    
+    if( PG_ARGISNULL(0) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    input = PG_GETARG_POLYGON_P(0);
+
+    if( input == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+    
+    point_field = ( Point ** ) palloc0(
+        input->npts * sizeof( Point * )
+    );
+
+    if( point_field == NULL )
+    {
+        __oom( "Failed to allocate point field" );
+    }
+
+    for( i = 0; i < input->npts; i++ )
+    {
+        point_field[i] = ( Point * ) palloc0( sizeof( Point ) );
+
+        if( point_field[i] == NULL )
+        {
+            __oom( "Failed to allocate point field point" );
+        }
+
+        point_field[i]->x = input->p[i].x;
+        point_field[i]->y = input->p[i].y;
+    }
+
+    result = get_convex_hull( point_field, input->npts );
+
+    if( result == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    set_polygon_boundbox( result );
+
+    SET_VARSIZE(
+        result,
+        offsetof( POLYGON, p )
+      + ( result->npts * sizeof( Point ) )
+    );
+
+    PG_RETURN_POLYGON_P( result );
 }
 
 Datum __cast_polygon_to_lseg( PG_FUNCTION_ARGS )
