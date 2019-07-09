@@ -47,13 +47,7 @@ CREATE EXTENSION pgpolybool;
 
 # Versions
 
-## V1.0
-The initial release, version 1.0, consists of the following features:
-
-* Polygon boolean operations using the Martinez-Reuda-Feito polygon clipping algorithm implementing UNION, INTERSECT, XOR, and DIFFERENCE operations.
-* Polygon and line segment helper functions
-
-For more information, see docs/V1.0.md
+See CHANGELOG.md
 
 # License
 
