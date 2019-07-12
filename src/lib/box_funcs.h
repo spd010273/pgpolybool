@@ -17,6 +17,7 @@
 #include "postgres.h"
 #include "utils/geo_decls.h"
 #include "math.h"
+#include "util.h"
 
 extern Point ** get_box_points( BOX * );
 extern LSEG ** get_box_lsegs( BOX * );
