@@ -99,25 +99,30 @@ Point ** get_ombb(
         solution_list[i].height = height;
         solution_list[i].width  = width;
     }
-
+    
     area = DBL_MAX;
+
     for( i = 0; i < p->npts; i++ )
     {
-        if( solution_list[i].area < area )
+        if(
+               solution_list[i].area < area
+            && solution_list[i].area > DBL_EPSILON
+            && !(fabs(solution_list[i].area - area) < DBL_EPSILON)
+          )
         {
             area = solution_list[i].area;
             min_area_ind = i;
         }
     }
 
-    result[0]->x = center.x - ( width / 2 );
-    result[0]->y = center.y - ( height / 2 );
-    result[1]->x = center.x + ( width / 2 );
-    result[1]->y = center.y - ( height / 2 );
-    result[2]->x = center.x + ( width / 2 );
-    result[2]->y = center.y + ( height / 2 );
-    result[3]->x = center.x - ( width / 2 );
-    result[3]->y = center.y + ( height / 2 );
+    result[0]->x = center.x - ( solution_list[min_area_ind].width / 2.0 );
+    result[0]->y = center.y - ( solution_list[min_area_ind].height / 2.0 );
+    result[1]->x = center.x + ( solution_list[min_area_ind].width / 2.0 );
+    result[1]->y = center.y - ( solution_list[min_area_ind].height / 2.0 );
+    result[2]->x = center.x + ( solution_list[min_area_ind].width / 2.0 );
+    result[2]->y = center.y + ( solution_list[min_area_ind].height / 2.0 );
+    result[3]->x = center.x - ( solution_list[min_area_ind].width / 2.0 );
+    result[3]->y = center.y + ( solution_list[min_area_ind].height / 2.0 );
 
     // Perform final rotation
     rotation_angle = solution_list[min_area_ind].angle;
