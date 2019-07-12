@@ -1,0 +1,10 @@
+{
+    "0010":"WITH tt_test AS( SELECT unnest( fn_get_polygon_points( '((0,0),(1,0),(1,1),(0,1))'::POLYGON )  ) AS points ), tt_expects AS( SELECT unnest( ARRAY[ '(0,0)','(1,0)','(1,1)','(0,1)']::POINT[] ) AS points ) SELECT COUNT(*) = 4 FROM tt_test tt JOIN tt_expects tte ON tte.points ~= tt.points",
+    "0020":"WITH tt_test AS( SELECT unnest( fn_get_polygon_line_segments( '((0,0),(1,0),(1,1),(0,1))'::POLYGON ) ) AS lsegs ), tt_expects AS( SELECT unnest( ARRAY[ '[(0,0),(1,0)]','[(1,0),(1,1)]','[(1,1),(0,1)]','[(0,1),(0,0)]']::LSEG[] ) AS lsegs ) SELECT COUNT(*) = 4 FROM tt_test tt JOIN tt_expects tte ON tte.lsegs = tt.lsegs",
+    "0030":"SELECT fn_rotate_polygon( '((0,0),(5,0),(5,5),(0,5))'::POLYGON, pi() /2 ) ~= '((0,0),(5,0),(5,5),(0,5))'::POLYGON",
+    "0031":"SELECT fn_rotate_polygon( '((0,-1),(1,0),(0,1),(-1,0))'::POLYGON, pi() / 4 ) ~= ( '(' || point(sqrt(2)/2,-sqrt(2)/2)::VARCHAR || ',' || point(sqrt(2)/2,sqrt(2)/2)::VARCHAR || ',' || point(-sqrt(2)/2,sqrt(2)/2)::VARCHAR || ',' || point(-sqrt(2)/2,-sqrt(2)/2)::VARCHAR || ')' )::POLYGON",
+    "0040":"SELECT fn_get_polygon_area( '((0,0),(1,0),(1,1),(0,1))'::POLYGON ) = 1.0",
+    "0050":"SELECT fn_box_to_polygon(box(point(0,0),point(1,1))) ~= '((0,0),(1,0),(1,1),(0,1))'::POLYGON",
+    "0060":"SELECT fn_points_to_polygon_array( ARRAY[ point(0,0),point(1,0),point(1,1),point(0,1)]::POINT[]) ~= '((0,0),(1,0),(1,1),(0,1))'::POLYGON",
+    "0070":"SELECT fn_points_to_polygon( point(0,0),point(0,1),point(1,1),point(0,1)) ~= '((0,0),(0,1),(1,1),(0,1))'::POLYGON"
+}

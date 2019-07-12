@@ -416,7 +416,7 @@ POLYGON * polygon_from_points( Point ** points, unsigned int num_points )
         return NULL;
     }
 
-    if( size == 0 )
+    if( num_points < 3 )
     {
         return NULL;
     }
@@ -442,9 +442,7 @@ POLYGON * polygon_from_points( Point ** points, unsigned int num_points )
     }
 
     p->npts = num_points;
-
     set_polygon_boundbox( p );
-
     SET_VARSIZE( p, size );
 
     return p;
