@@ -18,6 +18,7 @@
 #include "postgres.h"
 #include "utils/geo_decls.h"
 #include "util.h"
+#include "poly_funcs.h"
 
 struct ombb_solution {
     double angle;
