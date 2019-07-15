@@ -1966,10 +1966,11 @@ Datum fn_points_to_polygon( PG_FUNCTION_ARGS )
 
 Datum fn_get_polygon_ombb( PG_FUNCTION_ARGS )
 {
-    POLYGON *    input  = NULL;
-    POLYGON *    result = NULL;
-    Point **     output = NULL;
-    unsigned int i      = 0;
+    POLYGON *    input   = NULL;
+    POLYGON *    result  = NULL;
+    POLYGON *    cleaned = NULL;
+    Point **     output  = NULL;
+    unsigned int i       = 0;
 
     if( PG_ARGISNULL(0) )
     {
@@ -1983,7 +1984,14 @@ Datum fn_get_polygon_ombb( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    output = get_ombb( input, NULL, NULL, NULL, false );
+    cleaned = remove_duplicate_and_colinear_points( input, false );
+
+    if( cleaned == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    output = get_ombb( cleaned, NULL, NULL, NULL, false );
 
     if( output == NULL )
     {
@@ -2022,6 +2030,7 @@ Datum fn_get_polygon_ombb( PG_FUNCTION_ARGS )
 Datum fn_get_points_ombb( PG_FUNCTION_ARGS )
 {
     POLYGON *    input    = NULL;
+    POLYGON *    cleaned  = NULL;
     Point **     output   = NULL;
     ArrayType *  result   = NULL;
     Datum *      elements = NULL;
@@ -2042,7 +2051,14 @@ Datum fn_get_points_ombb( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    output = get_ombb( input, NULL, NULL, NULL, false );
+    cleaned = remove_duplicate_and_colinear_points( input, false );
+
+    if( cleaned == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    output = get_ombb( cleaned, NULL, NULL, NULL, false );
 
     if( output == NULL )
     {
@@ -2088,6 +2104,7 @@ Datum fn_get_ombb( PG_FUNCTION_ARGS )
     POLYGON *    input             = NULL;
     Point **     output            = NULL;
     POLYGON *    result_bb         = NULL;
+    POLYGON *    cleaned           = NULL;
     unsigned int i                 = 0;
 
     if( get_call_result_type( fcinfo, NULL, &tuple_descriptor ) != TYPEFUNC_COMPOSITE )
@@ -2116,8 +2133,17 @@ Datum fn_get_ombb( PG_FUNCTION_ARGS )
         PG_RETURN_DATUM( HeapTupleGetDatum( heap_tuple ) );
     }
 
+    cleaned = remove_duplicate_and_colinear_points( input, false );
+    
+    if( cleaned == NULL )
+    {
+        memset( nulls, 1, sizeof( nulls ) );
+        heap_tuple = heap_form_tuple( tuple_descriptor, values, nulls );
+        PG_RETURN_DATUM( HeapTupleGetDatum( heap_tuple ) );
+    }
+
     output = get_ombb(
-        input,
+        cleaned,
         &parallel_length,
         &orthogonal_length,
         &theta,
