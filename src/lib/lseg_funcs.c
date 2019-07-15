@@ -1159,104 +1159,85 @@ bool lseg_points_left_of( LSEG * segment, LSEG * reference )
     return false;
 }
 
-bool point_is_right_of_with_ref( LSEG * segment, Point * point, Point * front )
+bool point_is_right_of_with_ref( LSEG * segment, Point * point, Point * front_ref )
 {
-    Point  A             = {0.0};
-    Point  B             = {0.0};
-    Point  P             = {0.0};
-    double cross_product = 0.0;
+    Point  A   = {0.0};
+    Point  B   = {0.0};
+    double det = 0.0;
 
-    if( segment == NULL || point == NULL || front == NULL )
+    if( segment == NULL || point == NULL || front_ref == NULL )
     {
         return false;
     }
 
-    P.x = point->x / sqrt( pow( point->x, 2 ) + pow( point->y, 2 ) );
-    P.y = point->y / sqrt( pow( point->x, 2 ) + pow( point->y, 2 ) );
+    A.x = segment->p[0].x;
+    A.y = segment->p[0].y;
+    B.x = segment->p[1].x;
+    B.y = segment->p[1].y;
 
     if(
-          sqrt( pow( segment->p[0].x - front->x, 2 ) + pow( segment->p[0].y - front->y, 2 ) )
-        > sqrt( pow( segment->p[1].x - front->x, 2 ) + pow( segment->p[1].y - front->y, 2 ) )
+        sqrt( pow( segment->p[0].x - front_ref->x, 2 ) + pow( segment->p[0].y - front_ref->y, 2 ) ) >
+        sqrt( pow( segment->p[1].x - front_ref->x, 2 ) + pow( segment->p[1].y - front_ref->y, 2 ) )
       )
     {
-        // p[1] is closest to the 'front'
-        B.x = segment->p[1].x / sqrt( pow( segment->p[1].x, 2 ) + pow( segment->p[1].y, 2 ) );
-        B.y = segment->p[1].y / sqrt( pow( segment->p[1].x, 2 ) + pow( segment->p[1].y, 2 ) );
-        A.x = segment->p[0].x / sqrt( pow( segment->p[0].x, 2 ) + pow( segment->p[0].y, 2 ) );
-        A.y = segment->p[0].y / sqrt( pow( segment->p[0].x, 2 ) + pow( segment->p[0].y, 2 ) );
+        A.x = segment->p[1].x;
+        A.y = segment->p[1].y;
+        B.x = segment->p[0].x;
+        B.y = segment->p[0].y;
+    }
+
+    det = ( B.x - A.x ) * ( point->y - A.y ) - ( B.y - A.y ) * ( point->x - A.x );
+
+    if( fabs( det ) < DBL_EPSILON )
+    {
+        return false;
+    }
+
+    if( ( det - DBL_EPSILON ) > 0 )
+    {
+        return false;
     }
     else
-    {
-        A.x = segment->p[1].x / sqrt( pow( segment->p[1].x, 2 ) + pow( segment->p[1].y, 2 ) );
-        A.y = segment->p[1].y / sqrt( pow( segment->p[1].x, 2 ) + pow( segment->p[1].y, 2 ) );
-        B.x = segment->p[0].x / sqrt( pow( segment->p[0].x, 2 ) + pow( segment->p[0].y, 2 ) );
-        B.y = segment->p[0].y / sqrt( pow( segment->p[0].x, 2 ) + pow( segment->p[0].y, 2 ) );
-    }
-
-    // Normalize the segment such that A is at the origin.
-    B.x = B.x - A.x;
-    B.y = B.y - A.y;
-    P.x = P.x - A.x;
-    P.y = P.y - A.y;
-    A.x = 0.0;
-    A.y = 0.0;
-
-    cross_product = B.x * P.y - B.y * P.x;
-
-    if( cross_product > 0 )
     {
         return true;
     }
-    else
-    {
-        return false;
-    }
 }
 
-bool point_is_left_of_with_ref( LSEG * segment, Point * point, Point * front )
+bool point_is_left_of_with_ref( LSEG * segment, Point * point, Point * front_ref )
 {
-    Point  A             = {0.0};
-    Point  B             = {0.0};
-    Point  P             = {0.0};
-    double cross_product = 0.0;
+    Point  A   = {0.0};
+    Point  B   = {0.0};
+    double det = 0.0;
 
-    if( segment == NULL || point == NULL || front == NULL )
+    if( segment == NULL || point == NULL || front_ref == NULL )
     {
         return false;
     }
 
-    P.x = point->x / sqrt( pow( point->x, 2 ) + pow( point->y, 2 ) );
-    P.y = point->y / sqrt( pow( point->x, 2 ) + pow( point->y, 2 ) );
+    A.x = segment->p[0].x;
+    A.y = segment->p[0].y;
+    B.x = segment->p[1].x;
+    B.y = segment->p[1].y;
 
     if(
-          sqrt( pow( segment->p[0].x - front->x, 2 ) + pow( segment->p[0].y - front->y, 2 ) )
-        > sqrt( pow( segment->p[1].x - front->x, 2 ) + pow( segment->p[1].y - front->y, 2 ) )
+        sqrt( pow( segment->p[0].x - front_ref->x, 2 ) + pow( segment->p[0].y - front_ref->y, 2 ) ) >
+        sqrt( pow( segment->p[1].x - front_ref->x, 2 ) + pow( segment->p[1].y - front_ref->y, 2 ) )
       )
     {
-        B.x = segment->p[1].x / sqrt( pow( segment->p[1].x, 2 ) + pow( segment->p[1].y, 2 ) );
-        B.y = segment->p[1].y / sqrt( pow( segment->p[1].x, 2 ) + pow( segment->p[1].y, 2 ) );
-        A.x = segment->p[0].x / sqrt( pow( segment->p[0].x, 2 ) + pow( segment->p[0].y, 2 ) );
-        A.y = segment->p[0].y / sqrt( pow( segment->p[0].x, 2 ) + pow( segment->p[0].y, 2 ) );
+        A.x = segment->p[1].x;
+        A.y = segment->p[1].y;
+        B.x = segment->p[0].x;
+        B.y = segment->p[0].y;
     }
-    else
+
+    det = ( B.x - A.x ) * ( point->y - A.y ) - ( B.y - A.y ) * ( point->x - A.x );
+
+    if( fabs( det ) < DBL_EPSILON )
     {
-        A.x = segment->p[1].x / sqrt( pow( segment->p[1].x, 2 ) + pow( segment->p[1].y, 2 ) );
-        A.y = segment->p[1].y / sqrt( pow( segment->p[1].x, 2 ) + pow( segment->p[1].y, 2 ) );
-        B.x = segment->p[0].x / sqrt( pow( segment->p[0].x, 2 ) + pow( segment->p[0].y, 2 ) );
-        B.y = segment->p[0].y / sqrt( pow( segment->p[0].x, 2 ) + pow( segment->p[0].y, 2 ) );
+        return false;
     }
 
-    // Normalize the segment such that A is at the origin.
-    B.x = B.x - A.x;
-    B.y = B.y - A.y;
-    P.x = P.x - A.x;
-    P.y = P.y - A.y;
-    A.x = 0.0;
-    A.y = 0.0;
-
-    cross_product = B.x * P.y - B.y * P.x;
-
-    if( cross_product < 0 )
+    if( ( det - DBL_EPSILON ) > 0 )
     {
         return true;
     }
