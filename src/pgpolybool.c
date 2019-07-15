@@ -2134,7 +2134,7 @@ Datum fn_get_ombb( PG_FUNCTION_ARGS )
     }
 
     cleaned = remove_duplicate_and_colinear_points( input, false );
-    
+
     if( cleaned == NULL )
     {
         memset( nulls, 1, sizeof( nulls ) );
@@ -2585,6 +2585,7 @@ Datum __overload_path_center( PG_FUNCTION_ARGS )
 Datum fn_get_convex_hull_polygon( PG_FUNCTION_ARGS )
 {
     POLYGON *    input       = NULL;
+    POLYGON *    cleaned     = NULL;
     POLYGON *    result      = NULL;
     Point **     point_field = NULL;
     unsigned int i           = 0;
@@ -2601,8 +2602,15 @@ Datum fn_get_convex_hull_polygon( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
+    cleaned = remove_duplicate_and_colinear_points( input, false );
+
+    if( cleaned == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
     point_field = ( Point ** ) palloc0(
-        input->npts * sizeof( Point * )
+        cleaned->npts * sizeof( Point * )
     );
 
     if( point_field == NULL )
@@ -2610,7 +2618,7 @@ Datum fn_get_convex_hull_polygon( PG_FUNCTION_ARGS )
         __oom( "Failed to allocate point field" );
     }
 
-    for( i = 0; i < input->npts; i++ )
+    for( i = 0; i < cleaned->npts; i++ )
     {
         point_field[i] = ( Point * ) palloc0( sizeof( Point ) );
 
@@ -2623,7 +2631,7 @@ Datum fn_get_convex_hull_polygon( PG_FUNCTION_ARGS )
         point_field[i]->y = input->p[i].y;
     }
 
-    result = get_convex_hull( point_field, input->npts );
+    result = get_convex_hull( point_field, cleaned->npts );
 
     if( result == NULL )
     {

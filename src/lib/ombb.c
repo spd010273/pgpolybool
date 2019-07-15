@@ -40,6 +40,7 @@ Point ** get_ombb(
     double                 area             = 0.0;
     double                 height           = 0.0;
     double                 width            = 0.0;
+    double                 min_area         = 0.0;
 
     if( p == NULL )
     {
@@ -67,6 +68,8 @@ Point ** get_ombb(
             __oom( "Failed to allocate point result" );
         }
     }
+
+    min_area = get_polygon_area( p );
 
     for( i = 0; i < p->npts; i++ )
     {
@@ -99,15 +102,24 @@ Point ** get_ombb(
         solution_list[i].height = height;
         solution_list[i].width  = width;
     }
-    
+
     area = DBL_MAX;
 
     for( i = 0; i < p->npts; i++ )
     {
+        /*
+         * Since this in a naive implementation of rotating calipers, we need to enforce:
+         *  - The bounded area is >= the input polygon's area
+         *  - The bounded area is > 0
+         */
         if(
                solution_list[i].area < area
             && solution_list[i].area > DBL_EPSILON
-            && !(fabs(solution_list[i].area - area) < DBL_EPSILON)
+            && !( fabs(solution_list[i].area - area) < DBL_EPSILON )
+            && (
+                    solution_list[i].area > min_area
+                 || fabs( solution_list[i].area - min_area ) < DBL_EPSILON
+               )
           )
         {
             area = solution_list[i].area;
