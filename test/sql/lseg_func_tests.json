@@ -24,5 +24,7 @@
     "0100":"SELECT fn_lseg_points_left_of( '[(0,0),(-1,1)]'::LSEG, '[(0,-5),(0,5)]'::LSEG ) IS TRUE",
     "0110":"SELECT fn_get_root_orthogonal_segment( '[(0,0),(2,2)]'::LSEG, '(0,0)', 2.0 * sqrt( 2.0 ) ) = '[(1,-1),(-1,1)]'::LSEG",
     "0120":"SELECT fn_point_is_right_of_lseg( '[(0,0),(2,2)]'::LSEG, '(1,0)'::POINT, '(0,0)'::POINT ) IS TRUE",
-    "0130":"SELECT fn_point_is_left_of_lseg( '[(0,0),(2,2)]'::LSEG, '(0,1)'::POINT, '(0,0)'::POINT ) IS TRUE"
+    "0121":"SELECT fn_point_is_right_of_lseg( '[(1,1),(20,20)]'::LSEG, '(30,1)'::POINT, '(1,1)'::POINT ) IS TRUE",
+    "0130":"SELECT fn_point_is_left_of_lseg( '[(0,0),(2,2)]'::LSEG, '(0,1)'::POINT, '(0,0)'::POINT ) IS TRUE",
+    "0131":"SELECT fn_point_is_left_of_lseg( '[(1,1),(20,20)]'::LSEG, '(1,30)'::POINT, '(1,1)'::POINT ) IS TRUE"
 }
