@@ -429,7 +429,7 @@ struct polygon * compute(
 
         if( op == OP_UNION )
         {
-            result = ( subject->num_contours ) ? clipping : subject;
+            result = ( subject->num_contours > 0 ) ? subject : clipping;
         }
 
         return result;
@@ -483,17 +483,29 @@ struct polygon * compute(
         if( op == OP_UNION )
         {
             result = subject;
-
+            
+            /*
+             * NOTE: Due to the current implementation, this code is commented
+             * out as we only want to return the subject.
+             * 
+             * If you would like do do something with the other contours, feel
+             * free to uncomment the below. Currently, poly_postprocessing will
+             * select the contour with the largest area as the result from a
+             * polygon that contains multiple contours
+             */
+            /*
             for( i = 0; i < clipping->num_contours; i++ )
             {
                 polygon_add_contour( result, clipping->contours[i] );
             }
+            */
         }
 
         pfree( min_subj );
         pfree( max_subj );
         pfree( min_clip );
         pfree( max_clip );
+
         return result;
     }
 
@@ -1094,7 +1106,7 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
     POLYGON **   result       = NULL;
     double       area         = 0.0;
     double       max_area     = 0.0;
-    
+
     if( mpoly == NULL )
     {
         return NULL;
@@ -1103,7 +1115,7 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
     if( single_result )
     {
         result = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
-    
+
         if( result == NULL )
         {
             ereport(

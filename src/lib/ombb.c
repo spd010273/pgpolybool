@@ -270,5 +270,15 @@ void rotate_point_about_center( Point * p, Point * center, double angle )
                )
            );
 
+    if( fabs( p->x ) < DBL_EPSILON )
+    {
+        p->x = 0.0;
+    }
+
+    if( fabs( p->y ) < DBL_EPSILON )
+    {
+        p->y = 0.0;
+    }
+
     return;
 }

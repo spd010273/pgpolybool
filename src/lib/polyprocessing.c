@@ -42,8 +42,8 @@
  */
 POLYGON * poly_preprocessing(
     POLYGON * current_poly,
-    bool scale,
-    Point ** center
+    bool      scale,
+    Point **  center
 )
 {
     POLYGON * buff_poly    = NULL;
@@ -62,15 +62,7 @@ POLYGON * poly_preprocessing(
 
     if( buff_poly == NULL || (*center) == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg(
-                    "Could not allocate centroid or buffer for polygon"
-                )
-            )
-        );
+        __oom( "Could not allocate centroid or buffer for polygon" );
     }
 
     poly = remove_duplicate_and_colinear_points( current_poly, false );
@@ -140,10 +132,10 @@ POLYGON * poly_preprocessing(
  *     Emits error on NULL input array element
  */
 POLYGON ** poly_preprocessing_array(
-    ArrayType * polyarray,
-    bool sort,
-    bool scale,
-    Point *** centers,
+    ArrayType *    polyarray,
+    bool           sort,
+    bool           scale,
+    Point ***      centers,
     unsigned int * num_poly
 )
 {
@@ -181,13 +173,7 @@ POLYGON ** poly_preprocessing_array(
 
         if( buff_polys == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not buffer input polygons" )
-                )
-            );
+            __oom( "Could not buffer input polygons" );
         }
 
         buff_poly     = DatumGetPolygonP( dpoly[0] );
@@ -216,13 +202,7 @@ POLYGON ** poly_preprocessing_array(
 
     if( buff_polys == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not buffer input polygons" )
-            )
-        );
+        __oom( "Could not buffer input polygons" );
     }
 
     palloc_sz  = (*num_poly) * sizeof( Point * );
@@ -230,13 +210,7 @@ POLYGON ** poly_preprocessing_array(
 
     if( (*centers) == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate polygon centroids" )
-            )
-        );
+        __oom( "Could not allocate polygon centroids" );
     }
 
     for( i = 0; i < (*num_poly); i++ )
@@ -255,13 +229,7 @@ POLYGON ** poly_preprocessing_array(
 
         if( buff_polys_sorted == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not create sorting array for polygons" )
-                )
-            );
+            __oom( "Could not create sorting array for polygons" );
         }
 
         // Sort polys by center-center distance from buff_poly[0]
@@ -341,46 +309,58 @@ POLYGON * poly_postprocessing(
     bool         scale
 )
 {
-    Point *      center                = NULL;
-    Point *      min_dist_center       = NULL;
-    double       min_distance          = 0.0;
-    double       dist                  = 0.0;
-    unsigned int i                     = 0;
-    unsigned int j                     = 0;
+    Point *      center          = NULL;
+    Point *      min_dist_center = NULL;
+    double       min_distance    = 0.0;
+    double       avg_dist        = 0.0;
+    unsigned int i               = 0;
+    unsigned int j               = 0;
 
     if( poly == NULL )
     {
         return NULL;
     }
 
+    min_distance = DBL_MAX;
+
     if( scale )
     {
-        for( i = 0; i < poly->npts; i++ )
+        for( i = 0; i < num_centers; i++ )
         {
-            min_distance    = DBL_MAX;
-            min_dist_center = NULL;
+            center = centers[i];
+            avg_dist = 0.0;
 
-            for( j = 0; j < num_centers; j++ )
+            for( j = 0; j < poly->npts; j++ )
             {
-                center = centers[j];
-                dist   = distance( center, &(poly->p[i]) );
-
-                if( dist < min_distance )
-                {
-                    min_distance    = dist;
-                    min_dist_center = center;
-                }
+                avg_dist += distance( center, &(poly->p[i]) );
             }
 
-            poly->p[i].x = (
-                                poly->p[i].x
-                              + ( ZOOM_RATE - 1 ) * min_dist_center->x
-                           ) / ZOOM_RATE;
-            poly->p[i].y = (
-                                poly->p[i].y
-                              + ( ZOOM_RATE - 1 ) * min_dist_center->y
-                           ) / ZOOM_RATE;
+            avg_dist = avg_dist / poly->npts;
 
+            if( avg_dist < min_distance )
+            {
+                min_distance    = avg_dist;
+                min_dist_center = center;
+            }
+        }
+
+        if( min_dist_center != NULL )
+        {
+            for( i = 0; i < poly->npts; i++ )
+            {
+                poly->p[i].x = (
+                                    poly->p[i].x
+                                  + ( ZOOM_RATE - 1 ) * min_dist_center->x
+                               ) / ZOOM_RATE;
+                poly->p[i].y = (
+                                    poly->p[i].y
+                                  + ( ZOOM_RATE - 1 ) * min_dist_center->y
+                               ) / ZOOM_RATE;
+            }
+        }
+        else
+        {
+            elog( WARNING, "Failed to de-scale polygon after OP_UNION" );
         }
     }
 
@@ -461,13 +441,7 @@ void remove_colinear_point( POLYGON ** poly, Point * colinear_point )
 
     if( new_poly == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create new polygon" )
-            )
-        );
+        __oom( "Could not create new polygon" );
     }
 
     new_poly->npts = (*poly)->npts - 1;
@@ -520,12 +494,9 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
 
     if( temp_poly == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create buffer polygon for duplicate / colinear point removal" )
-            )
+        __oom(
+                "Could not create buffer polygon for"\
+                " duplicate / colinear point removal"
         );
     }
 
@@ -533,8 +504,8 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
     for( i = 0; i < poly->npts; i++ )
     {
         if(
-               fabs( poly->p[i].x - poly->p[( i + 1 ) % poly->npts].x ) < DBL_EPSILON
-            && fabs( poly->p[i].y - poly->p[( i + 1 ) % poly->npts].y ) < DBL_EPSILON
+               fabs( poly->p[i].x - poly->p[(i+1)%poly->npts].x ) < DBL_EPSILON
+            && fabs( poly->p[i].y - poly->p[(i+1)%poly->npts].y ) < DBL_EPSILON
           )
         {
             //i and i+1 | 0 are identical
@@ -591,13 +562,7 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
     if( result_poly == NULL )
     {
         pfree( temp_poly );
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create output polygon for point deduplication result" )
-            )
-        );
+        __oom( "Could not create output polygon for point deduplication result" );
     }
 
     max.x = -DBL_MAX;
