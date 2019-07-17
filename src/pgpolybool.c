@@ -655,8 +655,10 @@ Datum fn_union_polygons_array( PG_FUNCTION_ARGS )
 #endif // DEBUG
         mp_subj = poly_to_mpoly( new_polygon );
         mp_clip = poly_to_mpoly( sorted_polys[i] );
+
         new_polygon     = NULL;
         sorted_polys[i] = NULL;
+
         mp_result = compute(
             mp_subj,
             mp_clip,
@@ -803,6 +805,7 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
     }
 
     new_polygon  = result_polys[0];
+    dump_polygon( new_polygon );
     pfree( result_polys );
 
     if( new_polygon == NULL )
