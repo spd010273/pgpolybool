@@ -22,4 +22,7 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: $(sort $(wildcard sql/functions/*.sql)) $(s
 PG_CPPFLAGS     = -DDEBUG -g $(PG_CFLAGS)
 DATA            = $(wildcard sql/updates/*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sql
 
+check:
+	test/run_tests.pl
+
 include $(PGXS)
