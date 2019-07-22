@@ -15,7 +15,7 @@ EXTRA_CLEAN     = src/*.o src/*.so *.so *.o sql/$(EXTENSION)--$(EXTVERSION).sql
 
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
-sql/$(EXTENSION)--$(EXTVERSION).sql: $(sort $(wildcard sql/functions/*.sql)) $(sort $(wildcard sql/casts/*.sql))
+sql/$(EXTENSION)--$(EXTVERSION).sql: $(sort $(wildcard sql/functions/*.sql)) $(sort $(wildcard sql/casts/*.sql)) $(sort $(wildcard sql/permissions/*.sql))
 	cat $^ > $@
 
 # Add -DDEBUG to enable DEBUG output of log level DEBUG
