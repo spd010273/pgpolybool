@@ -36,8 +36,10 @@ which pg_config
 This should be present in /usr/pgsql-<version>/bin/pg_config for RHEL/CentOS and /usr/bin/pg_config for Debian/Ubuntu. Once this executable is properly linked, run:
 
 ```bash
-su - postgres -c make install
+su - postgres -c 'cd /path/to/where/you/checked/out/pgpolybool/ && make install'
 ```
+
+pgpolybool can also be installed as root, as pg_config will set the extension file permissions correctly
 
 This will install pgpolybool to PostgreSQL's extensions and lib folders. Installation can be completed by logging into the database and running:
 
