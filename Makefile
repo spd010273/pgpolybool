@@ -11,6 +11,7 @@ MODULE_big      = pgpolybool
 SRCS            = $(wildcard src/lib/*.c) $(wildcard src/*.c)
 OBJS            = $(SRCS:.c=.o)
 PGXS            = $(shell $(PG_CONFIG) --pgxs)
+#DEBUG			= -DDEBUG
 EXTRA_CLEAN     = src/*.o src/*.so *.so *.o sql/$(EXTENSION)--$(EXTVERSION).sql
 
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
@@ -19,7 +20,7 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: $(sort $(wildcard sql/functions/*.sql)) $(s
 	cat $^ > $@
 
 # Add -DDEBUG to enable DEBUG output of log level DEBUG
-PG_CPPFLAGS     = -DDEBUG -g $(PG_CFLAGS)
+PG_CPPFLAGS     = $(DEBUG) -g $(PG_CFLAGS)
 DATA            = $(wildcard sql/updates/*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sql
 
 check:
