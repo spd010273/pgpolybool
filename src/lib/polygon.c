@@ -96,13 +96,7 @@ void polygon_boundingbox( struct polygon * p, Point * min, Point * max )
 
     if( min == NULL || max == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate bounding box for polygon" )
-            )
-        );
+          __oom( "Could not allocate bounding box for polygon" );
     }
 
     min->x = min_x;
@@ -166,13 +160,7 @@ void polygon_erase_contour( struct polygon * p, unsigned int ind )
 
     if( temp_contours == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not resize polygon contours" )
-            )
-        );
+        __oom( "Could not resize polygon contours" );
     }
 
     for( i = 0; i < p->num_contours; i++ )
@@ -212,13 +200,7 @@ void polygon_add_contour( struct polygon * p, struct contour * c )
 
         if( p->contours == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not allocate polygon contour structure" )
-                )
-            );
+            __oom( "Could not allocate polygon contour structure" );
         }
 
         p->num_contours = 1;
@@ -234,13 +216,7 @@ void polygon_add_contour( struct polygon * p, struct contour * c )
 
         if( p->contours == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not resize polygon contour structure" )
-                )
-            );
+            __oom( "Could not resize polygon contour structure" );
         }
 
         p->contours[p->num_contours] = c;
@@ -258,13 +234,7 @@ struct polygon * new_polygon( void )
 
     if( p == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Failed to allocate new polygon" )
-            )
-        );
+        __oom( "Failed to allocate new polygon" );
     }
 
     p->num_contours = 0;
@@ -312,7 +282,7 @@ struct segment * sweep_event_get_segment( struct sweep_event * se )
     return s;
 }
 
-bool sweep_event_below( struct sweep_event * e, Point * p )
+inline bool sweep_event_below( struct sweep_event * e, Point * p )
 {
     double area = 0.0;
 
@@ -320,7 +290,7 @@ bool sweep_event_below( struct sweep_event * e, Point * p )
     {
         area = signed_area_three( e->p, e->other->p, p );
 
-        if( area > 0 )
+        if( area > 0.0 )
         {
             return true;
         }
@@ -330,7 +300,7 @@ bool sweep_event_below( struct sweep_event * e, Point * p )
 
     area = signed_area_three( e->other->p, e->p, p );
 
-    if( area > 0 )
+    if( area > 0.0 )
     {
         return true;
     }
@@ -338,12 +308,12 @@ bool sweep_event_below( struct sweep_event * e, Point * p )
     return false;
 }
 
-bool sweep_event_above( struct sweep_event * e, Point * p )
+inline bool sweep_event_above( struct sweep_event * e, Point * p )
 {
     return !sweep_event_below( e, p );
 }
 
-bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
+inline bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
 {
     return !sweep_event_sl_comp(
         ( struct sweep_event * ) e1,
@@ -351,7 +321,7 @@ bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
     );
 }
 
-bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
+inline bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
 {
     return sweep_event_sl_comp(
         ( struct sweep_event * ) e1,
@@ -360,7 +330,10 @@ bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
 }
 
 // Used for comparing Status Line Events
-bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 )
+inline bool sweep_event_sl_comp(
+    struct sweep_event * e1,
+    struct sweep_event * e2
+)
 {
     if( e1->p->x > e2->p->x )
     {
@@ -395,7 +368,7 @@ bool sweep_event_sl_comp( struct sweep_event * e1, struct sweep_event * e2 )
     return false;
 }
 
-bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
+inline bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
 {
     return sweep_event_ev_comp(
         ( struct sweep_event * ) e1,
@@ -404,7 +377,10 @@ bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
 }
 
 // Used for comparins Events out of status line context
-bool sweep_event_ev_comp( struct sweep_event * e1, struct sweep_event * e2 )
+inline bool sweep_event_ev_comp(
+    struct sweep_event * e1,
+    struct sweep_event * e2
+)
 {
     // returns true if e1 is to the 'left' of e2
     //
@@ -434,7 +410,7 @@ bool sweep_event_ev_comp( struct sweep_event * e1, struct sweep_event * e2 )
     return sweep_event_below( e1, e2->other->p );
 }
 
-bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
+inline bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
 {
     return !sweep_event_sl_segment_comp(
         ( struct sweep_event * ) e0,
@@ -442,7 +418,7 @@ bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
     );
 }
 
-bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
+inline bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
 {
     return sweep_event_sl_segment_comp(
         ( struct sweep_event * ) e0,
@@ -450,7 +426,7 @@ bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
     );
 }
 
-bool sweep_event_sl_segment_comp(
+inline bool sweep_event_sl_segment_comp(
     struct sweep_event * e0,
     struct sweep_event * e1
 )
@@ -571,7 +547,7 @@ bool sweep_event_sl_segment_comp(
     return result;
 }
 
-bool sweep_event_ev_segment_comp(
+inline bool sweep_event_ev_segment_comp(
     struct sweep_event * e0,
     struct sweep_event * e1
 ) //SegmentsComp
@@ -615,26 +591,14 @@ struct sweep_event * new_sweep_event( void )
 
     if( s == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create new sweep event" )
-            )
-        );
+        __oom( "Could not create new sweep event" );
     }
 
     s->p = ( Point * ) palloc0( sizeof( Point ) );
 
     if( s->p == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create point for new sweep event" )
-            )
-        );
+        __oom( "Could not create point for new sweep event" );
     }
 
     s->left     = false;
@@ -689,13 +653,7 @@ struct sweep_event ** _manage_ev_buffer(
 
             if( ev == NULL )
             {
-                ereport(
-                    ERROR,
-                    (
-                        errcode( ERRCODE_OUT_OF_MEMORY ),
-                        errmsg( "Could not create sweep event buffer" )
-                    )
-                );
+                __oom( "Could not create sweep event buffer" );
             }
         }
         else
@@ -717,13 +675,7 @@ struct sweep_event ** _manage_ev_buffer(
 
             if( ev == NULL )
             {
-                ereport(
-                    ERROR,
-                    (
-                        errcode( ERRCODE_OUT_OF_MEMORY ),
-                        errmsg( " Failed to extend sweep event buffer" )
-                    )
-                );
+                __oom( " Failed to extend sweep event buffer" );
             }
         }
     }
@@ -816,13 +768,7 @@ unsigned int _se_set_insert(
 
         if( (*set) == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not allocate sweep event set" )
-                )
-            );
+            __oom( "Could not allocate sweep event set" );
         }
 
         (*set)[0]    = se;
@@ -851,13 +797,7 @@ unsigned int _se_set_insert(
 
                 if( (*set) == NULL )
                 {
-                    ereport(
-                        ERROR,
-                        (
-                            errcode( ERRCODE_OUT_OF_MEMORY ),
-                            errmsg( "Could not extend sweep event set" )
-                        )
-                    );
+                    __oom( "Could not extend sweep event set" );
                 }
 
                 ind_offset = 1;
@@ -892,13 +832,7 @@ unsigned int _se_set_insert(
 
     if( (*set) == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not extend sweep event set" )
-            )
-        );
+        __oom( "Could not extend sweep event set" );
     }
 
     (*set)[*len] = se;
@@ -924,13 +858,7 @@ struct sweep_event ** _process_ev_buffer(
 
     if( new_ev == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate event buffer for swap" )
-            )
-        );
+        __oom( "Could not allocate event buffer for swap" );
     }
 
     for( i = 0; i < ev_index; i++ )
@@ -965,13 +893,7 @@ void _se_set_remove(
 
     if( ev_set_temp == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not resize event buffer" )
-            )
-        );
+        __oom( "Could not resize event buffer" );
     }
 
     for( i = 0; i < (*ev_index) - 1; i++ )
@@ -1084,13 +1006,7 @@ void polygon_compute_holes( struct polygon * p )
 
     if( processed == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate hole processing bitmap" )
-            )
-        );
+        __oom( "Could not allocate hole processing bitmap" );
     }
 
     hole_of = ( unsigned int * ) palloc0(
@@ -1099,13 +1015,7 @@ void polygon_compute_holes( struct polygon * p )
 
     if( hole_of == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate polygon hole map" )
-            )
-        );
+        __oom( "Could not allocate polygon hole map" );
     }
 
     // may need to init ev_set with ev prior to entry
@@ -1315,7 +1225,7 @@ void _dump_se_set( struct sweep_event *** ev_set, unsigned int ev_index )
 }
 #endif // DEBUG
 
-bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
+inline bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
 {
     if( e0 == NULL || e1 == NULL )
     {

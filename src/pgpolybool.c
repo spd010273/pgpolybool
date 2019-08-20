@@ -805,7 +805,9 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
     }
 
     new_polygon  = result_polys[0];
+#ifdef DEBUG
     dump_polygon( new_polygon );
+#endif
     pfree( result_polys );
 
     if( new_polygon == NULL )

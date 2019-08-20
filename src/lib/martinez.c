@@ -166,13 +166,7 @@ void possible_intersection(
 
     if( isect_p0 == NULL || isect_p1 == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not allocate intersection points" )
-            )
-        );
+        __oom( "Could not allocate intersection points" );
     }
 
     num_intersections = find_intersection( seg0, seg1, isect_p0, isect_p1 );
@@ -451,15 +445,9 @@ struct polygon * compute(
          || max_clip == NULL
       )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg(
-                    "Could not allocate reference points"\
-                    " for clipping optimization"
-                )
-            )
+        __oom(
+            "Could not allocate reference points"\
+            " for clipping optimization"
         );
     }
 
@@ -483,11 +471,11 @@ struct polygon * compute(
         if( op == OP_UNION )
         {
             result = subject;
-            
+
             /*
              * NOTE: Due to the current implementation, this code is commented
              * out as we only want to return the subject.
-             * 
+             *
              * If you would like do do something with the other contours, feel
              * free to uncomment the below. Currently, poly_postprocessing will
              * select the contour with the largest area as the result from a
@@ -1062,14 +1050,8 @@ struct polygon * poly_to_mpoly( POLYGON * p )
 
         if( point == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg(
-                        "Could not allocate point fror polygon conversion"
-                    )
-                )
+            __oom(
+                "Could not allocate point fror polygon conversion"
             );
         }
 
@@ -1118,12 +1100,8 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
 
         if( result == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not create polygon result array" )
-                )
+            __oom(
+                "Could not create polygon result array"
             );
         }
     }
@@ -1136,12 +1114,8 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
 
         if( arr == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not allocate array for polygon contours" )
-                )
+            __oom(
+                "Could not allocate array for polygon contours"
             );
         }
     }
@@ -1155,12 +1129,8 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
 
         if( p == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not allocate new output polygon" )
-                )
+            __oom(
+                "Could not allocate new output polygon"
             );
         }
 
