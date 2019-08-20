@@ -133,15 +133,9 @@ unsigned int find_intersection(
 
     if( d0 == NULL || d1 == NULL || E == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg(
-                    "Could not create reference points"\
-                    " for intersection calculation"
-                )
-            )
+        __oom(
+            "Could not create reference points"\
+            " for intersection calculation"
         );
     }
 
@@ -374,6 +368,12 @@ void __oom( const char * message )
 
 void __degenerate_solution( double a, double b, double c )
 {
-    elog( ERROR, "Quadratic solution is degenerate: a=%f, b=%f, c=%f", a, b, c );
+    elog(
+        ERROR,
+        "Quadratic solution is degenerate: a=%f, b=%f, c=%f",
+        a,
+        b,
+        c
+    );
     return;
 }

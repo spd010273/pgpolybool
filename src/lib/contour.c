@@ -19,7 +19,7 @@
  * void contour_bounding_box( struct contour *, Point *, Point * )
  *     Computes the bounding box of a contour by finding the minima and
  *     maxima of both the X and Y coordinates.
- * 
+ *
  * Arguments:
  *     contour * c:     Contour of which we are computing the bounding box.
  *     Point * minumum: Pass-by-reference return for the minimum x,y coordinate
@@ -85,13 +85,7 @@ void contour_bounding_box( struct contour * c, Point * min, Point * max )
 
     if( min == NULL || max == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not create contour bounding box" )
-            )
-        );
+        __oom( "Could not create contour bounding box" );
     }
 
     min->x = min_x;
@@ -107,7 +101,7 @@ void contour_bounding_box( struct contour * c, Point * min, Point * max )
  *     Determines the ordering of a contours points. This also sets the _cc bit
  *     of the contour.
  *
- * Arguments: 
+ * Arguments:
  *     struct contour * c: The contour of which we are determining orientation.
  * Return:
  *     bool result: True indicates that the points forming contour c are
@@ -325,13 +319,7 @@ void contour_erase_point( struct contour * c, unsigned int i )
 
     if( temp_points == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Could not resize contour point array" )
-            )
-        );
+        __oom( "Could not resize contour point array" );
     }
 
     for( j = 0; j < c->num_points; j++ )
@@ -358,13 +346,7 @@ void contour_erase_point( struct contour * c, unsigned int i )
 
             if( temp_holes == NULL )
             {
-                ereport(
-                    ERROR,
-                    (
-                        errcode( ERRCODE_OUT_OF_MEMORY ),
-                        errmsg( "Failed to resize hole map for contour" )
-                    )
-                );
+                __oom( "Failed to resize hole map for contour" );
             }
 
             for( h = 0; h < c->num_holes; h++ )
@@ -414,13 +396,7 @@ void contour_add_hole( struct contour * c, unsigned int index )
 
         if( c->holes == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Failed to create contour holes map" )
-                )
-            );
+            __oom( "Failed to create contour holes map" );
         }
 
         c->num_holes = 1;
@@ -435,13 +411,7 @@ void contour_add_hole( struct contour * c, unsigned int index )
 
         if( c->holes == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Failed to resize contour hole map" )
-                )
-            );
+            __oom( "Failed to resize contour hole map" );
         }
 
         c->holes[c->num_holes] = index;
@@ -481,13 +451,7 @@ void contour_add_point( struct contour * c, Point * p )
 
         if( c->points == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not create contour point array" )
-                )
-            );
+            __oom( "Could not create contour point array" );
         }
 
         c->num_points = 1;
@@ -502,13 +466,7 @@ void contour_add_point( struct contour * c, Point * p )
 
         if( c->points == NULL )
         {
-            ereport(
-                ERROR,
-                (
-                    errcode( ERRCODE_OUT_OF_MEMORY ),
-                    errmsg( "Could not resize contour point array" )
-                )
-            );
+            __oom( "Could not resize contour point array" );
         }
 
         c->points[c->num_points] = p;
@@ -551,13 +509,7 @@ struct contour * new_contour( void )
 
     if( c == NULL )
     {
-        ereport(
-            ERROR,
-            (
-                errcode( ERRCODE_OUT_OF_MEMORY ),
-                errmsg( "Failed to create new contour" )
-            )
-        );
+        __oom( "Failed to create new contour" );
     }
 
     c->num_points      = 0;
