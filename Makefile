@@ -11,7 +11,7 @@ MODULE_big      = pgpolybool
 SRCS            = $(wildcard src/lib/*.c) $(wildcard src/*.c)
 OBJS            = $(SRCS:.c=.o)
 PGXS            = $(shell $(PG_CONFIG) --pgxs)
-#DEBUG			= -DDEBUG
+DEBUG			= -DDEBUG
 EXTRA_CLEAN     = src/*.o src/*.so *.so *.o sql/$(EXTENSION)--$(EXTVERSION).sql
 
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
@@ -25,5 +25,6 @@ DATA            = $(wildcard sql/updates/*--*.sql) sql/$(EXTENSION)--$(EXTVERSIO
 
 check:
 	test/run_tests.pl
+	test/fuzzer.pl -C
 
 include $(PGXS)
