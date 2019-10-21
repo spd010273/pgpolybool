@@ -908,7 +908,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
             PG_RETURN_NULL();
         }
 
-        result_polys = mpoly_to_poly( mp_result, true );
+        result_polys = mpoly_to_poly( mp_result, false );
 
         if( result_polys == NULL )
         {
@@ -1042,7 +1042,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    result_polys = mpoly_to_poly( mp_result, false );
+    result_polys = mpoly_to_poly( mp_result, true );
 
     if( result_polys == NULL )
     {

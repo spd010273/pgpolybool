@@ -241,4 +241,6 @@ foreach my $file ( sort { $a cmp $b } keys %$test_results )
 $SUMMARY .= " Total Failed: $failed_count\n Total Passed: $passed_count\n";
 
 print $SUMMARY;
+
+
 exit 0;
