@@ -1106,6 +1106,7 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
         }
     }
 
+    // TODO: This function needs to be modified to respect an arg of false for single_result and num_contours = 1
     if( mpoly->num_contours > 1 )
     {
         arr = ( POLYGON ** ) palloc0(
@@ -1138,8 +1139,9 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
         {
             p->p[i].x = mpoly->contours[c]->points[i]->x;
             p->p[i].y = mpoly->contours[c]->points[i]->y;
-            p->npts   = mpoly->contours[c]->num_points;
         }
+
+        p->npts   = mpoly->contours[c]->num_points;
 
         if( mpoly->num_contours == 1 )
         {
