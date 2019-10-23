@@ -1035,7 +1035,7 @@ Point * lseg_to_vector( LSEG * segment )
       + pow( segment->p[0].y - segment->p[1].y, 2 )
     );
 
-    if( abs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
+    if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
     {
         // Line is vertical
         result->x = 0;
@@ -1051,7 +1051,7 @@ Point * lseg_to_vector( LSEG * segment )
 
         return result;
     }
-    else if( abs( segment->p[1].y - segment->p[0].y ) < DBL_EPSILON )
+    else if( fabs( segment->p[1].y - segment->p[0].y ) < DBL_EPSILON )
     {
         result->y = 0;
 

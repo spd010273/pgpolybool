@@ -321,7 +321,7 @@ bool points_equal( Point * a, Point * b )
     return false;
 }
 
-inline double dot_product( Point * a, Point * b )
+double dot_product( Point * a, Point * b )
 {
     if( a == NULL || b == NULL )
     {
@@ -332,7 +332,7 @@ inline double dot_product( Point * a, Point * b )
     return ( a->x * b->x + a->y * b->y );
 }
 
-inline double cross_product( Point * a, Point * b )
+double cross_product( Point * a, Point * b )
 {
     if( a == NULL || b == NULL )
     {

@@ -103,12 +103,12 @@ struct dlpq * new_dlpq( bool (*compare_function)( void *, void * ) )
     return head;
 }
 
-inline unsigned int dlpq_size( struct dlpq * head )
+unsigned int dlpq_size( struct dlpq * head )
 {
     return ( head == NULL ) ? 0 : head->size;
 }
 
-inline bool dlpq_empty( struct dlpq * head )
+bool dlpq_empty( struct dlpq * head )
 {
     return ( head == NULL || head->size == 0 ) ? true : false;
 }
@@ -313,7 +313,7 @@ void dlpq_push( struct dlpq * head, void * data )
     return;
 }
 
-inline void * dlpq_pop( struct dlpq * head )
+void * dlpq_pop( struct dlpq * head )
 {
     // Take an element from head->last (the head of the queue)
     struct dlpq_node * temp = NULL;
@@ -340,7 +340,7 @@ inline void * dlpq_pop( struct dlpq * head )
     return data;
 }
 
-inline void * dlpq_unshift( struct dlpq * head )
+void * dlpq_unshift( struct dlpq * head )
 {
     // Take an element head->first ( the tail of the queue )
     struct dlpq_node * temp = NULL;

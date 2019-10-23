@@ -51,14 +51,14 @@ struct dlpq {
 
 extern bool default_compare_function( void *, void * );
 extern struct dlpq * new_dlpq( bool (*)( void *, void * ) );
-extern inline unsigned int dlpq_size( struct dlpq * );
-extern inline bool dlpq_empty( struct dlpq * );
+extern unsigned int dlpq_size( struct dlpq * );
+extern bool dlpq_empty( struct dlpq * );
 extern unsigned int dlpq_get_position( struct dlpq *, void * );
 extern void * dlpq_peek_position( struct dlpq *, unsigned int );
 extern void dlpq_remove( struct dlpq *, void * );
 extern void dlpq_push( struct dlpq * head, void * data );
-extern inline void * dlpq_pop( struct dlpq * );
-extern inline void * dlpq_unshift( struct dlpq * );
+extern void * dlpq_pop( struct dlpq * );
+extern void * dlpq_unshift( struct dlpq * );
 extern void free_dlpq( struct dlpq ** );
 #ifdef DLPQ_DEBUG
 extern void _dlpq_debug( struct dlpq * );
