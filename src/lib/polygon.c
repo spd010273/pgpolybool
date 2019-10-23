@@ -282,7 +282,7 @@ struct segment * sweep_event_get_segment( struct sweep_event * se )
     return s;
 }
 
-inline bool sweep_event_below( struct sweep_event * e, Point * p )
+bool sweep_event_below( struct sweep_event * e, Point * p )
 {
     double area = 0.0;
 
@@ -308,12 +308,12 @@ inline bool sweep_event_below( struct sweep_event * e, Point * p )
     return false;
 }
 
-inline bool sweep_event_above( struct sweep_event * e, Point * p )
+bool sweep_event_above( struct sweep_event * e, Point * p )
 {
     return !sweep_event_below( e, p );
 }
 
-inline bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
+bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
 {
     return !sweep_event_sl_comp(
         ( struct sweep_event * ) e1,
@@ -321,7 +321,7 @@ inline bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
     );
 }
 
-inline bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
+bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
 {
     return sweep_event_sl_comp(
         ( struct sweep_event * ) e1,
@@ -330,7 +330,7 @@ inline bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
 }
 
 // Used for comparing Status Line Events
-inline bool sweep_event_sl_comp(
+bool sweep_event_sl_comp(
     struct sweep_event * e1,
     struct sweep_event * e2
 )
@@ -368,7 +368,7 @@ inline bool sweep_event_sl_comp(
     return false;
 }
 
-inline bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
+bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
 {
     return sweep_event_ev_comp(
         ( struct sweep_event * ) e1,
@@ -377,7 +377,7 @@ inline bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
 }
 
 // Used for comparins Events out of status line context
-inline bool sweep_event_ev_comp(
+bool sweep_event_ev_comp(
     struct sweep_event * e1,
     struct sweep_event * e2
 )
@@ -410,7 +410,7 @@ inline bool sweep_event_ev_comp(
     return sweep_event_below( e1, e2->other->p );
 }
 
-inline bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
+bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
 {
     return !sweep_event_sl_segment_comp(
         ( struct sweep_event * ) e0,
@@ -418,7 +418,7 @@ inline bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
     );
 }
 
-inline bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
+bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
 {
     return sweep_event_sl_segment_comp(
         ( struct sweep_event * ) e0,
@@ -426,7 +426,7 @@ inline bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
     );
 }
 
-inline bool sweep_event_sl_segment_comp(
+bool sweep_event_sl_segment_comp(
     struct sweep_event * e0,
     struct sweep_event * e1
 )
@@ -547,7 +547,7 @@ inline bool sweep_event_sl_segment_comp(
     return result;
 }
 
-inline bool sweep_event_ev_segment_comp(
+bool sweep_event_ev_segment_comp(
     struct sweep_event * e0,
     struct sweep_event * e1
 ) //SegmentsComp
@@ -1225,7 +1225,7 @@ void _dump_se_set( struct sweep_event *** ev_set, unsigned int ev_index )
 }
 #endif // DEBUG
 
-inline bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
+bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
 {
     if( e0 == NULL || e1 == NULL )
     {

@@ -625,7 +625,7 @@ void polygon_connector_remove_open_connector(
     unsigned int        i          = 0;
     unsigned int        ind_offset = 0;
 
-    if( pc == NULL || index >= pc->open_length || index < 0 )
+    if( pc == NULL || index >= pc->open_length )
     {
         return;
     }
@@ -675,7 +675,7 @@ void polygon_connector_remove_closed_connector(
     unsigned int        i          = 0;
     unsigned int        ind_offset = 0;
 
-    if( pc == NULL || index >= pc->closed_length || index < 0 )
+    if( pc == NULL || index >= pc->closed_length )
     {
         return;
     }
