@@ -35,8 +35,8 @@
 #define PI (3.14159265358979)
 #endif // PI
 
-extern inline double signed_area_three( Point *, Point *, Point * );
-extern inline double signed_area_two( Point *, Point * );
+extern double signed_area_three( Point *, Point *, Point * );
+extern double signed_area_two( Point *, Point * );
 extern int sign( Point *, Point *, Point * );
 extern bool point_in_triangle( struct segment *, Point *, Point * );
 extern double distance( Point *, Point * );
@@ -48,9 +48,9 @@ extern unsigned int find_intersection(
     Point *
 );
 
-extern inline bool points_equal( Point *, Point * );
-extern inline double dot_product( Point *, Point * );
-extern inline double cross_product( Point *, Point * );
+extern bool points_equal( Point *, Point * );
+extern double dot_product( Point *, Point * );
+extern double cross_product( Point *, Point * );
 extern void __oom( const char * );
 extern void __degenerate_solution( double, double, double );
 #endif // UTIL_H

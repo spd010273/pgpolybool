@@ -2,5 +2,6 @@
 *.so
 *.swp
 *.swo
+*.bc
 src/attic/*
 sql/pgpolybool--*.sql
