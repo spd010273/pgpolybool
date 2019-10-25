@@ -399,9 +399,9 @@ LSEG ** line_segment_parallel_line_segment(
         if( away_point != NULL )
         {
             result[0]->p[0].x = segment->p[0].x + line_distance;
-            d1 = distance( away_point, &(result[0]->p[0]) );
+            d1 = distance( away_point, (&(result[0]->p[0])) );
             result[0]->p[0].x = segment->p[0].x - line_distance;
-            d2 = distance( away_point, &(result[0]->p[0]) );
+            d2 = distance( away_point, (&(result[0]->p[0])) );
 
             if( d1 > d2 )
             {
@@ -434,9 +434,9 @@ LSEG ** line_segment_parallel_line_segment(
         if( away_point != NULL )
         {
             result[0]->p[0].y = segment->p[0].y + line_distance;
-            d1 = distance( away_point, &(result[0]->p[0]) );
+            d1 = distance( away_point, (&(result[0]->p[0])) );
             result[0]->p[0].y = segment->p[0].y - line_distance;
-            d2 = distance( away_point, &(result[0]->p[0]) );
+            d2 = distance( away_point, (&(result[0]->p[0])) );
 
             if( d1 > d2 )
             {
@@ -532,10 +532,10 @@ LSEG ** line_segment_parallel_line_segment(
         // farthest from away_point
         if( away_point != NULL )
         {
-            d1 = distance( away_point, &(result[0]->p[0]) );
+            d1 = distance( away_point, (&(result[0]->p[0])) );
             result[0]->p[0].x = x2_0;
             result[0]->p[0].y = y2_0;
-            d2 = distance( away_point, &(result[0]->p[0]) );
+            d2 = distance( away_point, (&(result[0]->p[0])) );
 
             if( d1 > d2 )
             {
@@ -640,9 +640,9 @@ LSEG ** line_segment_orthogonal_line_segment(
         if( away_point != NULL )
         {
             result[0]->p[1].x = result[0]->p[0].x + length;
-            d1 = distance( away_point, &(result[0]->p[1]) );
+            d1 = distance( away_point, (&(result[0]->p[1])) );
             result[0]->p[1].x = result[0]->p[0].x - length;
-            d2 = distance( away_point, &(result[0]->p[1]) );
+            d2 = distance( away_point, (&(result[0]->p[1])) );
 
             // We've stored the endpoint but if our assumtion was wrong,
             // swap the points
@@ -667,9 +667,9 @@ LSEG ** line_segment_orthogonal_line_segment(
         if( away_point != NULL )
         {
             result[0]->p[1].y = result[0]->p[0].y + length;
-            d1 = distance( away_point, &(result[0]->p[1]) );
+            d1 = distance( away_point, (&(result[0]->p[1])) );
             result[0]->p[1].y = result[0]->p[0].y - length;
-            d2 = distance( away_point, &(result[0]->p[1]) );
+            d2 = distance( away_point, (&(result[0]->p[1])) );
 
             if( d1 > d2 )
             {
@@ -717,10 +717,10 @@ LSEG ** line_segment_orthogonal_line_segment(
         // farthest from away_point
         if( away_point != NULL )
         {
-            d1 = distance( away_point, &(result[0]->p[1]) );
+            d1 = distance( away_point, (&(result[0]->p[1])) );
             result[0]->p[1].x = x2;
             result[0]->p[1].y = y2;
-            d2 = distance( away_point, &(result[0]->p[1]) );
+            d2 = distance( away_point, (&(result[0]->p[1])) );
 
             if( d1 > d2 )
             {

@@ -332,7 +332,7 @@ POLYGON * poly_postprocessing(
 
             for( j = 0; j < poly->npts; j++ )
             {
-                avg_dist += distance( center, &(poly->p[i]) );
+                avg_dist += distance( center, ( &(poly->p[i]) ) );
             }
 
             avg_dist = avg_dist / poly->npts;
@@ -448,7 +448,7 @@ void remove_colinear_point( POLYGON ** poly, Point * colinear_point )
 
     for( i = 0; i < (*poly)->npts - 1; i++ )
     {
-        if( points_equal( &((*poly)->p[i]), colinear_point ) )
+        if( points_equal( (&((*poly)->p[i])), colinear_point ) )
         {
             offset = 1;
         }
