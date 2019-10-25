@@ -511,16 +511,16 @@ LSEG ** line_segment_parallel_line_segment(
 
         // coordinate<solution #>_<point_index>
 
-        x1_0 = ( -b_0 + sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
+        x1_0 = ( -b_0 + sqrt( ( b_0 * b_0 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
         y1_0 = targ_slope * x1_0 + y_int_0;
 
-        x2_0 = ( -b_0 - sqrt( pow( b_0, 2 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
+        x2_0 = ( -b_0 - sqrt( ( b_0 * b_0 ) - ( 4 * a * c_0 ) ) ) / ( 2 * a );
         y2_0 = targ_slope * x2_0 + y_int_0;
 
-        x1_1 = ( -b_1 + sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
+        x1_1 = ( -b_1 + sqrt( ( b_1 * b_1 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
         y1_1 = targ_slope * x1_1 + y_int_1;
 
-        x2_1 = ( -b_1 - sqrt( pow( b_1, 2 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
+        x2_1 = ( -b_1 - sqrt( ( b_1 * b_1 ) - ( 4 * a * c_1 ) ) ) / ( 2 * a );
         y2_1 = targ_slope * x2_1 + y_int_1;
 
         result[0]->p[0].x = x1_0;
@@ -578,6 +578,7 @@ LSEG ** line_segment_orthogonal_line_segment(
     double       d2         = 0.0;
     double       a          = 0.0; // For quadratic solution
     double       b          = 0.0;
+    double       b2         = 0.0;
     double       c          = 0.0;
     double       x1         = 0.0; // For result
     double       x2         = 0.0;
@@ -698,15 +699,16 @@ LSEG ** line_segment_orthogonal_line_segment(
         a = 1.0 + ( targ_slope * targ_slope );
         b = -2.0 * a * result[0]->p[0].x;
         c = a * result[0]->p[0].x * result[0]->p[0].x - length * length;
+        b2 = b * b;
 
-        if( pow( b, 2 ) < ( 4 * a * c ) )
+        if( b2 < ( 4 * a * c ) )
         {
             __degenerate_solution( a, b, c );
             return NULL;
         }
 
-        x1 = ( -b + sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
-        x2 = ( -b - sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
+        x1 = ( -b + sqrt( b2 - ( 4 * a * c ) ) ) / ( 2 * a );
+        x2 = ( -b - sqrt( b2 - ( 4 * a * c ) ) ) / ( 2 * a );
         y1 = targ_slope * x1 + y_int;
         y2 = targ_slope * x2 + y_int;
 
@@ -746,6 +748,7 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
     double y_int     = 0.0;
     double a         = 0.0;
     double b         = 0.0;
+    double b2        = 0.0;
     double c         = 0.0;
     double length    = 0.0;
 
@@ -770,8 +773,10 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
            / ( segment->p[0].x - segment->p[1].x );
     y_int  = segment->p[0].y - ( slope * segment->p[0].x );
     length = sqrt(
-        pow( segment->p[0].x - segment->p[1].x, 2 )
-      + pow( segment->p[0].y - segment->p[1].y, 2 )
+        ( segment->p[0].x - segment->p[1].x )
+      * ( segment->p[0].x - segment->p[1].x )
+      + ( segment->p[0].y - segment->p[1].y )
+      * ( segment->p[0].y - segment->p[1].y )
     );
     length = ( length / 2 ) * scale_factor;
 
@@ -813,17 +818,18 @@ LSEG * scale_lseg( LSEG * segment, double scale_factor, Point * reference )
         a = 1.0 + ( slope * slope );
         b = -2.0 * a * ref_point.x;
         c = a * ref_point.x * ref_point.x - length * length;
+        b2 = b * b;
 
-        if( pow( b, 2 ) < ( 4 * a * c ) )
+        if( b2 < ( 4 * a * c ) )
         {
             __degenerate_solution( a, b, c );
             pfree( result );
             return NULL;
         }
 
-        result->p[0].x = ( -b - sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
+        result->p[0].x = ( -b - sqrt( b2 - ( 4 * a * c ) ) ) / ( 2 * a );
         result->p[0].y = slope * result->p[0].x + y_int;
-        result->p[1].x = ( -b + sqrt( pow( b, 2 ) - ( 4 * a * c ) ) ) / ( 2 * a );
+        result->p[1].x = ( -b + sqrt( b2 - ( 4 * a * c ) ) ) / ( 2 * a );
         result->p[1].y = slope * result->p[1].x + y_int;
 
         if( fabs( result->p[0].x ) < DBL_EPSILON )
@@ -859,6 +865,7 @@ LSEG * extend_lseg( LSEG * segment, double length, Point * endpoint )
     double y_int   = 0.0;
     double a       = 0.0;
     double b       = 0.0;
+    double b2      = 0.0;
     double c       = 0.0;
     Point  other_p = {0.0};
 
@@ -946,8 +953,9 @@ LSEG * extend_lseg( LSEG * segment, double length, Point * endpoint )
         a = slope * slope + 1.0;
         b = 2.0 * slope * y_int - 2.0 * other_p.x - 2.0 * other_p.y * slope;
         c = other_p.y * other_p.y - 2.0 * y_int * other_p.y + y_int * y_int + other_p.x * other_p.x - length * length;
+        b2 = b * b;
 
-        if( pow( b, 2 ) < ( 4 * a * c ) )
+        if( b2  < ( 4 * a * c ) )
         {
             __degenerate_solution( a, b, c );
             pfree( result );
@@ -961,11 +969,11 @@ LSEG * extend_lseg( LSEG * segment, double length, Point * endpoint )
                  && endpoint->y > other_p.y
               ) // Top right quadrant
             {
-                result->p[1].x = ( -b + sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+                result->p[1].x = ( -b + sqrt( b2 - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
             }
             else
             { // bottom left quadrant
-                result->p[1].x = ( -b - sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+                result->p[1].x = ( -b - sqrt( b2 - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
             }
         }
         else
@@ -975,11 +983,11 @@ LSEG * extend_lseg( LSEG * segment, double length, Point * endpoint )
                  && endpoint->y > other_p.y
               ) // Top left quadrant
             {
-                result->p[1].x = ( -b - sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+                result->p[1].x = ( -b - sqrt( b2 - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
             }
             else
             { // bottom right quadrant
-                result->p[1].x = ( -b + sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+                result->p[1].x = ( -b + sqrt( b2 - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
             }
         }
 
@@ -1017,6 +1025,8 @@ Point * lseg_to_vector( LSEG * segment )
     double  slope  = 0.0;
     //double  y_int  = 0.0;
     double  length = 0.0;
+    double  l2     = 0.0;
+    double  s2     = 0.0;
 
     if( segment == NULL )
     {
@@ -1031,8 +1041,10 @@ Point * lseg_to_vector( LSEG * segment )
     }
 
     length = sqrt(
-        pow( segment->p[0].x - segment->p[1].x, 2 )
-      + pow( segment->p[0].y - segment->p[1].y, 2 )
+        ( segment->p[0].x - segment->p[1].x )
+      * ( segment->p[0].x - segment->p[1].x )
+      + ( segment->p[0].y - segment->p[1].y )
+      * ( segment->p[0].y - segment->p[1].y )
     );
 
     if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
@@ -1071,13 +1083,16 @@ Point * lseg_to_vector( LSEG * segment )
           / ( segment->p[1].x - segment->p[0].x );
     //y_int = segment->p[0].y - slope * segment->p[0].x;
 
+    l2 = length * length;
+    s2 = slope * slope;
+
     if( segment->p[1].x > segment->p[0].x )
     {
-        result->x = sqrt( pow( length, 2 ) / ( 1 + pow( slope, 2 ) ) );
+        result->x = sqrt( l2 / ( 1.0 + s2 ) );
     }
     else
     {
-        result->x = -sqrt( pow( length, 2 ) / ( 1 + pow( slope, 2 ) ) );
+        result->x = -sqrt( l2 / ( 1.0 + s2 ) );
     }
 
     result->y = result->x * slope;
@@ -1151,12 +1166,7 @@ bool lseg_points_left_of( LSEG * segment, LSEG * reference )
         return false;
     }
 
-    if( cross_product( seg_vector, ref_vector ) < 0 )
-    {
-        return true;
-    }
-
-    return false;
+    return cross_product( seg_vector, ref_vector ) < 0;
 }
 
 bool point_is_right_of_with_ref( LSEG * segment, Point * point, Point * front_ref )
@@ -1176,8 +1186,14 @@ bool point_is_right_of_with_ref( LSEG * segment, Point * point, Point * front_re
     B.y = segment->p[1].y;
 
     if(
-        sqrt( pow( segment->p[0].x - front_ref->x, 2 ) + pow( segment->p[0].y - front_ref->y, 2 ) ) >
-        sqrt( pow( segment->p[1].x - front_ref->x, 2 ) + pow( segment->p[1].y - front_ref->y, 2 ) )
+        sqrt(
+            ( A.x - front_ref->x ) * ( A.x - front_ref->x )
+          + ( A.y - front_ref->y ) * ( A.y - front_ref->y )
+        ) >
+        sqrt(
+            ( B.x - front_ref->x ) * ( B.x - front_ref->x )
+          + ( B.y - front_ref->y ) * ( B.y - front_ref->y )
+        )
       )
     {
         A.x = segment->p[1].x;
@@ -1188,19 +1204,7 @@ bool point_is_right_of_with_ref( LSEG * segment, Point * point, Point * front_re
 
     det = ( B.x - A.x ) * ( point->y - A.y ) - ( B.y - A.y ) * ( point->x - A.x );
 
-    if( fabs( det ) < DBL_EPSILON )
-    {
-        return false;
-    }
-
-    if( ( det - DBL_EPSILON ) > 0 )
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
+    return ( fabs( det ) >= DBL_EPSILON ) && ( ( det - DBL_EPSILON ) <= 0 );
 }
 
 bool point_is_left_of_with_ref( LSEG * segment, Point * point, Point * front_ref )
@@ -1220,8 +1224,14 @@ bool point_is_left_of_with_ref( LSEG * segment, Point * point, Point * front_ref
     B.y = segment->p[1].y;
 
     if(
-        sqrt( pow( segment->p[0].x - front_ref->x, 2 ) + pow( segment->p[0].y - front_ref->y, 2 ) ) >
-        sqrt( pow( segment->p[1].x - front_ref->x, 2 ) + pow( segment->p[1].y - front_ref->y, 2 ) )
+        sqrt(
+            ( A.x - front_ref->x ) * ( A.x - front_ref->x )
+          + ( A.y - front_ref->y ) * ( A.y - front_ref->y )
+        ) >
+        sqrt(
+            ( B.x - front_ref->x ) * ( B.x - front_ref->x )
+          + ( B.y - front_ref->y ) * ( B.y - front_ref->y )
+        )
       )
     {
         A.x = segment->p[1].x;
@@ -1259,7 +1269,9 @@ LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double len
     double y_int      = 0.0;
     double a          = 0.0;
     double b          = 0.0;
+    double b2         = 0.0;
     double c          = 0.0;
+    double half_l     = 0.0;
 
     if( segment == NULL || endpoint == NULL )
     {
@@ -1283,50 +1295,49 @@ LSEG * get_root_orthogonal_segment( LSEG * segment, Point * endpoint, double len
     }
 
     result = ( LSEG * ) palloc0( sizeof( LSEG ) );
-
     if( result == NULL )
     {
         __oom( "Could not allocate result line segment" );
     }
+
+    half_l = length / 2.0;
 
     if( fabs( segment->p[0].x - segment->p[1].x ) < DBL_EPSILON )
     {
         // Current slope is infinite, target slope is 0
         result->p[0].y = endpoint->y;
         result->p[1].y = endpoint->y;
-        result->p[0].x = endpoint->x - ( length / 2.0 );
-        result->p[1].x = endpoint->x + ( length / 2.0 );
+        result->p[0].x = endpoint->x - half_l;
+        result->p[1].x = endpoint->x + half_l;
     }
     else if( fabs( segment->p[0].y - segment->p[1].y ) < DBL_EPSILON )
     {
         result->p[0].x = endpoint->x;
         result->p[1].x = endpoint->x;
-        result->p[0].y = endpoint->y - ( length / 2.0 );
-        result->p[1].y = endpoint->y + ( length / 2.0 );
+        result->p[0].y = endpoint->y - half_l;
+        result->p[1].y = endpoint->y + half_l;
     }
     else
     {
-        elog( DEBUG1, "normal_case" );
         curr_slope = ( segment->p[0].y - segment->p[1].y )
                    / ( segment->p[0].x - segment->p[1].x );
         targ_slope = -1.0 / curr_slope;
         y_int      = endpoint->y - ( endpoint->x * targ_slope );
+        a          = 1.0 + ( targ_slope * targ_slope );
+        b          = -2.0 * a * endpoint->x;
+        c          = a * endpoint->x * endpoint->x - ( half_l * half_l );
+        b2         = b * b;
 
-        elog( DEBUG1, "curr slope is %f, targ is %f", curr_slope, targ_slope );
-        a = 1.0 + ( targ_slope * targ_slope );
-        b = -2.0 * a * endpoint->x;
-        c = a * endpoint->x * endpoint->x - pow( length / 2.0, 2 );
-
-        if( pow( b, 2 ) < ( 4 * a * c ) )
+        if( b2 < ( 4 * a * c ) )
         {
             __degenerate_solution( a, b, c );
             pfree( result );
             return NULL;
         }
 
-        result->p[0].x = ( -b + sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+        result->p[0].x = ( -b + sqrt( b2 - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
         result->p[0].y = targ_slope * result->p[0].x + y_int;
-        result->p[1].x = ( -b - sqrt( pow( b, 2 ) - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
+        result->p[1].x = ( -b - sqrt( b2 - ( 4.0 * a * c ) ) ) / ( 2.0 * a );
         result->p[1].y = targ_slope * result->p[1].x + y_int;
     }
     return result;

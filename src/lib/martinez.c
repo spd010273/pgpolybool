@@ -497,6 +497,42 @@ struct polygon * compute(
         return result;
     }
 
+    // Attempt to optimize intersections where the other poly encloses another
+    if( op == OP_INTERSECTION )
+    {
+        // See if subject is within clipping poly
+        if(
+              min_subj->x > min_clip->x 
+           && min_subj->y > min_clip->y
+           && max_subj->x < max_clip->x
+           && max_subj->y < max_clip->y
+          )
+        {
+            elog( DEBUG1, "OPTIM exit for OP_INTERSECTION: subject bounding box resides entirely inside the clipping bounding box" );
+            result = subject;
+            pfree( min_subj );
+            pfree( min_clip );
+            pfree( max_subj );
+            pfree( max_clip );
+            return result;
+        }
+        else if(
+                  min_subj->x < min_clip->x 
+               && min_subj->y < min_clip->y
+               && max_subj->x > max_clip->x
+               && max_subj->y > max_clip->y
+               )
+        {
+            elog( DEBUG1, "OPTIM exit for OP_INTERSECTION: clipping bounding box resides entirely inside the subject bounding box" );
+            result = clipping;
+            pfree( min_subj );
+            pfree( min_clip );
+            pfree( max_subj );
+            pfree( max_clip );
+            return result;
+        }
+    }
+
     // Generate priority queue
     //_dump_polygon( subject );
     //_dump_polygon( clipping );
@@ -530,13 +566,11 @@ struct polygon * compute(
         }
     }
 
+    min_max_x = max_subj->x;
+
     if( max_subj->x > max_clip->x )
     {
         min_max_x = max_clip->x;
-    }
-    else
-    {
-        min_max_x = max_subj->x;
     }
 
     sl_head = new_dlpq( &sweep_event_sl_segment_comp_wrapper_inverted );
