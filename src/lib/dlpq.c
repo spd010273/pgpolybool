@@ -67,12 +67,7 @@
 
 bool default_compare_function( void * a, void * b )
 {
-    if( a < b )
-    {
-        return true;
-    }
-
-    return false;
+    return a < b;
 }
 
 struct dlpq * new_dlpq( bool (*compare_function)( void *, void * ) )
@@ -87,9 +82,9 @@ struct dlpq * new_dlpq( bool (*compare_function)( void *, void * ) )
         return NULL;
     }
 
-    head->first   = NULL;
-    head->last    = NULL;
-    head->size    = 0;
+    head->first = NULL;
+    head->last  = NULL;
+    head->size  = 0;
 
     if( compare_function == NULL )
     {
@@ -343,9 +338,9 @@ void * dlpq_unshift( struct dlpq * head )
 
     head->size--;
 
-    temp             = head->first;
-    data             = temp->value;
-    head->first      = temp->next;
+    temp        = head->first;
+    data        = temp->value;
+    head->first = temp->next;
 
     if( head->first != NULL )
     {
