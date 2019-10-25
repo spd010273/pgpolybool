@@ -13,22 +13,6 @@
 
 #include "util.h"
 
-double signed_area_three( Point * a, Point * b, Point * c )
-{
-    return ( a->x - c->x ) * ( b->y - c->y )
-         - ( b->x - c->x ) * ( a->y - c->y );
-}
-
-double signed_area_two( Point * a, Point * b )
-{
-    if( a == NULL || b == NULL )
-    {
-        return 0;
-    }
-
-    return -b->x * ( a->y - b->y ) - -b->y * ( a->x - b->x );
-}
-
 int sign( Point * a, Point * b, Point * c )
 {
     double determinant = 0.0;
@@ -70,25 +54,6 @@ bool point_in_triangle( struct segment * s, Point * a, Point * b )
     }
 
     return false;
-}
-
-double distance( Point * a, Point * b )
-{
-    double distance = 0.0;
-    double dx       = 0.0;
-    double dy       = 0.0;
-
-    if( a == NULL || b == NULL )
-    {
-        return distance;
-    }
-
-    dx = a->x - b->x;
-    dy = a->y - b->y;
-
-    distance = sqrt( dx * dx + dy * dy );
-
-    return distance;
 }
 
 unsigned int find_intersection(
@@ -304,43 +269,6 @@ unsigned int find_intersection(
     pfree( d1 );
     pfree( E );
     return imax;
-}
-
-bool points_equal( Point * a, Point * b )
-{
-    if( a == NULL || b == NULL )
-    {
-        return false;
-    }
-
-    if( a->x == b->x && a->y == b->y )
-    {
-        return true;
-    }
-
-    return false;
-}
-
-double dot_product( Point * a, Point * b )
-{
-    if( a == NULL || b == NULL )
-    {
-        elog( DEBUG1, "Dot product inputs are null!" );
-        return 0.0;
-    }
-
-    return ( a->x * b->x + a->y * b->y );
-}
-
-double cross_product( Point * a, Point * b )
-{
-    if( a == NULL || b == NULL )
-    {
-        elog( DEBUG1, "Cross product inputs are null!" );
-        return 0.0;
-    }
-
-    return ( a->x * b->y - a->y * b->x );
 }
 
 void __oom( const char * message )

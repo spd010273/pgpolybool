@@ -103,16 +103,6 @@ struct dlpq * new_dlpq( bool (*compare_function)( void *, void * ) )
     return head;
 }
 
-unsigned int dlpq_size( struct dlpq * head )
-{
-    return ( head == NULL ) ? 0 : head->size;
-}
-
-bool dlpq_empty( struct dlpq * head )
-{
-    return ( head == NULL || head->size == 0 ) ? true : false;
-}
-
 unsigned int dlpq_get_position( struct dlpq * head, void * data )
 { //naive function
     unsigned int       position = 0;
@@ -377,7 +367,7 @@ void free_dlpq( struct dlpq ** head )
         return;
     }
 
-    if( dlpq_empty( *head ) && (*head) != NULL )
+    if( dlpq_empty( (*head) ) && (*head) != NULL )
     {
         _FREE( *head );
         return;

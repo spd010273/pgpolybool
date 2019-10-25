@@ -33,6 +33,9 @@
 #define _FREE(ptr) pfree(ptr)
 #define _LOG(msg,args...) elog(DEBUG1,msg,args)
 
+#define dlpq_size( h ) ((h == NULL ? 0 : h->size))
+#define dlpq_empty( h ) ((h == NULL || h->size == 0))
+
 struct dlpq_node {
     void * value;
     struct dlpq_node * next;
@@ -51,8 +54,6 @@ struct dlpq {
 
 extern bool default_compare_function( void *, void * );
 extern struct dlpq * new_dlpq( bool (*)( void *, void * ) );
-extern unsigned int dlpq_size( struct dlpq * );
-extern bool dlpq_empty( struct dlpq * );
 extern unsigned int dlpq_get_position( struct dlpq *, void * );
 extern void * dlpq_peek_position( struct dlpq *, unsigned int );
 extern void dlpq_remove( struct dlpq *, void * );
