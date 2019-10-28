@@ -500,15 +500,13 @@ struct polygon * compute(
     // Attempt to optimize intersections where the other poly encloses another
     if( op == OP_INTERSECTION )
     {
-        // See if subject is within clipping poly
+        // Determine if one bounding box is entirely enclosed within the other,
+        // if so, the intersection is the polygon with the smaller bounding box
         if(
-              min_subj->x > min_clip->x 
-           && min_subj->y > min_clip->y
-           && max_subj->x < max_clip->x
-           && max_subj->y < max_clip->y
+              min_subj->x > min_clip->x && min_subj->y > min_clip->y
+           && max_subj->x < max_clip->x && max_subj->y < max_clip->y
           )
         {
-            elog( DEBUG1, "OPTIM exit for OP_INTERSECTION: subject bounding box resides entirely inside the clipping bounding box" );
             result = subject;
             pfree( min_subj );
             pfree( min_clip );
@@ -517,13 +515,10 @@ struct polygon * compute(
             return result;
         }
         else if(
-                  min_subj->x < min_clip->x 
-               && min_subj->y < min_clip->y
-               && max_subj->x > max_clip->x
-               && max_subj->y > max_clip->y
+                  min_subj->x < min_clip->x && min_subj->y < min_clip->y
+               && max_subj->x > max_clip->x && max_subj->y > max_clip->y
                )
         {
-            elog( DEBUG1, "OPTIM exit for OP_INTERSECTION: clipping bounding box resides entirely inside the subject bounding box" );
             result = clipping;
             pfree( min_subj );
             pfree( min_clip );

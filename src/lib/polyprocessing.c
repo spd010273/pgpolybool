@@ -402,7 +402,7 @@ bool points_colinear( Point * p0, Point * p1, Point * p2 )
 
     area = signed_area_three( p0, p1, p2 );
 
-    if( fabs( area ) <= DBL_EPSILON )
+    if( fabs( area ) <= DBL_EPSILON * PP_DEDUPE_FUDGE_FACTOR )
     {
         return true;
     }
@@ -469,6 +469,7 @@ void remove_colinear_point( POLYGON ** poly, Point * colinear_point )
 POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input )
 {
     unsigned int i                     = 0;
+    unsigned int j                     = 0;
     unsigned int k                     = 0;
     unsigned int final_size            = 0;
     POLYGON *    temp_poly             = NULL; // Intermediate Polygon
@@ -479,6 +480,7 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
     Point        max                   = {0.0};
     Point        min                   = {0.0};
     bool         colinear_points_found = false;
+    bool *       skiplist              = NULL;
 
     if( poly == NULL )
     {
@@ -492,6 +494,11 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
       + sizeof( Point ) * ( poly->npts )
     );
 
+    // Pad out the skiplist to the next multiple of sizeof( void * )
+    skiplist = ( bool * ) palloc0(
+        ( poly->npts + 7 ) & ( -sizeof( void * ) )
+    );
+
     if( temp_poly == NULL )
     {
         __oom(
@@ -500,18 +507,27 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
         );
     }
 
-    // Scan for duplicate points
+    if( skiplist == NULL )
+    {
+        __oom(
+            "Failed to generate skiplist for array distinct"
+        );
+    }
+
     for( i = 0; i < poly->npts; i++ )
     {
-        if(
-               fabs( poly->p[i].x - poly->p[(i+1)%poly->npts].x ) < DBL_EPSILON
-            && fabs( poly->p[i].y - poly->p[(i+1)%poly->npts].y ) < DBL_EPSILON
-          )
+        for( j = i + 1; j < poly->npts; j++ )
         {
-            //i and i+1 | 0 are identical
-            final_size--;
+            if(
+                   ( fabs( poly->p[i].x - poly->p[j].x ) <= DBL_EPSILON * PP_DEDUPE_FUDGE_FACTOR )
+                && ( fabs( poly->p[i].y - poly->p[j].y ) <= DBL_EPSILON * PP_DEDUPE_FUDGE_FACTOR )
+              )
+            {
+                skiplist[j] = true;
+            }
         }
-        else
+
+        if( !skiplist[i]  )
         {
             temp_poly->p[k].x = poly->p[i].x;
             temp_poly->p[k].y = poly->p[i].y;
@@ -519,6 +535,8 @@ POLYGON * remove_duplicate_and_colinear_points( POLYGON * poly, bool free_input 
         }
     }
 
+    pfree( skiplist );
+    final_size      = k;
     temp_poly->npts = final_size;
 
     // Scan for colinear points
