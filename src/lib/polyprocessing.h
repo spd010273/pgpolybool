@@ -19,10 +19,10 @@
 #include "utils/array.h"
 #include "catalog/pg_type.h"
 #include "fmgr.h"
-
 #include "util.h"
 
 #define ZOOM_RATE 1.04
+#define PP_DEDUPE_FUDGE_FACTOR 4096 // Additional multiplicand for removing points that are stacked ontop of each other
 
 extern POLYGON ** poly_preprocessing_array(
     ArrayType *,
