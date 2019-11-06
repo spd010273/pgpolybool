@@ -3,5 +3,6 @@
 *.swp
 *.swo
 *.bc
+test/test_harness
 src/attic/*
 sql/pgpolybool--*.sql
