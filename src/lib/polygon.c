@@ -1160,7 +1160,7 @@ void _dump_polygon( struct polygon * p )
     return;
 }
 
-void _dump_sweep_event_dlpq_wrapper( void * event )
+void _dump_sweep_event_rbtree_wrapper( void * event )
 {
     _dump_sweep_event( ( struct sweep_event * ) event );
     return;
@@ -1175,7 +1175,7 @@ void _dump_sweep_event( struct sweep_event * e )
     }
 
     elog(
-        DEBUG1,"p (%f, %f) o ( %f, %f ) L %s, I %s, I/O %s ET: %s PT: %s",
+        DEBUG1,"p(%f,%f) o(%f,%f) L/R %s, Inside %s, In/Ou %s ET: %s PT: %s",
         e->p->x,
         e->p->y,
         e->other->p->x,
@@ -1225,6 +1225,11 @@ void _dump_se_set( struct sweep_event *** ev_set, unsigned int ev_index )
 }
 #endif // DEBUG
 
+bool sweep_event_equal_wrapper( void * e0, void * e1 )
+{
+    return sweep_event_equal( ( struct sweep_event * ) e0, ( struct sweep_event * ) e1 );
+}
+
 bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
 {
     if( e0 == NULL || e1 == NULL )
@@ -1268,6 +1273,11 @@ bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
     }
 
     if( e0->edge_type != e1->edge_type )
+    {
+        return false;
+    }
+
+    if( e0->polygon_type != e1->polygon_type )
     {
         return false;
     }
