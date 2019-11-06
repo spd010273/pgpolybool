@@ -33,7 +33,9 @@ struct rbtree_node {
     bool red;
     struct rbtree_node * left;
     struct rbtree_node * right;
+#ifdef RBTREE_TRACK_PARENT
     struct rbtree_node * parent;
+#endif // RBTREE_TRACK_PARENT
     struct rbtree_node * next;    /* for iterator stack */
     unsigned int subcount;
 };
@@ -72,28 +74,9 @@ struct rbtree_node * rbtree_iter_next( struct rbtree * );
 void rbtree_iter_reset( struct rbtree * );
 void rbtree_delete_min( struct rbtree * );
 
-/*
-void _delete_tree( struct rbtree_node * );
-struct rbtree_node * _insert(
-    struct rbtree *,
-    struct rbtree_node *,
-    struct rbtree_node *,
-    void *
-);
-void _traverse_tree( struct rbtree_node *, void (*)(void *) );
-struct rbtree_node * _delete( struct rbtree *, struct rbtree_node *, void * );
-unsigned int _count_nodes( struct rbtree_node * );
-void color_flip( struct rbtree_node * );
-struct rbtree_node * rotate_left( struct rbtree_node * );
-struct rbtree_node * rotate_right( struct rbtree_node * );
+#ifdef RBTREE_TEST
 struct rbtree_node * find_min( struct rbtree_node * );
-struct rbtree_node * del_min( struct rbtree *, struct rbtree_node * );
-struct rbtree_node * find_max( struct rbtree_node * );
-struct rbtree_node * del_max( struct rbtree *, struct rbtree_node * );
-struct rbtree_node * move_red_left( struct rbtree_node * );
-struct rbtree_node * move_red_right( struct rbtree_node * );
-struct rbtree_node * fix_up( struct rbtree_node * );
-*/
+#endif // RBTREE_TEST
 #ifdef RBTREE_DEBUG
 void rbtree_setup_debug( struct rbtree *, void (*)( void * ) );
 void rbtree_setup_pretty_print( struct rbtree *, char *(*)(void *) );

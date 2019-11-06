@@ -1,10 +1,13 @@
 #include "rbtree.h"
 
+// Non-interface functions, used internally
 static void _delete_tree( struct rbtree_node * );
 static struct rbtree_node * _insert(
     struct rbtree *,
     struct rbtree_node *,
+#ifdef RBTREE_TRACK_PARENT
     struct rbtree_node *,
+#endif // RBTREE_TRACK_PARENT
     void *
 );
 static void _traverse_tree( struct rbtree_node *, void (*)(void *) );
@@ -13,7 +16,9 @@ static inline unsigned int _count_nodes( struct rbtree_node * );
 static inline void color_flip( struct rbtree_node * );
 static inline struct rbtree_node * rotate_left( struct rbtree_node * );
 static inline struct rbtree_node * rotate_right( struct rbtree_node * );
+#ifndef RBTREE_TEST
 static inline struct rbtree_node * find_min( struct rbtree_node * );
+#endif // RBTREE_TEST
 static struct rbtree_node * del_min( struct rbtree *, struct rbtree_node * );
 //static struct rbtree_node * find_max( struct rbtree_node * );
 //static struct rbtree_node * del_max( struct rbtree *, struct rbtree_node * );
@@ -44,7 +49,9 @@ struct rbtree_node * new_rbtree_node( void * data )
     node->data     = data;
     node->left     = NULL;
     node->right    = NULL;
+#ifdef RBTREE_TRACK_PARENT
     node->parent   = NULL;
+#endif // RBTREE_TRACK_PARENT
     node->subcount = 1;
     return node;
 }
@@ -104,7 +111,14 @@ void rbtree_insert( struct rbtree * rb_tree, void * data )
         return;
     }
 
-    rb_tree->root      = _insert( rb_tree, rb_tree->root, NULL, data );
+    rb_tree->root = _insert(
+        rb_tree,
+        rb_tree->root,
+#ifdef RBTREE_TRACK_PARENT
+        NULL,
+#endif // RBTREE_TRACK_PARENT
+        data
+    );
     rb_tree->root->red = false;
     rb_tree->size++;
     return;
@@ -342,7 +356,9 @@ static inline unsigned int _count_nodes( struct rbtree_node * node )
 static struct rbtree_node * _insert(
     struct rbtree *      rb_tree,
     struct rbtree_node * tree,
+#ifdef RBTREE_TRACK_PARENT
     struct rbtree_node * last,
+#endif //RBTREE_TRACK_PARENT
     void *               data
 )
 {
@@ -352,10 +368,12 @@ static struct rbtree_node * _insert(
     {
         node = new_rbtree_node( data );
 
+#ifdef RBTREE_TRACK_PARENT
         if( last != NULL )
         {
             node->parent = last;
         }
+#endif // RBTREE_TRACK_PARENT
 
         return node;
     }
@@ -363,7 +381,14 @@ static struct rbtree_node * _insert(
     if( rb_tree->compare( data, tree->data ) )
     {
         tree->subcount++;
-        tree->left = _insert( rb_tree, tree->left, tree, data );
+        tree->left = _insert(
+            rb_tree,
+            tree->left,
+#ifdef RBTREE_TRACK_PARENT
+            tree,
+#endif // RBTREE_TRACK_PARENT
+            data
+        );
     }
     else
     {
@@ -376,13 +401,22 @@ static struct rbtree_node * _insert(
         }
         
         tree->subcount++;
-        tree->right = _insert( rb_tree, tree->right, tree, data );
+        tree->right = _insert(
+            rb_tree,
+            tree->right,
+#ifdef RBTREE_TRACK_PARENT
+            tree,
+#endif // RBTREE_TRACK_PARENT
+            data
+        );
     }
 
+#ifdef RBTREE_TRACK_PARENT
     if( last != NULL )
     {
         tree->parent = last;
     }
+#endif // RBTREE_TRACK_PARENT
 
     if( is_red( tree->right ) )
     {
@@ -501,11 +535,18 @@ static void _traverse_tree(
 
     _traverse_tree( node->left, f );
 #ifdef RBTREE_DEBUG
+#ifdef RBTREE_TRACK_PARENT
+#define RBTREE_NODE_OUT_STR "Node: %p, L %p, P %p, R %p, dat %p, SC %u"
+#else
+#define RBTREE_NODE_OUT_STR "Node: %p, L %p, R %p, dat %p, SC %u"
+#endif
     _RBTREE_LOG(
-        "Node: %p L %p, P %p, R %p dat %p SC %u",
+        RBTREE_NODE_OUT_STR,
         node,
         node->left,
+#ifdef RBTREE_TRACK_PARENT
         node->parent,
+#endif // RBTREE_TRACK_PARENT
         node->right,
         node->data,
         node->subcount
@@ -536,14 +577,18 @@ static inline void color_flip( struct rbtree_node * tree )
 static inline struct rbtree_node * rotate_left( struct rbtree_node * a )
 {
     struct rbtree_node * b = NULL;
+#ifdef RBTREE_TRACK_PARENT
     struct rbtree_node * c = NULL; //parent
 
     c           = a->parent;
+#endif // RBTREE_TRACK_PARENT
     b           = a->right;
     a->right    = b->left;
     b->left     = a;
+#ifdef RBTREE_TRACK_PARENT
     a->parent   = b;
     b->parent   = c;
+#endif // RBTREE_TRACK_PARENT
     b->red      = a->red;
     a->red      = true;
     a->subcount = 1
@@ -553,11 +598,12 @@ static inline struct rbtree_node * rotate_left( struct rbtree_node * a )
                 + a->subcount
                 + ( b->right == NULL ? 0 : b->right->subcount );
 
+#ifdef RBTREE_TRACK_PARENT
     if( a->right != NULL )
     {
         a->right->parent = a;
     }
-
+#endif // RBTREE_TRACK_PARENT
     return b;
 }
 
@@ -572,14 +618,18 @@ static inline struct rbtree_node * rotate_left( struct rbtree_node * a )
 static inline struct rbtree_node * rotate_right( struct rbtree_node * a )
 {
     struct rbtree_node * b = NULL;
+#ifdef RBTREE_TRACK_PARENT
     struct rbtree_node * c = NULL; // parent
 
     c           = a->parent;
+#endif // RBTREE_TRACK_PARENT
     b           = a->left;
     a->left     = b->right;
     b->right    = a;
+#ifdef RBTREE_TRACK_PARENT
     b->parent   = c;
     a->parent   = b;
+#endif // RBTREE_TRACK_PARENT
     b->red      = a->red;
     a->red      = true;
     a->subcount = 1
@@ -589,15 +639,19 @@ static inline struct rbtree_node * rotate_right( struct rbtree_node * a )
                 + a->subcount
                 + ( b->left  == NULL ? 0 : b->left->subcount );
 
+#ifdef RBTREE_TRACK_PARENT
     if( a->left != NULL )
     {
         a->left->parent = a;
     }
-
+#endif // RBTREE_TRACK_PARENT
     return b;
 }
 
-static inline struct rbtree_node * find_min( struct rbtree_node * tree )
+#ifndef RBTREE_TEST
+static inline
+#endif // RBTREE_TEST
+struct rbtree_node * find_min( struct rbtree_node * tree )
 {
     if( tree == NULL )
     {
@@ -660,11 +714,12 @@ static struct rbtree_node * del_max(
 {
     if( tree->right == NULL )
     {
+#ifdef RBTREE_TRACK_PARENT
         if( tree->parent != NULL )
         {
             tree->parent->right = NULL;
         }
-
+#endif // RBTREE_TRACK_PARENT
         rb_tree->size--;
         _RBTREE_FREE( tree );
         return NULL;
