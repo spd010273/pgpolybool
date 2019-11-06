@@ -75,9 +75,10 @@ extern struct sweep_event * new_sweep_event( void );
 extern void free_sweep_event( struct sweep_event * );
 #ifdef DEBUG
 extern void _dump_sweep_event( struct sweep_event * );
-extern void _dump_sweep_event_dlpq_wrapper( void * );
+extern void _dump_sweep_event_rbtree_wrapper( void * );
 #endif // DEBUG
 extern bool sweep_event_equal( struct sweep_event *, struct sweep_event * );
+extern bool sweep_event_equal_wrapper( void *, void * );
 
 // Set and Buffer maintenance functions
 extern struct sweep_event ** _manage_ev_buffer(
