@@ -34,7 +34,7 @@ struct rbtree * new_rbtree(
 {
     struct rbtree * rb_tree = NULL;
 
-    if( compare == NULL || equal == NULL )
+    if( compare == NULL )
     {
         return NULL;
     }
@@ -120,17 +120,21 @@ struct rbtree_node * _insert(
         return node;
     }
 
-    if( rb_tree->equal( data, tree->data ) )
-    {
-        return tree;
-    }
-    else if( rb_tree->compare( data, tree->data ) )
+    if( rb_tree->compare( data, tree->data ) )
     {
         tree->subcount++;
         tree->left = _insert( rb_tree, tree->left, tree, data );
     }
     else
     {
+        if(
+               data == tree->data
+            || ( rb_tree->equal != NULL && rb_tree->equal( data, tree->data ) )
+          )
+        {
+            return tree;
+        }
+        
         tree->subcount++;
         tree->right = _insert( rb_tree, tree->right, tree, data );
     }
@@ -171,64 +175,45 @@ void rbtree_insert( struct rbtree * rb_tree, void * data )
     return;
 }
 
-struct rbtree_node * _nth_node(
-    struct rbtree_node * node,
-    unsigned int         n
-)
+void * rbtree_peek_position( struct rbtree * rb_tree, unsigned int n )
 {
-    struct rbtree_node * temp         = NULL;
+    struct rbtree_node * nth_node     = NULL;
     unsigned int         k            = 0;
     unsigned int         left_subtree = 0;
 
-    temp = node;
-    k    = n;
-
-    while( temp != NULL )
+    if(
+            n >= rb_tree->size
+         || rb_tree->root == NULL
+         || n >= rb_tree->root->subcount
+      )
     {
-        left_subtree = temp->left == NULL ? 0 : temp->left->subcount;
+        return NULL;
+    }
+    
+    nth_node = rb_tree->root;
+    k = n;
+
+    while( nth_node != NULL )
+    {
+        left_subtree = nth_node->left == NULL ? 0 : nth_node->left->subcount;
 
         if( left_subtree == k )
         {
-            return temp;
-        }
-        else if( left_subtree < k )
-        {
-            k    = k - temp->left->subcount - 1;
-            temp = temp->right;
-
+            return nth_node->data;
         }
         else
         {
-            temp = temp->left;
+            if( left_subtree < k )
+            {
+                k        = k - nth_node->left->subcount - 1;
+                nth_node = nth_node->right;
+            }
+            else
+            {
+                nth_node = nth_node->left;
+            }
         }
     }
-
-    return NULL;
-}
-
-struct rbtree_node * rbtree_nth_node( struct rbtree * rb_tree, unsigned int n )
-{
-    struct rbtree_node * node = NULL;
-
-    if( rb_tree->root == NULL || n >= rb_tree->root->subcount )
-    {
-        return NULL;
-    }
-
-    node = _nth_node( rb_tree->root, n );
-    return node;
-}
-
-void * rbtree_peek_position( struct rbtree * rb_tree, unsigned int n )
-{
-    struct rbtree_node * nth_node = NULL;
-
-    if( n >= rb_tree->size )
-    {
-        return NULL;
-    }
-
-    nth_node = rbtree_nth_node( rb_tree, n );
 
     if( nth_node != NULL )
     {
@@ -253,7 +238,10 @@ unsigned int rbtree_get_position( struct rbtree * rb_tree, void * data )
         }
         else
         {
-            if( rb_tree->equal( data, node->data ) )
+            if( 
+                   data == node->data
+                || ( rb_tree->equal != NULL && rb_tree->equal( data, node->data ) )
+              )
             {
                 if( node->left != NULL )
                 {
@@ -292,7 +280,10 @@ struct rbtree_node * _delete(
         return NULL;
     }
 
-    equal = rb_tree->equal( data, tree->data );
+    equal = (
+                data == tree->data
+             || ( rb_tree->equal != NULL && rb_tree->equal( data, tree->data ) )
+            );
 
     if( rb_tree->compare( data, tree->data ) )
     {
@@ -328,7 +319,10 @@ struct rbtree_node * _delete(
             tree = move_red_left( tree );
         }
 
-        if( rb_tree->equal( data, tree->data ) )
+        if(
+                data == tree->data
+             || ( rb_tree->equal != NULL && rb_tree->equal( data, tree->data ) )
+          )
         {
             r_min = find_min( tree->right );
             tree->data = r_min->data;
@@ -381,7 +375,10 @@ struct rbtree_node * rbtree_search( struct rbtree * rb_tree, void * data )
         {
             node = node->right;
         }
-        else if( rb_tree->equal( data, node->data ) )
+        else if(
+                    data == node->data
+                 || ( rb_tree->equal != NULL && rb_tree->equal( data, node->data ) )
+               )
         {
             return node;
         }
