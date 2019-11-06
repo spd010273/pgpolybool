@@ -1247,37 +1247,15 @@ bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
         return true;
     }
 
-    if( !points_equal( e0->p, e1->p ) )
-    {
-        return false;
-    }
-
-    if( !points_equal( e0->other->p, e1->other->p ) )
-    {
-        return false;
-    }
-
-    if( e0->left != e1->left || e0->inside != e1->inside )
-    {
-        return false;
-    }
-
-    if( e0->polygon != e1->polygon )
-    {
-        return false;
-    }
-
-    if( e0->in_out != e1->in_out )
-    {
-        return false;
-    }
-
-    if( e0->edge_type != e1->edge_type )
-    {
-        return false;
-    }
-
-    if( e0->polygon_type != e1->polygon_type )
+    if(
+          e0->left != e1->left
+       || e0->inside != e1->inside
+       || e0->in_out != e1->in_out
+       || e0->edge_type != e1->edge_type
+       || e0->polygon_type != e1->polygon_type
+       || !points_equal( e0->p, e1->p )
+       || !points_equal( e0->other->p, e1->other->p )
+      )
     {
         return false;
     }

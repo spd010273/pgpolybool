@@ -437,8 +437,9 @@ struct polygon * compute(
     }
 
     rb_tree = new_rbtree(
-        &sweep_event_sl_comp_wrapper_inverted, // Previously was not inverted
-        &sweep_event_equal_wrapper
+        &sweep_event_sl_comp_wrapper_inverted,
+        NULL
+//        &sweep_event_equal_wrapper
     );
 #ifdef DEBUG
     rbtree_setup_debug( rb_tree, &_dump_sweep_event_rbtree_wrapper );
@@ -579,8 +580,9 @@ struct polygon * compute(
     }
 
     sl_rb_tree = new_rbtree(
-        &sweep_event_sl_segment_comp_wrapper, // was inverted
-        &sweep_event_equal_wrapper
+        &sweep_event_sl_segment_comp_wrapper,
+        NULL
+//        &sweep_event_equal_wrapper
     );
 
 #ifdef DEBUG

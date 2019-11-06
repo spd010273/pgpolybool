@@ -68,8 +68,6 @@ struct rbtree_node * _insert(
     void *
 );
 void rbtree_insert( struct rbtree *, void * );
-struct rbtree_node * _nth_node( struct rbtree_node *, unsigned int );
-struct rbtree_node * rbtree_nth_node( struct rbtree *, unsigned int );
 void * rbtree_peek_position( struct rbtree *, unsigned int );
 unsigned int rbtree_get_position( struct rbtree *, void * );
 struct rbtree_node * _delete( struct rbtree *, struct rbtree_node *, void * );
