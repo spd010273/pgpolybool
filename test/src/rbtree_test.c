@@ -81,7 +81,7 @@ bool __check_tree_health( struct rbtree_node * tree )
     {
         result = true;
     }
-
+#ifdef RBTREE_TRACK_PARENT
     if( tree->parent != NULL )
     {
         if( tree->parent->left != tree && tree->parent->right != tree )
@@ -90,7 +90,7 @@ bool __check_tree_health( struct rbtree_node * tree )
             result = false;
         }
     }
-
+#endif // RBTREE_TRACK_PARENT
     if( sc_check != tree->subcount )
     {
         printf( "Expected subcount %u, got %u at node %p\n", sc_check, tree->subcount, tree );
@@ -107,6 +107,7 @@ void __rbtree_test( void )
     struct rbtree *        rb_tree    = NULL;
     unsigned int **        test_data  = NULL;
     void *                 data       = NULL;
+    void *                 data_2     = NULL;
     unsigned int           i          = 0;
     unsigned int           k          = 0;
     unsigned int           j          = 0;
@@ -235,13 +236,12 @@ void __rbtree_test( void )
 
     for( i = TEST_NODE_COUNT - 1; i > 0; i-- )
     {
-        node = rbtree_nth_node( rb_tree, i );
-        if( node == NULL || node->data == NULL )
+        data = rbtree_peek_position( rb_tree, i );
+        if( data == NULL )
         {
             _ERROR( "\nRBTREE nth node failed with NULL result\n" );
         }
 
-        data = node->data;
         rbtree_delete( rb_tree, data );
 
         if( i > 0 )
@@ -251,18 +251,17 @@ void __rbtree_test( void )
                 _ERROR( "\nRBTREE health check failed following node deletion\n" );
             }
 
-            node = rbtree_nth_node( rb_tree, i );
+            data = rbtree_peek_position( rb_tree, i );
 
-            if( node != NULL )
+            if( data != NULL )
             {
                 _ERROR( "\nRBTREE returned non NULL result for out of bounds access\n" );
             }
 
-            node = rbtree_nth_node( rb_tree, i - 1 );
+            data_2 = rbtree_peek_position( rb_tree, i - 1 );
 
-            if( node != NULL &&  node->data == data )
+            if( data_2 != NULL &&  data_2 == data )
             {
-                printf( "Got %p, data %p\n", node, data );
                 _ERROR( "\nRBTree returned incorrect data following deletion\n" );
             }
         }
@@ -322,14 +321,14 @@ void __rbtree_test( void )
             continue;
         }
 
-        node = rbtree_nth_node( rb_tree, j );
+        data = rbtree_peek_position( rb_tree, j );
         k    = rb_tree->size;
-        if( node == NULL )
+        if( data == NULL )
         {
             _ERROR( "\nRBTREE random access returned NULL\n" );
         }
 
-        rbtree_delete( rb_tree, node->data );
+        rbtree_delete( rb_tree, data );
 
         if( k - 1 != rb_tree->size )
         {
