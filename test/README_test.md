@@ -24,3 +24,5 @@ SQL function test cases are stored in JSON files with the following structure:
 The test case is a valid SQL state that is expected to return TRUE if the test case passes. If a test case fails, the user will be notified which test case has failed.
 
 New test cases should be expressed in a way that does not rely on other functions being operational (each test should be independent and assume that all other functions do not pass tests)
+
+C tests should be written as separate source in test/src/ and included in test.c / test.h.
