@@ -171,8 +171,8 @@ void possible_intersection(
 
     num_intersections = find_intersection( seg0, seg1, isect_p0, isect_p1 );
 
-    elog( DEBUG1, "Comping e0 (%p) and e1 (%p)", e0, e1 );
 #ifdef DEBUG
+    elog( DEBUG1, "Comping e0 (%p) and e1 (%p)", e0, e1 );
     elog(
         DEBUG1,
         "Locating intersections between p (%f,%f) o (%f,%f) "\
@@ -939,13 +939,14 @@ struct polygon * compute(
         }
         else
         {
-#ifdef DEBUG
-            elog( DEBUG1, "colinear & edge logic (right handed E)" );
-#endif // DEBUG
             colinear_event = rbtree_get_position( sl_rb_tree, event->other );
             previous_event = colinear_event;
             next_event     = colinear_event;
+#ifdef DEBUG
+            elog( DEBUG1, "colinear & edge logic (right handed E)" );
             elog( DEBUG1, "RS: P: %d, N: %d ep %d S: %d", previous_event, next_event, event_position, sl_rb_tree->size );
+#endif // DEBUG
+
             if( next_event >= sl_rb_tree->size )
             {
                 next_event = sl_rb_tree->size;
