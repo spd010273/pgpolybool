@@ -580,7 +580,7 @@ struct polygon * compute(
     }
 
     sl_rb_tree = new_rbtree(
-        &sweep_event_sl_segment_comp_wrapper,
+        &sweep_event_sl_segment_comp,
         NULL
 //        &sweep_event_equal_wrapper
     );
