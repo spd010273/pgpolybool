@@ -313,7 +313,7 @@ ERROR
         }
 
         my $test_end = [gettimeofday()];
-        my $delta    = ( tv_interval( $test_start, $test_end ) * 1000 );
+        my $delta    = ( tv_interval( $test_start, $test_end ) );
 
         if( $OUTPUT_UNIT eq 'ms' )
         {
