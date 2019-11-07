@@ -347,141 +347,61 @@ bool sweep_event_ev_comp(
     return sweep_event_below( (e1), (e2->other->p) );
 }
 
-bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
+bool sweep_event_sl_segment_comp( void * e0, void * e1 )
 {
-    return !sweep_event_sl_segment_comp(
-        ( struct sweep_event * ) e0,
-        ( struct sweep_event * ) e1
-    );
-}
-
-bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
-{
-    return sweep_event_sl_segment_comp(
-        ( struct sweep_event * ) e0,
-        ( struct sweep_event * ) e1
-    );
-}
-
-bool sweep_event_sl_segment_comp(
-    struct sweep_event * e0,
-    struct sweep_event * e1
-)
-{
-    bool result = false;
-
     if( e0 == e1 )
     {
-#ifdef DEBUG
-        elog(
-            DEBUG1,
-            "1st case: (%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
-            e0->p->x, e0->p->y,
-            e0->other->p->x, e0->other->p->y,
-            e1->p->x, e1->p->y,
-            e1->other->p->x, e1->other->p->y,
-            result?"T":"F"
-        );
-#endif // DEBUG
         return false;
     }
 
     if(
-          signed_area_three( e0->p, e0->other->p, e1->p ) != 0
-       || signed_area_three( e0->p, e0->other->p, e1->other->p ) != 0
+          signed_area_three(
+              ( ( struct sweep_event * ) e0 )->p,
+              ( ( struct sweep_event * ) e0 )->other->p,
+              ( ( struct sweep_event * ) e1 )->p
+          ) != 0.0
+       || signed_area_three(
+              ( ( struct sweep_event * ) e0 )->p,
+              ( ( struct sweep_event * ) e0 )->other->p,
+              ( ( struct sweep_event * ) e1 )->other->p
+          ) != 0.0
       )
     {
-#ifdef DEBUG
-        elog(
-            DEBUG1,
-            "2nd cond (%f,%f)(%f,%f) SA (%f,%f)(%f,%f)",
-            e0->p->x, e0->p->y,
-            e0->other->p->x, e0->other->p->y,
-            e1->p->x, e1->p->y,
-            e1->other->p->x, e1->other->p->y
-        );
-#endif // DEBUG
-        if( points_equal( e0->p, e1->p ) )
+        if(
+            points_equal(
+                ( ( struct sweep_event * ) e0 )->p,
+                ( ( struct sweep_event * ) e1 )->p
+            )
+          )
         {
-            result = sweep_event_below( (e0), (e1->other->p) );
-#ifdef DEBUG
-            elog(
-                DEBUG1,
-                "2.1 comp: (%f,%f)(%f,%f) ==  (%f,%f)(%f,%f) result: %s",
-                e0->p->x, e0->p->y,
-                e0->other->p->x, e0->other->p->y,
-                e1->p->x, e1->p->y,
-                e1->other->p->x, e1->other->p->y,
-                result?"T":"F"
+            return sweep_event_below(
+                ( ( struct sweep_event * ) e0 ),
+                ( ( struct sweep_event * ) e1 )->other->p
             );
-#endif // DEBUG
-            return result;
+        }
+        else if(
+                  sweep_event_sl_comp(
+                      ( ( struct sweep_event * ) e0 ),
+                      ( ( struct sweep_event * ) e1 )
+                  )
+               )
+        {
+            return sweep_event_above(
+                ( ( struct sweep_event * ) e1 ),
+                ( ( struct sweep_event * ) e0 )->p
+            );
         }
 
-        if( sweep_event_sl_comp( e0, e1 ) )
-        {
-            result = sweep_event_above( e1, e0->p );
-#ifdef DEBUG
-            elog(
-                DEBUG1,
-                "2.2 comp: (%f,%f)(%f,%f) == (%f,%f)(%f,%f) result: %s",
-                e0->p->x, e0->p->y,
-                e0->other->p->x, e0->other->p->y,
-                e1->p->x, e1->p->y,
-                e1->other->p->x, e1->other->p->y,
-                result?"T":"F"
-            );
-#endif // DEBUG
-            return result;
-        }
-
-        result = sweep_event_below( (e0), (e1->p) );
-#ifdef DEBUG
-        elog(
-            DEBUG1,
-            "2nd cond catchall: (%f,%f)(%f,%f) bl (%f,%f)(%f,%f) result: %s",
-            e0->p->x, e0->p->y,
-            e0->other->p->x, e0->other->p->y,
-            e1->p->x, e1->p->y,
-            e1->other->p->x, e1->other->p->y,
-            result?"T":"F"
+        return sweep_event_below(
+            ( ( struct sweep_event * ) e0 ),
+            ( ( struct sweep_event * ) e1 )->p
         );
-#endif // DEBUG
-        return result;
     }
 
-    if( points_equal( e0->p, e1->p ) )
-    {
-        result = sweep_event_sl_comp( e0, e1 );
-#ifdef DEBUG
-        elog(
-            DEBUG1,
-            "final point comp in segments comp: "\
-            "(%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
-            e0->p->x, e0->p->y,
-            e0->other->p->x, e0->other->p->y,
-            e1->p->x, e1->p->y,
-            e1->other->p->x, e1->other->p->y,
-            result?"T":"F"
-        );
-#endif // DEBUG
-        return result;
-    }
-
-    result = sweep_event_sl_comp( e0, e1 );
-#ifdef DEBUG
-    elog(
-        DEBUG1,
-        "catchall in segments comp: "\
-        "(%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
-        e0->p->x, e0->p->y,
-        e0->other->p->x, e0->other->p->y,
-        e1->p->x, e1->p->y,
-        e1->other->p->x, e1->other->p->y,
-        result?"T":"F"
+    return sweep_event_sl_comp(
+        ( ( struct sweep_event * ) e0 ),
+        ( ( struct sweep_event * ) e1 )
     );
-#endif // DEBUG
-    return result;
 }
 
 bool sweep_event_ev_segment_comp(
