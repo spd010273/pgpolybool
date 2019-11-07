@@ -1,7 +1,26 @@
+/*------------------------------------------------------------------------------
+ * rbtree.c
+ *     Source file listing interface and private functions for
+ *     Red-Black Binary Search Tree
+ *     This is a basic RB-BST with augmentations for maintaining node counts,
+ *     node parents, and utilizes a slab allocator.
+ *
+ * Copyright (c) 2019, Nead Werx, Inc.
+ * Copyright (c) 2019, Chris Autry
+ *
+ * IDENTIFICATION
+ *      rbtree.c
+ *
+ *------------------------------------------------------------------------------
+ */
+
 #include "rbtree.h"
 
 // Non-interface functions, used internally
+#ifndef RBTREE_USE_SLAB_ALLOC
 static void _delete_tree( struct rbtree_node * );
+#endif // RBTREE_USE_SLAB_ALLOC
+
 static struct rbtree_node * _insert(
     struct rbtree *,
     struct rbtree_node *,
@@ -26,22 +45,162 @@ static inline struct rbtree_node * move_red_left( struct rbtree_node * );
 static inline struct rbtree_node * move_red_right( struct rbtree_node * );
 static inline struct rbtree_node * fix_up( struct rbtree_node * );
 
-
-struct rbtree_node * new_rbtree_node( void * data )
+void rbtree_free_node(
+#ifdef RBTREE_USE_SLAB_ALLOC
+    struct rbtree * rb_tree,
+#endif // RBTREE_USE_SLAB_ALLOC
+    struct rbtree_node * node
+)
 {
-    struct rbtree_node * node = NULL;
+#ifdef RBTREE_USE_SLAB_ALLOC
+    struct rbtree_free_list * free_node = NULL;
 
-    if( data == NULL )
+    if( rb_tree->free_head == NULL )
     {
-        return NULL;
+        free_node = ( struct rbtree_free_list * ) _RBTREE_ALLOC(
+            sizeof( struct rbtree_free_list )
+        );
+
+        if( free_node == NULL )
+        {
+            return;
+        }
+
+        free_node->i = node->pool_i;
+        free_node->j = node->pool_j;
+        free_node->next = NULL;
+        rb_tree->free_head = free_node;
+    }
+    else
+    {
+        free_node = rb_tree->free_head;
+
+        while( free_node->next != NULL )
+        {
+            free_node = free_node->next;
+        }
+
+        free_node->next = ( struct rbtree_free_list * ) _RBTREE_ALLOC(
+            sizeof( struct rbtree_free_list )
+        );
+
+        free_node = free_node->next;
+
+        if( free_node == NULL )
+        {
+            return;
+        }
+
+        free_node->i = node->pool_i;
+        free_node->j = node->pool_j;
+        free_node->next = NULL;
     }
 
+    rb_tree->_allocated--;
+    node->data     = NULL;
+    node->red      = false;
+    node->left     = NULL;
+    node->right    = NULL;
+#ifdef RBTREE_TRACK_PARENT
+    node->parent   = NULL;
+#endif // RBTREE_TRACK_PARENT
+    node->next     = NULL;
+    node->subcount = 0;
+    node->pool_i   = 0;
+    node->pool_j   = 0;
+#else
+    _RBTREE_FREE( node );
+#endif // RBTREE_USE_SLAB_ALLOC
+    return;
+}
+
+struct rbtree_node * new_rbtree_node(
+#ifdef RBTREE_USE_SLAB_ALLOC
+    struct rbtree * rb_tree,
+#endif // RBTREE_USE_SLAB_ALLOC
+    void * data
+)
+{
+    struct rbtree_node *      node      = NULL;
+#ifdef RBTREE_USE_SLAB_ALLOC
+    struct rbtree_free_list * free_node = NULL;
+    unsigned int              i         = 0;
+    unsigned int              j         = 0;
+
+    if( rb_tree->_allocated < rb_tree->_total_size )
+    {
+        // There is free space in the pool
+        if(
+                rb_tree->pool_ind_j < rb_tree->pool_size
+             && rb_tree->pool_ind_i < RBTREE_CHUNK_SIZE
+          )
+        {
+            // We can grab an address pointed to free_i / free_j
+            i = rb_tree->pool_ind_i;
+            j = rb_tree->pool_ind_j;
+            rb_tree->pool_ind_i++;
+
+            if( rb_tree->pool_ind_i == RBTREE_CHUNK_SIZE )
+            {
+                rb_tree->pool_ind_i = 0;
+                rb_tree->pool_ind_j++;
+            }
+        }
+        else
+        {
+            // We'll need to scavenge memory
+            free_node          = rb_tree->free_head;
+            rb_tree->free_head = free_node->next;
+            i                  = free_node->i;
+            j                  = free_node->j;
+            _RBTREE_FREE( free_node );
+        }
+    }
+    else
+    {
+        rb_tree->pool = ( struct rbtree_node ** ) _RBTREE_REALLOC(
+            rb_tree->pool,
+            sizeof( struct rbtree_node * )
+          * ( rb_tree->pool_size + 1 )
+        );
+
+        if( rb_tree->pool == NULL )
+        {
+            return NULL;
+        }
+
+        rb_tree->pool[rb_tree->pool_ind_j] = _RBTREE_ALLOC(
+            sizeof( struct rbtree_node )
+          * RBTREE_CHUNK_SIZE
+        );
+
+        rb_tree->pool_ind_i = 1;
+        rb_tree->_total_size += RBTREE_CHUNK_SIZE;
+        rb_tree->pool_size++;
+        i = 0;
+        j = rb_tree->pool_ind_j;
+    }
+
+    rb_tree->_allocated++;
+    node = &(rb_tree->pool[j][i]);
+    node->pool_i = i;
+    node->pool_j = j;
+#else
     node = ( struct rbtree_node * ) _RBTREE_ALLOC(
         sizeof( struct rbtree_node )
     );
-
-    if( node == NULL )
+#endif // RBTREE_USE_SLAB_ALLOC
+    if( node == NULL || data == NULL )
     {
+        if( node != NULL )
+        {
+            rbtree_free_node(
+#ifdef RBTREE_USE_SLAB_ALLOC
+                rb_tree,
+#endif // RBTREE_USE_SLAB_ALLOC
+                node
+            );
+        }
         return NULL;
     }
 
@@ -58,20 +217,20 @@ struct rbtree_node * new_rbtree_node( void * data )
 
 struct rbtree * new_rbtree(
     bool (*compare)( void *, void * ),
-    bool (*equal)(void *, void * )
+    bool (*equal)( void *, void * )
 )
 {
     struct rbtree * rb_tree = NULL;
 
-    if( compare == NULL )
-    {
-        return NULL;
-    }
-
     rb_tree = ( struct rbtree * ) _RBTREE_ALLOC( sizeof( struct rbtree ) );
 
-    if( rb_tree == NULL )
+    if( rb_tree == NULL || compare == NULL )
     {
+        if( rb_tree != NULL )
+        {
+            _RBTREE_FREE( rb_tree );
+        }
+
         return NULL;
     }
 
@@ -81,6 +240,35 @@ struct rbtree * new_rbtree(
     rb_tree->iter    = NULL;
     rb_tree->size    = 0;
 
+#ifdef RBTREE_USE_SLAB_ALLOC
+    rb_tree->pool = ( struct rbtree_node ** ) _RBTREE_ALLOC(
+        sizeof( struct rbtree_node * )
+    );
+
+    if( rb_tree->pool == NULL )
+    {
+        _RBTREE_FREE( rb_tree );
+        return NULL;
+    }
+
+    rb_tree->pool[0] = ( struct rbtree_node * ) _RBTREE_ALLOC(
+        sizeof( struct rbtree_node )
+      * RBTREE_CHUNK_SIZE
+    );
+
+    if( rb_tree->pool[0] == NULL )
+    {
+        _RBTREE_FREE( rb_tree->pool );
+        _RBTREE_FREE( rb_tree );
+        return NULL;
+    }
+
+    rb_tree->pool_size   = 1;
+    rb_tree->pool_ind_i  = 0;
+    rb_tree->pool_ind_j  = 0;
+    rb_tree->_total_size = RBTREE_CHUNK_SIZE;
+    rb_tree->_allocated  = 0;
+#endif // RBTREE_USE_SLAB_ALLOC
     return rb_tree;
 }
 
@@ -93,7 +281,34 @@ void free_rbtree( struct rbtree * rb_tree )
 
 void rbtree_destroy( struct rbtree * rb_tree )
 {
+#ifdef RBTREE_USE_SLAB_ALLOC
+    unsigned int              i         = 0;
+    struct rbtree_free_list * free_node = NULL;
+    struct rbtree_free_list * last      = NULL;
+
+    for( i = 0; i < rb_tree->pool_size; i++ )
+    {
+        if( rb_tree->pool[i] != NULL )
+        {
+            _RBTREE_FREE( rb_tree->pool[i] );
+        }
+    }
+
+    _RBTREE_FREE( rb_tree->pool );
+
+    free_node = rb_tree->free_head;
+    while( free_node->next != NULL )
+    {
+        last = free_node;
+        free_node = free_node->next;
+        if( last != NULL )
+        {
+            _RBTREE_FREE( last );
+        }
+    }
+#else
     _delete_tree( rb_tree->root );
+#endif // RBTREE_USE_SLAB_ALLOC
     rb_tree->root = NULL;
     return;
 }
@@ -119,6 +334,7 @@ void rbtree_insert( struct rbtree * rb_tree, void * data )
 #endif // RBTREE_TRACK_PARENT
         data
     );
+
     rb_tree->root->red = false;
     rb_tree->size++;
     return;
@@ -138,7 +354,7 @@ void * rbtree_peek_position( struct rbtree * rb_tree, unsigned int n )
     {
         return NULL;
     }
-    
+
     nth_node = rb_tree->root;
     k = n;
 
@@ -187,7 +403,7 @@ unsigned int rbtree_get_position( struct rbtree * rb_tree, void * data )
         }
         else
         {
-            if( 
+            if(
                    data == node->data
                 || ( rb_tree->equal != NULL && rb_tree->equal( data, node->data ) )
               )
@@ -366,7 +582,12 @@ static struct rbtree_node * _insert(
 
     if( tree == NULL )
     {
-        node = new_rbtree_node( data );
+        node = new_rbtree_node(
+#ifdef RBTREE_USE_SLAB_ALLOC
+            rb_tree,
+#endif // RBTREE_USE_SLAB_ALLOC
+            data
+        );
 
 #ifdef RBTREE_TRACK_PARENT
         if( last != NULL )
@@ -399,7 +620,7 @@ static struct rbtree_node * _insert(
         {
             return tree;
         }
-        
+
         tree->subcount++;
         tree->right = _insert(
             rb_tree,
@@ -436,6 +657,7 @@ static struct rbtree_node * _insert(
     return tree;
 }
 
+#ifndef RBTREE_USE_SLAB_ALLOC
 static void _delete_tree( struct rbtree_node * node )
 {
     if( node == NULL )
@@ -449,6 +671,7 @@ static void _delete_tree( struct rbtree_node * node )
     _RBTREE_FREE(node);
     return;
 }
+#endif // RBTREE_USE_SLAB_ALLOC
 
 static struct rbtree_node * _delete(
     struct rbtree *      rb_tree,
@@ -491,7 +714,12 @@ static struct rbtree_node * _delete(
 
         if( equal && ( tree->right == NULL ) )
         {
-            _RBTREE_FREE( tree );
+            rbtree_free_node(
+#ifdef RBTREE_USE_SLAB_ALLOC
+                rb_tree,
+#endif // RBTREE_USE_SLAB_ALLOC
+                tree
+            );
             return NULL;
         }
 
@@ -673,7 +901,12 @@ static inline struct rbtree_node * del_min(
 {
     if( tree->left == NULL )
     {
-        _RBTREE_FREE( tree );
+        rbtree_free_node(
+#ifdef RBTREE_USE_SLAB_ALLOC
+            rb_tree,
+#endif // RBTREE_USE_SLAB_ALLOC
+            tree
+        );
         return NULL;
     }
 
