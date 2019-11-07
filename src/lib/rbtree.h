@@ -33,7 +33,7 @@
 #define _RBTREE_ALLOC(size) calloc(1,size)
 #define _RBTREE_FREE(ptr) free(ptr)
 #define _RBTREE_LOG(msg,args...) rbtree_log(msg,args)
-#define _RBTREE_REALLOC(ptr,size) remalloc(ptr,size)
+#define _RBTREE_REALLOC(ptr,size) realloc(ptr,size)
 #endif
 
 #define is_red(x) ((x != NULL && x->red))
