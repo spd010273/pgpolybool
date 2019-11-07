@@ -282,90 +282,27 @@ struct segment * sweep_event_get_segment( struct sweep_event * se )
     return s;
 }
 
-bool sweep_event_below( struct sweep_event * e, Point * p )
+// God forgive me for minifying these two functions
+inline bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
 {
-    double area = 0.0;
-
-    if( e->left )
-    {
-        area = signed_area_three( e->p, e->other->p, p );
-
-        if( area > 0.0 )
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    area = signed_area_three( e->other->p, e->p, p );
-
-    if( area > 0.0 )
-    {
-        return true;
-    }
-
-    return false;
-}
-
-bool sweep_event_above( struct sweep_event * e, Point * p )
-{
-    return !sweep_event_below( e, p );
-}
-
-bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
-{
-    return !sweep_event_sl_comp(
-        ( struct sweep_event * ) e1,
-        ( struct sweep_event * ) e2
-    );
-}
-
-bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
-{
-    return sweep_event_sl_comp(
-        ( struct sweep_event * ) e1,
-        ( struct sweep_event * ) e2
-    );
+    return points_equal( ( ( struct sweep_event * ) e1 )->p, ( ( struct sweep_event * ) e2 )->p )
+         ? ( ( struct sweep_event * ) e1 )->left == ( ( struct sweep_event * ) e2 )->left
+             ? sweep_event_below( ( ( struct sweep_event * ) e1 ), ( ( struct sweep_event * ) e2 )->other->p )
+             : !( ( struct sweep_event * ) e1 )->left
+         : ( ( struct sweep_event * ) e1 )->p->x != ( ( struct sweep_event * ) e2 )->p->x
+            ? ( ( struct sweep_event * ) e1 )->p->x < ( ( struct sweep_event * ) e2 )->p->x
+            : ( ( struct sweep_event * ) e1 )->p->y < ( ( struct sweep_event * ) e2 )->p->y;
 }
 
 // Used for comparing Status Line Events
-bool sweep_event_sl_comp(
+inline bool sweep_event_sl_comp(
     struct sweep_event * e1,
     struct sweep_event * e2
 )
 {
-    if( e1->p->x > e2->p->x )
-    {
-        return true;
-    }
-
-    if( e2->p->x > e1->p->x )
-    {
-        return false;
-    }
-
-    if( !points_equal( e1->p, e2->p ) )
-    {
-        if( e1->p->y > e2->p->y )
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    if( e1->left != e2->left )
-    {
-        return e1->left;
-    }
-
-    if( sweep_event_above( e1, e2->other->p ) )
-    {
-        return true;
-    }
-
-    return false;
+    return points_equal ( e1->p, e2->p )
+         ? e1->left == e2->left ? sweep_event_above( e1, e2->other->p ) : e1->left
+         : e1->p->x != e2->p->x ? e1->p->x > e2->p->x : e1->p->y > e2->p->y;
 }
 
 bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
@@ -407,7 +344,7 @@ bool sweep_event_ev_comp(
         return !e1->left;
     }
 
-    return sweep_event_below( e1, e2->other->p );
+    return sweep_event_below( (e1), (e2->other->p) );
 }
 
 bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
@@ -466,7 +403,7 @@ bool sweep_event_sl_segment_comp(
 #endif // DEBUG
         if( points_equal( e0->p, e1->p ) )
         {
-            result = sweep_event_below( e0, e1->other->p );
+            result = sweep_event_below( (e0), (e1->other->p) );
 #ifdef DEBUG
             elog(
                 DEBUG1,
@@ -498,7 +435,7 @@ bool sweep_event_sl_segment_comp(
             return result;
         }
 
-        result = sweep_event_below( e0, e1->p );
+        result = sweep_event_below( (e0), (e1->p) );
 #ifdef DEBUG
         elog(
             DEBUG1,
@@ -564,12 +501,12 @@ bool sweep_event_ev_segment_comp(
     {
         if( points_equal( e0->p, e1->p ) )
         {
-            return sweep_event_below( e0, e1->other->p );
+            return sweep_event_below( (e0), (e1->other->p) );
         }
 
         if( sweep_event_ev_comp( e0, e1 ) )
         {
-            return sweep_event_below( e0, e1->p );
+            return sweep_event_below( (e0), (e1->p) );
         }
 
         return sweep_event_above( e1, e0->p );
