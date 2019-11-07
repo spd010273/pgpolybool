@@ -70,12 +70,7 @@ extern bool sweep_event_ev_segment_comp(
     struct sweep_event *
 );
 
-extern bool sweep_event_sl_segment_comp_wrapper_inverted( void *, void * );
-extern bool sweep_event_sl_segment_comp_wrapper( void *, void * );
-extern bool sweep_event_sl_segment_comp(
-    struct sweep_event *,
-    struct sweep_event *
-);
+extern bool sweep_event_sl_segment_comp( void *, void * );
 
 extern struct sweep_event * new_sweep_event( void );
 extern void free_sweep_event( struct sweep_event * );
