@@ -50,36 +50,34 @@ extern void polygon_compute_holes( struct polygon * );
 extern void _dump_polygon( struct polygon * );
 #endif // DEBUG
 
-#define sweep_event_below(e,pt) ((\
-    e->left \
-  ? signed_area_three((e->p),(e->other->p),pt) > 0.0 \
-  : signed_area_three((e->other->p),(e->p),pt) > 0.0 ))
-#define sweep_event_above(e,pt) ((\
-    e->left \
-  ? signed_area_three((e->p),(e->other->p),pt) <= 0.0 \
-  : signed_area_three((e->other->p),(e->p),pt) <= 0.0 ))
-
 // Sweep event functions
 extern struct segment * sweep_event_get_segment( struct sweep_event * );
 extern bool sweep_event_ev_comp( struct sweep_event *, struct sweep_event * );
 extern bool sweep_event_sl_comp( struct sweep_event *, struct sweep_event * );
 extern bool sweep_event_ev_comp_wrapper( void *, void * );
 extern bool sweep_event_sl_comp_wrapper_inverted( void *, void * );
+extern bool sweep_event_sl_comp_wrapper( void *, void * );
+extern bool sweep_event_below( struct sweep_event *, Point * );
+extern bool sweep_event_above( struct sweep_event *, Point * );
 extern bool sweep_event_ev_segment_comp(
     struct sweep_event *,
     struct sweep_event *
 );
 
-extern bool sweep_event_sl_segment_comp( void *, void * );
+extern bool sweep_event_sl_segment_comp_wrapper_inverted( void *, void * );
+extern bool sweep_event_sl_segment_comp_wrapper( void *, void * );
+extern bool sweep_event_sl_segment_comp(
+    struct sweep_event *,
+    struct sweep_event *
+);
 
 extern struct sweep_event * new_sweep_event( void );
 extern void free_sweep_event( struct sweep_event * );
 #ifdef DEBUG
 extern void _dump_sweep_event( struct sweep_event * );
-extern void _dump_sweep_event_rbtree_wrapper( void * );
+extern void _dump_sweep_event_dlpq_wrapper( void * );
 #endif // DEBUG
 extern bool sweep_event_equal( struct sweep_event *, struct sweep_event * );
-extern bool sweep_event_equal_wrapper( void *, void * );
 
 // Set and Buffer maintenance functions
 extern struct sweep_event ** _manage_ev_buffer(

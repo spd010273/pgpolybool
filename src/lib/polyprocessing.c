@@ -332,7 +332,7 @@ POLYGON * poly_postprocessing(
 
             for( j = 0; j < poly->npts; j++ )
             {
-                avg_dist += distance( center, ( &(poly->p[j]) ) );
+                avg_dist += distance( center, ( &(poly->p[i]) ) );
             }
 
             avg_dist = avg_dist / poly->npts;

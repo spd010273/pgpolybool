@@ -16,7 +16,7 @@ Readonly my $SERIES_BOUND            => 10000;
 Readonly my $NUMBER_OF_TESTS         => 10000;
 Readonly my $CONNECTION_STRING       => "dbi:Pg:dbname=$TEST_DATABASE;host=localhost;port=5432";
 Readonly my $POSTGRES_CONN_STRING    => 'dbi:Pg:dbname=postgres;host=localhost;port=5432';
-Readonly my $OUTPUT_UNIT             => 'us'; # s or ms or us
+Readonly my $OUTPUT_UNIT             => 'ms'; # or s or ms
 Readonly my $SQLSTATE_CONN_EXCEPTION => '08000';
 Readonly my $TEST_POLY_DATA => <<"END_SQL";
 CREATE TEMP TABLE tt_poly_data AS
@@ -313,7 +313,7 @@ ERROR
         }
 
         my $test_end = [gettimeofday()];
-        my $delta    = ( tv_interval( $test_start, $test_end ) );
+        my $delta    = ( tv_interval( $test_start, $test_end ) * 1000 );
 
         if( $OUTPUT_UNIT eq 'ms' )
         {
