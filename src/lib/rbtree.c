@@ -297,13 +297,17 @@ void rbtree_destroy( struct rbtree * rb_tree )
     _RBTREE_FREE( rb_tree->pool );
 
     free_node = rb_tree->free_head;
-    while( free_node->next != NULL )
+    
+    if( free_node != NULL )
     {
-        last = free_node;
-        free_node = free_node->next;
-        if( last != NULL )
+        while( free_node->next != NULL )
         {
-            _RBTREE_FREE( last );
+            last = free_node;
+            free_node = free_node->next;
+            if( last != NULL )
+            {
+                _RBTREE_FREE( last );
+            }
         }
     }
 #else
