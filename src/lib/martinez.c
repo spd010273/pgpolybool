@@ -90,6 +90,10 @@ void divide_segment(
     struct sweep_event * e0 = NULL; // right
     struct sweep_event * e1 = NULL; // left
 
+#ifdef DEBUG
+    elog( DEBUG1, "DIVIDING SEGMENT, E %p, P %p", e, p );
+#endif // DEBUG
+
     e0 = new_sweep_event();
     e1 = new_sweep_event();
 
@@ -120,6 +124,13 @@ void divide_segment(
 
     e->other->other = e1;
     e->other = e0;
+#ifdef DEBUG
+    elog( DEBUG1, "Divided right segment" );
+    _dump_sweep_event( e0 );
+    elog( DEBUG1, "Divided left segment" );
+    _dump_sweep_event( e1 );
+    rbtree_debug( rb_tree );
+#endif // DEBUG
 
     _se_set_insert( ev_set, e1, ev_index, &sweep_event_ev_segment_comp );
     _se_set_insert( ev_set, e0, ev_index, &sweep_event_ev_segment_comp );
@@ -159,6 +170,32 @@ void possible_intersection(
     }
 
     num_intersections = find_intersection( seg0, seg1, isect_p0, isect_p1 );
+
+#ifdef DEBUG
+    elog( DEBUG1, "Comping e0 (%p) and e1 (%p)", e0, e1 );
+    elog(
+        DEBUG1,
+        "Locating intersections between p (%f,%f) o (%f,%f) "\
+        "and p (%f,%f) o (%f,%f)",
+        e0 == NULL ? 0.0 : e0->p->x,
+        e0 == NULL ? 0.0 : e0->p->y,
+        e0 == NULL ? 0.0 : e0->other->p->x,
+        e0 == NULL ? 0.0 : e0->other->p->y,
+        e1 == NULL ? 0.0 : e1->p->x,
+        e1 == NULL ? 0.0 : e1->p->y,
+        e1 == NULL ? 0.0 : e1->other->p->x,
+        e1 == NULL ? 0.0 : e1->other->p->y
+    );
+    elog(
+        DEBUG1,
+        "Find intersections %d, %f,%f %f,%f",
+        num_intersections,
+        isect_p0->x,
+        isect_p0->y,
+        isect_p1->x,
+        isect_p1->y
+    );
+#endif // DEBUG
 
     if( num_intersections == 0 )
     {
@@ -362,9 +399,9 @@ struct polygon * compute(
     unsigned int               j              = 0;
     unsigned int               num_int        = 0;
     unsigned int               ev_length      = 0;
-    register unsigned int      event_position = 0;
-    register unsigned int      previous_event = 0;
-    register unsigned int      next_event     = 0;
+    unsigned int               event_position = 0;
+    unsigned int               previous_event = 0;
+    unsigned int               next_event     = 0;
     unsigned int               colinear_event = 0;
     double                     min_max_x      = 0.0;
     Point *                    min_subj       = NULL;
@@ -402,8 +439,11 @@ struct polygon * compute(
     rb_tree = new_rbtree(
         &sweep_event_sl_comp_wrapper_inverted,
         NULL
+//        &sweep_event_equal_wrapper
     );
-
+#ifdef DEBUG
+    rbtree_setup_debug( rb_tree, &_dump_sweep_event_rbtree_wrapper );
+#endif
     min_subj = ( Point * ) palloc0( sizeof( Point ) );
     max_subj = ( Point * ) palloc0( sizeof( Point ) );
     min_clip = ( Point * ) palloc0( sizeof( Point ) );
@@ -425,7 +465,7 @@ struct polygon * compute(
 
     polygon_boundingbox( subject, min_subj, max_subj );
     polygon_boundingbox( clipping, min_clip, max_clip );
-    // Optimization for case where boundingbox does not overlap
+
     if(
             min_subj->x > max_clip->x
          || min_clip->x > max_subj->x
@@ -469,7 +509,7 @@ struct polygon * compute(
     }
 
     // Attempt to optimize intersections where the other poly encloses another
-    if( op == OP_INTERSECTION || op == OP_UNION )
+    if( op == OP_INTERSECTION )
     {
         // Determine if one bounding box is entirely enclosed within the other,
         // if so, the intersection is the polygon with the smaller bounding box
@@ -545,17 +585,39 @@ struct polygon * compute(
 //        &sweep_event_equal_wrapper
     );
 
+#ifdef DEBUG
+    elog(
+        DEBUG1,
+        " =========== Entering Main Loop ===========\nmin_max_x: %f",
+        min_max_x
+    );
+
+    rbtree_debug( rb_tree );
+    rbtree_setup_debug( sl_rb_tree, &_dump_sweep_event_rbtree_wrapper );
+#endif // DEBUG
+
     pc = new_polygon_connector( NULL, NULL );
 
     while( !rbtree_empty( rb_tree ) )
     {
         event = ( struct sweep_event * ) rbtree_pop( rb_tree );
+#ifdef DEBUG
+        elog( DEBUG1, "================================ LOOP");
+        elog( DEBUG1, "Got event %p :", event );
+        _dump_sweep_event( event );
+#endif // DEBUG
 
         if(
                 ( op == OP_INTERSECTION && event->p->x > min_max_x   )
              || ( op == OP_DIFFERENCE   && event->p->x > max_subj->x )
           )
         {
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                "Early exit for OP_INTERSECTION / OP_DIFFERENCE case"
+            );
+#endif // DEBUG
             result = polygon_connector_to_polygon( pc );
             pfree( min_subj );
             pfree( max_subj );
@@ -567,8 +629,27 @@ struct polygon * compute(
             return result;
         }
 
+#ifdef DEBUG
+        elog( DEBUG1, "Checking union case" );
+#endif // DEBUG
+
         if( op == OP_UNION && event->p->x > min_max_x )
         {
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                "Early exit for union case e p(%f,%f) o(%f,%f)",
+                event->p->x,
+                event->p->y,
+                event->other->p->x,
+                event->other->p->y
+            );
+            elog( DEBUG1, "status line state:" );
+            rbtree_debug( sl_rb_tree );
+            elog( DEBUG1, "polygon connector state:" );
+            _dump_polygon_connector( pc );
+#endif // DEBUG
+
             if( !event->left )
             {
                 seg = sweep_event_get_segment( event );
@@ -578,7 +659,14 @@ struct polygon * compute(
             while( !rbtree_empty( rb_tree ) )
             {
                 event = ( struct sweep_event * ) rbtree_pop( rb_tree );
-
+#ifdef DEBUG
+                elog(
+                    DEBUG1,
+                    "Got event %p from rbtree_pop of %p",
+                    event,
+                    rb_tree
+                );
+#endif // DEBUG
                 if( !event->left )
                 {
                     seg = sweep_event_get_segment( event );
@@ -587,6 +675,10 @@ struct polygon * compute(
             }
 
             result = polygon_connector_to_polygon( pc );
+#ifdef DEBUG
+            _dump_polygon_connector( pc );
+            _dump_polygon( result );
+#endif // DEBUG
             free_polygon_connector( pc );
             free_rbtree( rb_tree );
             free_rbtree( sl_rb_tree );
@@ -596,9 +688,23 @@ struct polygon * compute(
             pfree( max_clip );
             return result;
         }
-
+#ifdef DEBUG
+        elog( DEBUG1, "Checking handedness of event" );
+#endif // DEBUG
         if( event->left )
         {
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                "LS: P %d, N %d, ep %d S: %d",
+                previous_event,
+                next_event,
+                event_position,
+                sl_rb_tree->size
+            );
+
+            elog( DEBUG1, "Adding event to SE set" );
+#endif // DEBUG
             rbtree_insert( sl_rb_tree, ( void * ) event );
             event_position = rbtree_get_position( sl_rb_tree, ( void * ) event );
             next_event     = event_position;
@@ -613,8 +719,26 @@ struct polygon * compute(
                 previous_event = sl_rb_tree->size;
             }
 
+#ifdef DEBUG
+            elog( DEBUG1, "event in/out & inside logic" );
+            elog( DEBUG1, "status line state:" );
+            rbtree_debug( sl_rb_tree );
+
+            elog(
+                DEBUG1,
+                "P %d, N %d, ep %d S: %d",
+                previous_event,
+                next_event,
+                event_position,
+                sl_rb_tree->size
+            );
+#endif //DEBUG
+
             if( sl_rb_tree->size == previous_event )
             {
+#ifdef DEBUG
+                elog( DEBUG1, "Event is not inside not inout" );
+#endif // DEBUG
                 event->inside = false;
                 event->in_out = false;
             }
@@ -629,6 +753,9 @@ struct polygon * compute(
             {
                 if( previous_event == 0 )
                 {
+#ifdef DEBUG
+                    elog( DEBUG1, "Event is inside, not inout" );
+#endif // DEBUG
                     event->inside = true;
                     event->in_out = false;
                 }
@@ -670,6 +797,9 @@ struct polygon * compute(
                              )
                             )->in_out
                         );
+#ifdef DEBUG
+                        elog( DEBUG1, "Event is in first colinear cond" );
+#endif // DEBUG
                     }
                     else
                     {
@@ -689,6 +819,9 @@ struct polygon * compute(
                              )
                             )->in_out
                         );
+#ifdef DEBUG
+                        elog( DEBUG1, "Event is in second colinear cond" );
+#endif // DEBUG
                     }
                 }
             }
@@ -713,6 +846,9 @@ struct polygon * compute(
                      previous_event
                  )
                 )->in_out;
+#ifdef DEBUG
+                elog( DEBUG1, "Event is in first polytype check cond" );
+#endif // DEBUG
             }
             else
             {
@@ -728,7 +864,14 @@ struct polygon * compute(
                      previous_event
                  )
                 )->inside;
+#ifdef DEBUG
+                elog( DEBUG1, "Event is in second polytype check cond" );
+#endif // DEBUG
             }
+
+#ifdef DEBUG
+            elog( DEBUG1, "Checking possible intersections" );
+#endif // DEBUG
 
             if( ( next_event + 1 ) >= sl_rb_tree->size )
             {
@@ -741,6 +884,9 @@ struct polygon * compute(
 
             if( next_event != sl_rb_tree->size )
             {
+#ifdef DEBUG
+                elog( DEBUG1, "Calling first pi" );
+#endif // DEBUG
                 possible_intersection(
                     event,
                     (struct sweep_event *) rbtree_peek_position(
@@ -752,6 +898,17 @@ struct polygon * compute(
                     &ev_set,
                     &ev_length
                 );
+#ifdef DEBUG
+                elog(
+                    DEBUG1,
+                    "============== 1 POST POSSIBLE INTERSECTION ============="
+                );
+                rbtree_debug( rb_tree );
+                elog(
+                    DEBUG1,
+                    "========================================================="
+                );
+#endif // DEBUG
             }
 
             if( previous_event != sl_rb_tree->size )
@@ -767,6 +924,17 @@ struct polygon * compute(
                     &ev_set,
                     &ev_length
                 );
+#ifdef DEBUG
+                elog(
+                    DEBUG1,
+                    "============== 2 POST POSSIBLE INTERSECTION ============="
+                );
+                rbtree_debug( rb_tree );
+                elog(
+                    DEBUG1,
+                    "========================================================="
+                );
+#endif // DEBUG
             }
         }
         else
@@ -774,6 +942,10 @@ struct polygon * compute(
             colinear_event = rbtree_get_position( sl_rb_tree, event->other );
             previous_event = colinear_event;
             next_event     = colinear_event;
+#ifdef DEBUG
+            elog( DEBUG1, "colinear & edge logic (right handed E)" );
+            elog( DEBUG1, "RS: P: %d, N: %d ep %d S: %d", previous_event, next_event, event_position, sl_rb_tree->size );
+#endif // DEBUG
 
             if( next_event >= sl_rb_tree->size )
             {
@@ -881,6 +1053,12 @@ struct polygon * compute(
             }
         }
     }
+
+#ifdef DEBUG
+    elog( DEBUG1, "Ended main loop. rbtree:" );
+    rbtree_debug( rb_tree );
+    _dump_polygon_connector( pc );
+#endif // DEBUG
 
     result = polygon_connector_to_polygon( pc );
 
