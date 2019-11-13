@@ -399,9 +399,9 @@ struct polygon * compute(
     unsigned int               j              = 0;
     unsigned int               num_int        = 0;
     unsigned int               ev_length      = 0;
-    unsigned int               event_position = 0;
-    unsigned int               previous_event = 0;
-    unsigned int               next_event     = 0;
+    register unsigned int      event_position = 0;
+    register unsigned int      previous_event = 0;
+    register unsigned int      next_event     = 0;
     unsigned int               colinear_event = 0;
     double                     min_max_x      = 0.0;
     Point *                    min_subj       = NULL;
@@ -513,24 +513,24 @@ struct polygon * compute(
     {
         // Determine if one bounding box is entirely enclosed within the other,
         // if so, the intersection is the polygon with the smaller bounding box
-        if(
+        if( // subject is within the clipping
               min_subj->x > min_clip->x && min_subj->y > min_clip->y
            && max_subj->x < max_clip->x && max_subj->y < max_clip->y
           )
         {
-            result = subject;
+            result = op == OP_UNION ? clipping : subject;
             pfree( min_subj );
             pfree( min_clip );
             pfree( max_subj );
             pfree( max_clip );
             return result;
         }
-        else if(
+        else if( // clipping is withing the subject
                   min_subj->x < min_clip->x && min_subj->y < min_clip->y
                && max_subj->x > max_clip->x && max_subj->y > max_clip->y
                )
         {
-            result = clipping;
+            result = op == OP_UNION ? subject : clipping;
             pfree( min_subj );
             pfree( min_clip );
             pfree( max_subj );
