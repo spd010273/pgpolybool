@@ -10,10 +10,14 @@ use English qw( -no_match_vars );
 use Time::HiRes qw( gettimeofday tv_interval );
 use Data::Dumper;
 use Getopt::Std;
+use Term::ProgressBar;
+
+$|=1;
 
 Readonly my $TEST_DATABASE           => '__pgp_testing__';
 Readonly my $SERIES_BOUND            => 10000;
 Readonly my $NUMBER_OF_TESTS         => 10000;
+Readonly my $MAX_NUM_POINTS          => 500;
 Readonly my $CONNECTION_STRING       => "dbi:Pg:dbname=$TEST_DATABASE;host=localhost;port=5432";
 Readonly my $POSTGRES_CONN_STRING    => 'dbi:Pg:dbname=postgres;host=localhost;port=5432';
 Readonly my $OUTPUT_UNIT             => 'ms'; # or s or ms
@@ -24,6 +28,10 @@ CREATE TEMP TABLE tt_poly_data AS
     WITH tt_series_bound AS
     (
         SELECT ${SERIES_BOUND}::INTEGER AS series_bound
+    ),
+    tt_num_points AS
+    (
+        SELECT ${MAX_NUM_POINTS}::INTEGER AS num_points
     ),
     tt_intersecting_poly_data AS
     (
@@ -56,14 +64,34 @@ CREATE TEMP TABLE tt_poly_data AS
         INNER JOIN tt_series_bound tts
                 ON TRUE
     ),
+    tt_large_point_set AS
+    (
+        SELECT polygon(
+                   ttnp.num_points,
+                   circle(
+                       point(
+                           generate_series( - ( ttsb.series_bound / 2 ), ( ttsb.series_bound / 2 ), 1 ),
+                           0
+                       ),
+                       ( ttsb.series_bound / 2 )
+                   )
+               ) AS poly,
+               ttnp.num_points AS num_pts,
+               TRUE AS intersecting
+          FROM tt_series_bound ttsb
+    INNER JOIN tt_num_points ttnp
+            ON TRUE
+    ),
     tt_set_union AS
     (
         SELECT p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y,
-               TRUE AS intersecting
+               TRUE AS intersecting,
+               4 AS num_pts
           FROM tt_intersecting_poly_data
          UNION ALL
         SELECT p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y,
-               FALSE AS intersecting
+               FALSE AS intersecting,
+               4 AS num_pts
           FROM tt_nonintersecting_poly_data
     ),
     tt_point_transform AS
@@ -72,12 +100,19 @@ CREATE TEMP TABLE tt_poly_data AS
                point( p2x, p2y ) AS p2,
                point( p3x, p3y ) AS p3,
                point( p4x, p4y ) AS p4,
-               intersecting
+               intersecting,
+               num_pts
           FROM tt_set_union
     )
         SELECT ( '(' || p1::VARCHAR || ',' || p2::VARCHAR || ',' || p3::VARCHAR || ',' || p4::VARCHAR || ')' )::POLYGON AS poly,
-               intersecting
+               intersecting,
+               num_pts
           FROM tt_point_transform
+         UNION ALL
+        SELECT poly,
+               intersecting,
+               num_pts
+          FROM tt_large_point_set
 )
 END_SQL
 
@@ -109,7 +144,7 @@ Readonly my $MARTINEZ_TESTS => {
 };
 
 Readonly my $CACHE_TEST_DATA => <<END_SQL;
-    SELECT poly
+    SELECT poly, num_pts
       FROM tt_poly_data
      WHERE __WHERE__
 END_SQL
@@ -229,6 +264,11 @@ foreach my $key ( ( sort { $a cmp $b } keys %$MARTINEZ_TESTS ) )
             $where = 'intersecting IS FALSE';
         }
     }
+    
+    if( $make_check )
+    {
+        $where .= ' AND num_pts = 4';
+    }
 
     print "  Caching test data...";
     $cache_query =~ s/__WHERE__/$where/;
@@ -247,7 +287,7 @@ foreach my $key ( ( sort { $a cmp $b } keys %$MARTINEZ_TESTS ) )
     my $TEST_DATA = [];
     while( my $row = $sth->fetchrow_hashref )
     {
-        push( @$TEST_DATA, $row->{poly} );
+        push( @$TEST_DATA, $row );
     }
 
     $sth->finish();
@@ -264,6 +304,8 @@ foreach my $key ( ( sort { $a cmp $b } keys %$MARTINEZ_TESTS ) )
     my $min_delta  = 9999999;
     my $test_sz    = scalar( @$TEST_DATA );
     my $null_count = 0;
+    my $total_pts  = 0;
+    my $progress   = Term::ProgressBar->new( $NUMBER_OF_TESTS );
 
     for( my $i = 0; $i < $NUMBER_OF_TESTS; $i++ )
     {
@@ -271,7 +313,9 @@ foreach my $key ( ( sort { $a cmp $b } keys %$MARTINEZ_TESTS ) )
 
         for( my $j = 0; $j < $MARTINEZ_TESTS->{$key}->{parameter_count}; $j++ )
         {
-            push( @$params, $TEST_DATA->[rand $test_sz] );
+            my $test_param = $TEST_DATA->[rand $test_sz];
+            push( @$params, $test_param->{poly} );
+            $total_pts += $test_param->{num_pts};
         }
 
         my $param_ind = 1;
@@ -335,8 +379,10 @@ ERROR
 
         $max_delta = $delta if( $delta > $max_delta );
         $min_delta = $delta if( $delta < $min_delta );
+        $progress->update( $i );
     }
 
+    $progress->update( $NUMBER_OF_TESTS );
     print " Done.\n";
     my $sum   = 0;
     my $count = 0;
@@ -353,17 +399,22 @@ ERROR
         $std_dev_partial_sum += ( $result - $average ) * ( $result - $average );
     }
 
+    my $average_points = ( $total_pts / $count );
+    my $time_per_pt = $average / $average_points;
     my $std_dev = sqrt( ( 1 / ( $count - 1 ) ) * $std_dev_partial_sum );
     unless( $make_check )
     {
     print <<"STATS";
   Statistics for this call:
-    Average: $average $OUTPUT_UNIT
-    Std Dev: $std_dev $OUTPUT_UNIT^2
-    Min:     $min_delta $OUTPUT_UNIT
-    Max:     $max_delta $OUTPUT_UNIT
-    Count:   $count
-    NULLs:   $null_count
+      Average: $average $OUTPUT_UNIT
+      Std Dev: $std_dev $OUTPUT_UNIT^2
+          Min: $min_delta $OUTPUT_UNIT
+          Max: $max_delta $OUTPUT_UNIT
+        Count: $count
+        NULLs: $null_count
+      Avg Pts: $average_points
+      Tot Pts: $total_pts
+    Time / Pt: $time_per_pt $OUTPUT_UNIT / point
 STATS
     }
     else
