@@ -97,17 +97,9 @@ void rbtree_free_node(
     }
 
     rb_tree->_allocated--;
-    node->data     = NULL;
-    node->red      = false;
-    node->left     = NULL;
-    node->right    = NULL;
-#ifdef RBTREE_TRACK_PARENT
-    node->parent   = NULL;
-#endif // RBTREE_TRACK_PARENT
-    node->next     = NULL;
-    node->subcount = 0;
-    node->pool_i   = 0;
-    node->pool_j   = 0;
+#ifdef RBTREE_DEBUG
+    memset( node, 0, sizeof( struct rbtree_node ) );
+#endif // RBTREE_DEBUG
 #else
     _RBTREE_FREE( node );
 #endif // RBTREE_USE_SLAB_ALLOC
@@ -183,8 +175,6 @@ struct rbtree_node * new_rbtree_node(
 
     rb_tree->_allocated++;
     node = &(rb_tree->pool[j][i]);
-    node->pool_i = i;
-    node->pool_j = j;
 #else
     node = ( struct rbtree_node * ) _RBTREE_ALLOC(
         sizeof( struct rbtree_node )
@@ -204,13 +194,13 @@ struct rbtree_node * new_rbtree_node(
         return NULL;
     }
 
+    memset( node, 0, sizeof( struct rbtree_node ) );
+#ifdef RBTREE_USE_SLAB_ALLOC
+    node->pool_i   = i;
+    node->pool_j   = j;
+#endif // RBTREE_USE_SLAB_ALLOC
     node->red      = true;
     node->data     = data;
-    node->left     = NULL;
-    node->right    = NULL;
-#ifdef RBTREE_TRACK_PARENT
-    node->parent   = NULL;
-#endif // RBTREE_TRACK_PARENT
     node->subcount = 1;
     return node;
 }
@@ -700,7 +690,11 @@ static struct rbtree_node * _delete(
     {
         if(
                !is_red( tree->left )
-            && !is_red( tree->left->left )
+            && (
+                  tree->left == NULL
+               || tree->left->left == NULL
+               || !is_red( tree->left->left )
+               )
           )
         {
             tree = move_red_left( tree );
@@ -729,7 +723,11 @@ static struct rbtree_node * _delete(
 
         if(
                 !is_red( tree->right )
-             && !is_red( tree->right->left )
+             && (
+                      tree->right == NULL
+                   || tree->right->left == NULL
+                   || !is_red( tree->right->left )
+                )
           )
         {
             tree = move_red_left( tree );
