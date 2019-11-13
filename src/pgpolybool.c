@@ -847,7 +847,7 @@ Datum fn_xor_polygons_array( PG_FUNCTION_ARGS )
 
     sorted_polys = poly_preprocessing_array(
         PG_GETARG_ARRAYTYPE_P(0),
-        true,
+        false,
         false,
         &centers,
         &num_poly
@@ -1071,7 +1071,7 @@ Datum fn_xor_polygons( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    new_polygon = poly_postprocessing( new_polygon, centers, 2, true );
+    new_polygon = poly_postprocessing( new_polygon, centers, 2, false );
 
     if( centers[0] != NULL )
     {

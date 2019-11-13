@@ -287,7 +287,7 @@ void rbtree_destroy( struct rbtree * rb_tree )
     _RBTREE_FREE( rb_tree->pool );
 
     free_node = rb_tree->free_head;
-    
+
     if( free_node != NULL )
     {
         while( free_node->next != NULL )
@@ -399,7 +399,10 @@ unsigned int rbtree_get_position( struct rbtree * rb_tree, void * data )
         {
             if(
                    data == node->data
-                || ( rb_tree->equal != NULL && rb_tree->equal( data, node->data ) )
+                || (
+                        rb_tree->equal != NULL
+                     && rb_tree->equal( data, node->data )
+                   )
               )
             {
                 if( node->left != NULL )
@@ -609,7 +612,10 @@ static struct rbtree_node * _insert(
     {
         if(
                data == tree->data
-            || ( rb_tree->equal != NULL && rb_tree->equal( data, tree->data ) )
+            || (
+                   rb_tree->equal != NULL
+                && rb_tree->equal( data, tree->data )
+               )
           )
         {
             return tree;
@@ -683,18 +689,18 @@ static struct rbtree_node * _delete(
 
     equal = (
                 data == tree->data
-             || ( rb_tree->equal != NULL && rb_tree->equal( data, tree->data ) )
+             || (
+                    rb_tree->equal != NULL
+                 && rb_tree->equal( data, tree->data )
+                )
             );
 
     if( rb_tree->compare( data, tree->data ) )
     {
         if(
                !is_red( tree->left )
-            && (
-                  tree->left == NULL
-               || tree->left->left == NULL
-               || !is_red( tree->left->left )
-               )
+            && tree->left != NULL
+            && !is_red( tree->left->left )
           )
         {
             tree = move_red_left( tree );
@@ -723,11 +729,8 @@ static struct rbtree_node * _delete(
 
         if(
                 !is_red( tree->right )
-             && (
-                      tree->right == NULL
-                   || tree->right->left == NULL
-                   || !is_red( tree->right->left )
-                )
+             && tree->right != NULL
+             && !is_red( tree->right->left )
           )
         {
             tree = move_red_left( tree );
@@ -735,7 +738,10 @@ static struct rbtree_node * _delete(
 
         if(
                 data == tree->data
-             || ( rb_tree->equal != NULL && rb_tree->equal( data, tree->data ) )
+             || (
+                    rb_tree->equal != NULL
+                 && rb_tree->equal( data, tree->data )
+                )
           )
         {
             r_min = find_min( tree->right );
