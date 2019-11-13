@@ -90,6 +90,10 @@ void divide_segment(
     struct sweep_event * e0 = NULL; // right
     struct sweep_event * e1 = NULL; // left
 
+#ifdef DEBUG
+    elog( DEBUG1, "DIVIDING SEGMENT, E %p, P %p", e, p );
+#endif // DEBUG
+
     e0 = new_sweep_event();
     e1 = new_sweep_event();
 
@@ -125,7 +129,7 @@ void divide_segment(
     _dump_sweep_event( e0 );
     elog( DEBUG1, "Divided left segment" );
     _dump_sweep_event( e1 );
-    //_dlpq_debug( phead );
+    _dlpq_debug( phead );
 #endif // DEBUG
 
     _se_set_insert( ev_set, e1, ev_index, &sweep_event_ev_segment_comp );
@@ -388,9 +392,9 @@ struct polygon * compute(
     unsigned int               j              = 0;
     unsigned int               num_int        = 0;
     unsigned int               ev_length      = 0;
-    register unsigned int      event_position = 0;
-    register unsigned int      previous_event = 0;
-    register unsigned int      next_event     = 0;
+    unsigned int               event_position = 0;
+    unsigned int               previous_event = 0;
+    unsigned int               next_event     = 0;
     unsigned int               colinear_event = 0;
     double                     min_max_x      = 0.0;
     Point *                    min_subj       = NULL;
@@ -451,7 +455,7 @@ struct polygon * compute(
 
     polygon_boundingbox( subject, min_subj, max_subj );
     polygon_boundingbox( clipping, min_clip, max_clip );
-    // Optimization for case where boundingbox does not overlap
+
     if(
             min_subj->x > max_clip->x
          || min_clip->x > max_subj->x
@@ -495,7 +499,7 @@ struct polygon * compute(
     }
 
     // Attempt to optimize intersections where the other poly encloses another
-    if( op == OP_INTERSECTION || op == OP_UNION )
+    if( op == OP_INTERSECTION )
     {
         // Determine if one bounding box is entirely enclosed within the other,
         // if so, the intersection is the polygon with the smaller bounding box
@@ -577,6 +581,17 @@ struct polygon * compute(
     _dlpq_setup_debug( sl_head, &_dump_sweep_event_dlpq_wrapper );
 #endif // DEBUG
 
+#ifdef DEBUG
+    elog(
+        DEBUG1,
+        " =========== Entering Main Loop ===========\nmin_max_x: %f",
+        min_max_x
+    );
+
+    rbtree_debug( rb_tree );
+    rbtree_setup_debug( sl_rb_tree, &_dump_sweep_event_rbtree_wrapper );
+#endif // DEBUG
+
     pc = new_polygon_connector( NULL, NULL );
 
     // TODO: verify all events are freed
@@ -595,6 +610,12 @@ struct polygon * compute(
              || ( op == OP_DIFFERENCE   && event->p->x > max_subj->x )
           )
         {
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                "Early exit for OP_INTERSECTION / OP_DIFFERENCE case"
+            );
+#endif // DEBUG
             result = polygon_connector_to_polygon( pc );
             pfree( min_subj );
             pfree( max_subj );
@@ -606,6 +627,10 @@ struct polygon * compute(
 
             return result;
         }
+
+#ifdef DEBUG
+        elog( DEBUG1, "Checking union case" );
+#endif // DEBUG
 
         if( op == OP_UNION && event->p->x > min_max_x )
         {
@@ -649,6 +674,10 @@ struct polygon * compute(
             }
 
             result = polygon_connector_to_polygon( pc );
+#ifdef DEBUG
+            _dump_polygon_connector( pc );
+            _dump_polygon( result );
+#endif // DEBUG
             free_polygon_connector( pc );
             free_dlpq( &sl_head );
             free_dlpq( &phead );
@@ -658,7 +687,9 @@ struct polygon * compute(
             pfree( max_clip );
             return result;
         }
-
+#ifdef DEBUG
+        elog( DEBUG1, "Checking handedness of event" );
+#endif // DEBUG
         if( event->left )
         {
 #ifdef DEBUG
@@ -704,6 +735,9 @@ struct polygon * compute(
 
             if( sl_head->size == previous_event )
             {
+#ifdef DEBUG
+                elog( DEBUG1, "Event is not inside not inout" );
+#endif // DEBUG
                 event->inside = false;
                 event->in_out = false;
             }
@@ -718,6 +752,9 @@ struct polygon * compute(
             {
                 if( previous_event == 0 )
                 {
+#ifdef DEBUG
+                    elog( DEBUG1, "Event is inside, not inout" );
+#endif // DEBUG
                     event->inside = true;
                     event->in_out = false;
                 }
@@ -759,6 +796,9 @@ struct polygon * compute(
                              )
                             )->in_out
                         );
+#ifdef DEBUG
+                        elog( DEBUG1, "Event is in first colinear cond" );
+#endif // DEBUG
                     }
                     else
                     {
@@ -778,6 +818,9 @@ struct polygon * compute(
                              )
                             )->in_out
                         );
+#ifdef DEBUG
+                        elog( DEBUG1, "Event is in second colinear cond" );
+#endif // DEBUG
                     }
                 }
             }
@@ -802,6 +845,9 @@ struct polygon * compute(
                      previous_event
                  )
                 )->in_out;
+#ifdef DEBUG
+                elog( DEBUG1, "Event is in first polytype check cond" );
+#endif // DEBUG
             }
             else
             {
@@ -817,6 +863,9 @@ struct polygon * compute(
                      previous_event
                  )
                 )->inside;
+#ifdef DEBUG
+                elog( DEBUG1, "Event is in second polytype check cond" );
+#endif // DEBUG
             }
 
 #ifdef DEBUG
@@ -834,6 +883,9 @@ struct polygon * compute(
 
             if( next_event != sl_head->size )
             {
+#ifdef DEBUG
+                elog( DEBUG1, "Calling first pi" );
+#endif // DEBUG
                 possible_intersection(
                     event,
                     (struct sweep_event *) dlpq_peek_position(
@@ -892,6 +944,10 @@ struct polygon * compute(
             colinear_event = dlpq_get_position( sl_head, event->other );
             previous_event = colinear_event;
             next_event     = colinear_event;
+#ifdef DEBUG
+            elog( DEBUG1, "colinear & edge logic (right handed E)" );
+            elog( DEBUG1, "RS: P: %d, N: %d ep %d S: %d", previous_event, next_event, event_position, sl_rb_tree->size );
+#endif // DEBUG
 
             if( next_event >= sl_head->size )
             {

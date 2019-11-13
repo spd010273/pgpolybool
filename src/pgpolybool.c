@@ -746,10 +746,11 @@ Datum fn_union_polygons( PG_FUNCTION_ARGS )
     {
         __oom( "Could not create result polygon array" );
     }
+
 #ifdef DEBUG
     dump_polygon( buff_polys[0] );
     dump_polygon( buff_polys[1] );
-#endif // DEBUG
+#endif
     mp_subj = poly_to_mpoly( buff_polys[0] );
     mp_clip = poly_to_mpoly( buff_polys[1] );
 

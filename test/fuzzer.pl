@@ -13,7 +13,6 @@ use Getopt::Std;
 
 Readonly my $TEST_DATABASE           => '__pgp_testing__';
 Readonly my $SERIES_BOUND            => 10000;
-Readonly my $MAX_NUM_POINTS          => 500;
 Readonly my $NUMBER_OF_TESTS         => 10000;
 Readonly my $CONNECTION_STRING       => "dbi:Pg:dbname=$TEST_DATABASE;host=localhost;port=5432";
 Readonly my $POSTGRES_CONN_STRING    => 'dbi:Pg:dbname=postgres;host=localhost;port=5432';
@@ -26,10 +25,6 @@ CREATE TEMP TABLE tt_poly_data AS
     (
         SELECT ${SERIES_BOUND}::INTEGER AS series_bound
     ),
-    tt_num_points AS
-    (
-        SELECT ${MAX_NUM_POINTS}::INTEGER AS num_points
-    )
     tt_intersecting_poly_data AS
     (
         SELECT generate_series( -series_bound, -1, 1 ) AS p1x,
@@ -61,34 +56,14 @@ CREATE TEMP TABLE tt_poly_data AS
         INNER JOIN tt_series_bound tts
                 ON TRUE
     ),
-    tt_large_point_set AS
-    (
-        SELECT polygon(
-                   ttnp.num_points,
-                   circle(
-                       point(
-                           generate_series( -( ttsb.series_bound / 2 ), ( ttsb.series_bound / 2 ), 1 ),
-                           0
-                       ),
-                       ( ttsb.series_bound / 2 )
-                   )
-               ) AS poly,
-               ttnp.num_points AS num_pts,
-               TRUE AS intersecting
-          FROM tt_series_bound ttsb
-    INNER JOIN tt_num_points ttnp
-            ON TRUE
-    ),
     tt_set_union AS
     (
         SELECT p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y,
-               TRUE AS intersecting,
-               4 as num_pts
+               TRUE AS intersecting
           FROM tt_intersecting_poly_data
          UNION ALL
         SELECT p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y,
-               FALSE AS intersecting,
-               4 AS num_pts
+               FALSE AS intersecting
           FROM tt_nonintersecting_poly_data
     ),
     tt_point_transform AS
@@ -97,18 +72,12 @@ CREATE TEMP TABLE tt_poly_data AS
                point( p2x, p2y ) AS p2,
                point( p3x, p3y ) AS p3,
                point( p4x, p4y ) AS p4,
-               num_pts,
                intersecting
           FROM tt_set_union
     )
         SELECT ( '(' || p1::VARCHAR || ',' || p2::VARCHAR || ',' || p3::VARCHAR || ',' || p4::VARCHAR || ')' )::POLYGON AS poly,
-               num_pts,
                intersecting
           FROM tt_point_transform
-         UNION ALL
-        SELECT poly,
-               num_pts,
-               intersecting
 )
 END_SQL
 
