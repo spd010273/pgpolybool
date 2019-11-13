@@ -12,7 +12,7 @@ SRCS            = $(wildcard src/lib/*.c) $(wildcard src/*.c)
 OBJS            = $(SRCS:.c=.o)
 PGXS            = $(shell $(PG_CONFIG) --pgxs)
 #DEBUG			= -DDEBUG
-EXTRA_CLEAN     = src/*.o src/*.so *.so *.o sql/$(EXTENSION)--$(EXTVERSION).sql
+EXTRA_CLEAN     = src/*.bc src/lib/*.bc src/*.o src/*.so *.so *.o sql/$(EXTENSION)--$(EXTVERSION).sql
 
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
