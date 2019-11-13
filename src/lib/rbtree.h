@@ -13,6 +13,23 @@
  *------------------------------------------------------------------------------
  */
 
+/*
+ * Notes on define macros:
+ *  RBTREE_DEBUG - flag that turns on debug output, and mirrors the value of
+ *                 DEBUG
+ *  RBTREE_USE_SLAB_ALLOC - A small, self contained memory allocator that
+ *                 allocates memory segments of size RBTREE_CHUNK_SIZE for
+ *                 storage of the R-B Tree nodes. This reduces memory
+ *                 allocation overhead but utilizes more memory. If
+ *                 RBTREE_CHUNK_SIZE is not large, memory usage approaches
+ *                 O(n) for trees whose size > RBTREE_CHUNK_SIZE
+ *  RBTREE_TRACK_PARENT - Includes a pointer to the node parent and activates
+ *                 logic that tracks the parent of each node, with the root
+ *                 node having a NULL parent. This allows for rapid reverse
+ *                 traversal of the tree, as well as the ability to locate a
+ *                 given nodes sibling. None of the internal functions utilize
+ *                 this flag, and is only included for debugging purposes.
+ */
 #ifndef RBTREE_H
 #define RBTREE_H
 
@@ -49,48 +66,48 @@
 
 #ifdef RBTREE_USE_SLAB_ALLOC
 struct rbtree_free_list {
-    unsigned int i;
-    unsigned int j;
+    unsigned int              i;
+    unsigned int              j;
     struct rbtree_free_list * next;
 };
 #endif // RBTREE_USE_SLAB_ALLOC
 
 struct rbtree_node {
-    void * data;
-    bool red;
+    void *               data;
+    bool                 red;
     struct rbtree_node * left;
     struct rbtree_node * right;
 #ifdef RBTREE_TRACK_PARENT
     struct rbtree_node * parent;
 #endif // RBTREE_TRACK_PARENT
-    struct rbtree_node * next;    /* for iterator stack */
-    unsigned int subcount;
+    struct rbtree_node * next; /* for iterator stack */
+    unsigned int         subcount;
 #ifdef RBTREE_USE_SLAB_ALLOC
-    unsigned int pool_i;
-    unsigned int pool_j;
+    unsigned int         pool_i;
+    unsigned int         pool_j;
 #endif // RBTREE_USE_SLAB_ALLOC
 };
 
 struct rbtree {
-    struct rbtree_node * root;
-    struct rbtree_node * rstack;
-    struct rbtree_node * iter;
+    struct rbtree_node *      root;
+    struct rbtree_node *      rstack;
+    struct rbtree_node *      iter;
+    unsigned int              size;
+#ifdef RBTREE_USE_SLAB_ALLOC
+    struct rbtree_node **     pool;
+    struct rbtree_free_list * free_head;
+    unsigned int              pool_size; // indicates matrix size in j dir.
+    unsigned int              pool_ind_i;
+    unsigned int              pool_ind_j;
+    unsigned int              _allocated;
+    unsigned int              _total_size;
+#endif // RBTREE_USE_SLAB_ALLOC
     bool (*compare)( void *, void * );
     bool (*equal)( void *, void * );
-    unsigned int size;
 #ifdef RBTREE_DEBUG
     void (*debug)( void * );
     char * (*pretty_print)( void *);
 #endif // RBTREE_DEBUG
-#ifdef RBTREE_USE_SLAB_ALLOC
-    struct rbtree_node ** pool;
-    struct rbtree_free_list * free_head;
-    unsigned int pool_size; // indicates matrix size in j direction
-    unsigned int pool_ind_i;
-    unsigned int pool_ind_j;
-    unsigned int _allocated;
-    unsigned int _total_size;
-#endif // RBTREE_USE_SLAB_ALLOC
 };
 
 // interface functions
