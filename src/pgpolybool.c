@@ -65,6 +65,7 @@ PG_FUNCTION_INFO_V1( fn_points_to_polygon );
 PG_FUNCTION_INFO_V1( fn_get_polygon_ombb );
 PG_FUNCTION_INFO_V1( fn_get_points_ombb );
 PG_FUNCTION_INFO_V1( fn_get_ombb );
+PG_FUNCTION_INFO_V1( fn_get_polygon_distance );
 
 // LSEG functions
 PG_FUNCTION_INFO_V1( fn_get_parallel_segment );
@@ -2164,6 +2165,29 @@ Datum fn_get_ombb( PG_FUNCTION_ARGS )
 
     heap_tuple = heap_form_tuple( tuple_descriptor, values, nulls );
     PG_RETURN_DATUM( HeapTupleGetDatum( heap_tuple ) );
+}
+
+Datum fn_get_polygon_distance( PG_FUNCTION_ARGS )
+{
+    POLYGON * p1       = NULL;
+    POLYGON * p2       = NULL;
+    float8    distance = 0.0;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    p1 = PG_GETARG_POLYGON_P(0);
+    p2 = PG_GETARG_POLYGON_P(1);
+
+    if( p1 == NULL || p2 == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    distance = ( float8) get_polygon_distance( p1, p2 );
+    PG_RETURN_FLOAT8( distance );
 }
 
 Datum fn_get_root_orthogonal_segment( PG_FUNCTION_ARGS )

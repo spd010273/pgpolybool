@@ -493,6 +493,58 @@ LSEG ** get_polygon_lsegs( POLYGON * poly )
     return result;
 }
 
+// Returns the minimum distance between two polygons, naive solution
+double get_polygon_distance( POLYGON * a, POLYGON * b )
+{
+    double            min_distance = 0.0;
+    double            t_dist       = 0.0;
+    LSEG **           a_seg        = NULL;
+    LSEG **           b_seg        = NULL;
+    unsigned long int i            = 0;
+    unsigned long int j            = 0;
+
+    if( a == NULL || b == NULL || a->npts == 0 || b->npts == 0 )
+    {
+        return 0.0;
+    }
+
+    if(
+          (
+              a->boundbox.high.x >= b->boundbox.high.x
+           && a->boundbox.high.y >= b->boundbox.high.y
+           && a->boundbox.low.x <= b->boundbox.low.x
+           && a->boundbox.low.y <= b->boundbox.low.y
+          )
+       || (
+              a->boundbox.high.x <= b->boundbox.high.x
+           && a->boundbox.high.y <= b->boundbox.high.y
+           && a->boundbox.low.x >= b->boundbox.low.x
+           && a->boundbox.low.y >= b->boundbox.low.y
+          )
+      )
+    {
+        return 0.0;
+    }
+
+    a_seg = get_polygon_lsegs( a );
+    b_seg = get_polygon_lsegs( b );
+
+    min_distance = DBL_MAX;
+    for( i = 0; i < a->npts; i++ )
+    {
+        for( j = 0; j < b->npts; j++ )
+        {
+            t_dist = line_segment_distance( a_seg[i], b_seg[j] );
+
+            if( t_dist < min_distance )
+            {
+                min_distance = t_dist;
+            }
+        }
+    }
+
+    return min_distance;
+}
 /*
  * void dump_polygon( POLYGON * )
  *

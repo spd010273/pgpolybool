@@ -64,6 +64,11 @@ RETURNS TABLE
  'pgpolybool.so', 'fn_get_ombb'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
 
+CREATE OR REPLACE FUNCTION fn_get_polygon_distance( in_poly_a POLYGON, in_poly_b POLYGON )
+RETURNS DOUBLE PRECISION AS
+ 'pgpolybool.so', 'fn_get_polygon_distance'
+LANGUAGE C IMMUTABLE PARALLEL SAFE;
+
 CREATE OR REPLACE FUNCTION fn_get_convex_hull( in_poly POLYGON )
 RETURNS POLYGON AS
  'pgpolybool.so', 'fn_get_convex_hull_polygon'
