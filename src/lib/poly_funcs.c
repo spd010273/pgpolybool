@@ -502,6 +502,7 @@ double get_polygon_distance( POLYGON * a, POLYGON * b )
     LSEG **           b_seg        = NULL;
     unsigned long int i            = 0;
     unsigned long int j            = 0;
+    unsigned long int limit        = 0;
 
     if( a == NULL || b == NULL || a->npts == 0 || b->npts == 0 )
     {
@@ -526,6 +527,8 @@ double get_polygon_distance( POLYGON * a, POLYGON * b )
         return 0.0;
     }
 
+    limit = ( a->npts > b->npts ) ? a->npts : b->npts;
+
     a_seg = get_polygon_lsegs( a );
     b_seg = get_polygon_lsegs( b );
 
@@ -539,9 +542,34 @@ double get_polygon_distance( POLYGON * a, POLYGON * b )
             if( t_dist < min_distance )
             {
                 min_distance = t_dist;
+                if( min_distance == 0.0 )
+                {
+                    break;
+                }
             }
         }
+
+        if( min_distance == 0.0 )
+        {
+            break;
+        }
     }
+
+    for( j = 0; j < limit; j++ )
+    {
+        if( j < a->npts )
+        {
+            pfree( a_seg[j] );
+        }
+
+        if( j < b->npts )
+        {
+            pfree( b_seg[j] );
+        }
+    }
+
+    pfree( a_seg );
+    pfree( b_seg );
 
     return min_distance;
 }
