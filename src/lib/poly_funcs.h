@@ -33,7 +33,7 @@ extern POLYGON * line_segment_to_polygon( LSEG *, double );
 extern POLYGON * polygon_from_points( Point **, unsigned int );
 extern LSEG ** get_polygon_lsegs( POLYGON * );
 extern double get_polygon_distance( POLYGON *, POLYGON * );
-
+//extern double get_polygon_distance_naive( POLYGON *, POLYGON * );
 #ifdef DEBUG
 extern void dump_polygon( POLYGON * );
 #endif // DEBUG

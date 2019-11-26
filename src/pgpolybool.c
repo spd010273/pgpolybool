@@ -2186,7 +2186,7 @@ Datum fn_get_polygon_distance( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    distance = ( float8) get_polygon_distance( p1, p2 );
+    distance = get_polygon_distance( p1, p2 );
     PG_RETURN_FLOAT8( distance );
 }
 
