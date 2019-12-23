@@ -587,9 +587,6 @@ struct polygon * compute(
         " =========== Entering Main Loop ===========\nmin_max_x: %f",
         min_max_x
     );
-
-    rbtree_debug( rb_tree );
-    rbtree_setup_debug( sl_rb_tree, &_dump_sweep_event_rbtree_wrapper );
 #endif // DEBUG
 
     pc = new_polygon_connector( NULL, NULL );
