@@ -943,7 +943,7 @@ struct polygon * compute(
             next_event     = colinear_event;
 #ifdef DEBUG
             elog( DEBUG1, "colinear & edge logic (right handed E)" );
-            elog( DEBUG1, "RS: P: %d, N: %d ep %d S: %d", previous_event, next_event, event_position, sl_rb_tree->size );
+            elog( DEBUG1, "RS: P: %d, N: %d ep %d S: %d", previous_event, next_event, event_position, sl_head->size );
 #endif // DEBUG
 
             if( next_event >= sl_head->size )
