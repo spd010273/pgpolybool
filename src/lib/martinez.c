@@ -498,37 +498,6 @@ struct polygon * compute(
         return result;
     }
 
-    // Attempt to optimize intersections where the other poly encloses another
-    if( op == OP_INTERSECTION )
-    {
-        // Determine if one bounding box is entirely enclosed within the other,
-        // if so, the intersection is the polygon with the smaller bounding box
-        if( // subject is within the clipping
-              min_subj->x > min_clip->x && min_subj->y > min_clip->y
-           && max_subj->x < max_clip->x && max_subj->y < max_clip->y
-          )
-        {
-            result = op == OP_UNION ? clipping : subject;
-            pfree( min_subj );
-            pfree( min_clip );
-            pfree( max_subj );
-            pfree( max_clip );
-            return result;
-        }
-        else if( // clipping is withing the subject
-                  min_subj->x < min_clip->x && min_subj->y < min_clip->y
-               && max_subj->x > max_clip->x && max_subj->y > max_clip->y
-               )
-        {
-            result = op == OP_UNION ? subject : clipping;
-            pfree( min_subj );
-            pfree( min_clip );
-            pfree( max_subj );
-            pfree( max_clip );
-            return result;
-        }
-    }
-
     // Generate priority queue
     //_dump_polygon( subject );
     //_dump_polygon( clipping );
