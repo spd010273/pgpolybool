@@ -15,6 +15,9 @@
 #define UTIL_H
 
 #include "postgres.h"
+#if PG_VERSION_NUM >= 150000
+#include "varatt.h"
+#endif // PG_VERSION_NUM
 #include "utils/geo_decls.h"
 #include "segment.h"
 #include <math.h>
