@@ -32,9 +32,8 @@ POLYGON * get_convex_hull( Point ** point_field, unsigned int num_points )
     {
         __oom( "Failed to allocate point stack" );
     }
-
+    
     sort_points( point_field, num_points, 0, num_points - 1 );
-
     stack_top = 2;
 
     for( i = 0; i <= stack_top; i++ )
@@ -45,7 +44,8 @@ POLYGON * get_convex_hull( Point ** point_field, unsigned int num_points )
     for( i = stack_top + 1; i < num_points; i++ )
     {
         while(
-                get_turn_type(
+                stack_top >= 1
+             && get_turn_type(
                     stack[stack_top - 1],
                     stack[stack_top],
                     point_field[i]
