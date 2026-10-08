@@ -408,6 +408,7 @@ struct polygon * compute(
     struct sweep_event *       event          = NULL;
     struct sweep_event **      ev_set         = NULL;
     struct polygon *           result         = NULL;
+    void *                     dlpq_peek      = NULL;
 
     if( subject == NULL || clipping == NULL )
     {
@@ -698,6 +699,8 @@ struct polygon * compute(
                 sl_head->size
             );
 #endif //DEBUG
+            // Peek since we reference the previous_event multiple times
+            dlpq_peek = dlpq_peek_position( sl_head, previous_event );
 
             if( sl_head->size == previous_event )
             {
@@ -708,11 +711,9 @@ struct polygon * compute(
                 event->in_out = false;
             }
             else if(
-                     (
-                        (struct sweep_event *) dlpq_peek_position(
-                            sl_head,
-                            previous_event
-                        )
+                     dlpq_peek != NULL
+                  && (
+                        (struct sweep_event *) dlpq_peek
                      )->edge_type != EDGE_TYPE_NORMAL
                    )
             {
@@ -738,78 +739,66 @@ struct polygon * compute(
                     }
 
                     if(
-                        (
-                         (struct sweep_event *) dlpq_peek_position(
-                             sl_head,
-                             previous_event
-                         )
-                        )->polygon_type == event->polygon_type
+                         dlpq_peek_position( sl_head, colinear_event ) != NULL
                       )
                     {
-                        event->in_out = !(
+                        if(
                             (
-                             (struct sweep_event *) dlpq_peek_position(
-                                 sl_head,
-                                 previous_event
-                             )
-                            )->in_out
-                        );
-                        event->inside = !(
-                            (
-                             (struct sweep_event *) dlpq_peek_position(
-                                 sl_head,
-                                 colinear_event
-                             )
-                            )->in_out
-                        );
+                             (struct sweep_event *) dlpq_peek
+                            )->polygon_type == event->polygon_type
+                          )
+                        {
+                            event->in_out = !(
+                                (
+                                 (struct sweep_event *) dlpq_peek
+                                )->in_out
+                            );
+                            event->inside = !(
+                                (
+                                 (struct sweep_event *) dlpq_peek_position(
+                                     sl_head,
+                                     colinear_event
+                                 )
+                                )->in_out
+                            );
 #ifdef DEBUG
-                        elog( DEBUG1, "Event is in first colinear cond" );
+                            elog( DEBUG1, "Event is in first colinear cond" );
 #endif // DEBUG
-                    }
-                    else
-                    {
-                        event->in_out = !(
-                            (
-                             (struct sweep_event *) dlpq_peek_position(
-                                 sl_head,
-                                 colinear_event
-                             )
-                            )->in_out
-                        );
-                        event->inside = !(
-                            (
-                             (struct sweep_event *) dlpq_peek_position(
-                                 sl_head,
-                                 previous_event
-                             )
-                            )->in_out
-                        );
+                        }
+                        else
+                        {
+                            event->in_out = !(
+                                (
+                                 (struct sweep_event *) dlpq_peek_position(
+                                     sl_head,
+                                     colinear_event
+                                 )
+                                )->in_out
+                            );
+                            event->inside = !(
+                                (
+                                 (struct sweep_event *) dlpq_peek
+                                )->in_out
+                            );
 #ifdef DEBUG
-                        elog( DEBUG1, "Event is in second colinear cond" );
+                            elog( DEBUG1, "Event is in second colinear cond" );
 #endif // DEBUG
+                        }
                     }
                 }
             }
             else if(
-                        (
-                         (struct sweep_event *) dlpq_peek_position(
-                             sl_head,
-                             previous_event
-                         )
+                        dlpq_peek != NULL
+                     && (
+                         (struct sweep_event *) dlpq_peek
                         )->polygon_type == event->polygon_type
                    )
             {
                 event->inside = (
-                 (struct sweep_event *) dlpq_peek_position(
-                     sl_head,
-                     previous_event
-                 )
+                 (struct sweep_event *) dlpq_peek
                 )->inside;
                 event->in_out = !(
-                 (struct sweep_event *) dlpq_peek_position(
-                     sl_head,
-                     previous_event
-                 )
+                 (struct sweep_event *) dlpq_peek
                 )->in_out;
 #ifdef DEBUG
                 elog( DEBUG1, "Event is in first polytype check cond" );
@@ -817,18 +806,15 @@ struct polygon * compute(
             }
             else
             {
-                event->inside = !(
-                 (struct sweep_event *) dlpq_peek_position(
-                     sl_head,
-                     previous_event
-                 )
-                )->in_out;
-                event->in_out = (
-                 (struct sweep_event *) dlpq_peek_position(
-                     sl_head,
-                     previous_event
-                 )
-                )->inside;
+                if( dlpq_peek != NULL )
+                {
+                    event->inside = !(
+                     (struct sweep_event *) dlpq_peek
+                    )->in_out;
+                    event->in_out = (
+                     (struct sweep_event *) dlpq_peek
+                    )->inside;
+                }
 #ifdef DEBUG
                 elog( DEBUG1, "Event is in second polytype check cond" );
 #endif // DEBUG
