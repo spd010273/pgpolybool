@@ -623,7 +623,6 @@ void free_sweep_event( struct sweep_event * s )
 
     s->p = NULL;
     pfree( s );
-    s = NULL;
 
     return;
 }
@@ -1120,7 +1119,6 @@ void polygon_compute_holes( struct polygon * p )
     for( i = 0; i < total_events; i++ )
     {
         free_sweep_event( ev[i] );
-        free_sweep_event( ev_set[i] );
     }
 
     pfree( ev );
