@@ -547,15 +547,17 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
     }
 
     new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
-    set_polygon_boundbox( new_polygon );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+
     if( new_polygon == NULL )
     {
         elog( ERROR, "Polygon post-processing error" );
     }
-
+    
+    set_polygon_boundbox( new_polygon );
+    
     SET_VARSIZE(
         new_polygon,
         offsetof( POLYGON, p )
