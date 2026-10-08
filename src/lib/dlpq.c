@@ -365,6 +365,7 @@ void free_dlpq( struct dlpq ** head )
     if( dlpq_empty( (*head) ) && (*head) != NULL )
     {
         _FREE( *head );
+        *head = NULL;
         return;
     }
 

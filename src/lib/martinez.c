@@ -1105,7 +1105,7 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
         return NULL;
     }
 
-    if( single_result )
+    if( single_result || mpoly->num_contours == 1 )
     {
         result = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
 
@@ -1116,9 +1116,7 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
             );
         }
     }
-
-    // TODO: This function needs to be modified to respect an arg of false for single_result and num_contours = 1
-    if( mpoly->num_contours > 1 )
+    else if( mpoly->num_contours > 1 )
     {
         arr = ( POLYGON ** ) palloc0(
             sizeof( POLYGON * ) * mpoly->num_contours
@@ -1130,6 +1128,10 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
                 "Could not allocate array for polygon contours"
             );
         }
+    }
+    else
+    {
+        return NULL;
     }
 
     for( c = 0; c < mpoly->num_contours; c++ )
