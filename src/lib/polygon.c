@@ -145,7 +145,7 @@ void polygon_erase_contour( struct polygon * p, unsigned int ind )
         return;
     }
 
-    if( i >= p->num_contours )
+    if( ind >= p->num_contours )
     {
         return;
     }
