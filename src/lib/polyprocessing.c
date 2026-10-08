@@ -60,6 +60,7 @@ POLYGON * poly_preprocessing(
     buff_poly = ( POLYGON * ) palloc0( palloc_sz );
     (*center) = ( Point * ) palloc0( palloc_sz );
 
+    scale = false; //XXX
     if( buff_poly == NULL || (*center) == NULL )
     {
         __oom( "Could not allocate centroid or buffer for polygon" );
@@ -167,6 +168,7 @@ POLYGON ** poly_preprocessing_array(
         (int *) num_poly
     );
 
+    scale = false; //XXX
     if( (*num_poly) <= 1 )
     {
         buff_polys = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
@@ -320,7 +322,7 @@ POLYGON * poly_postprocessing(
     {
         return NULL;
     }
-
+    scale = false; //XXX
     min_distance = DBL_MAX;
 
     if( scale )
@@ -332,7 +334,7 @@ POLYGON * poly_postprocessing(
 
             for( j = 0; j < poly->npts; j++ )
             {
-                avg_dist += distance( center, ( &(poly->p[i]) ) );
+                avg_dist += distance( center, ( &(poly->p[j]) ) );
             }
 
             avg_dist = avg_dist / poly->npts;
