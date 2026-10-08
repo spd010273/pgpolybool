@@ -867,8 +867,6 @@ struct sweep_event ** _process_ev_buffer(
         new_ev[i]->position = i;
     }
 
-    pfree( ev );
-
     return new_ev;
 }
 
@@ -928,6 +926,7 @@ void polygon_compute_holes( struct polygon * p )
     bool *                 processed     = NULL;
     unsigned int *         hole_of       = NULL;
     unsigned int           insertion_ind = 0;
+    unsigned int           total_events  = 0;
 
     if( p == NULL )
     {
@@ -999,6 +998,7 @@ void polygon_compute_holes( struct polygon * p )
 
     // Sort SEs in place
     _sort_ev_buffer( ev, 0, ev_index - 1 );
+    total_events = ev_index;
 
     processed = ( bool * ) palloc0(
         sizeof( bool ) * p->num_contours
@@ -1021,8 +1021,8 @@ void polygon_compute_holes( struct polygon * p )
     // may need to init ev_set with ev prior to entry
 
     ev_set = _process_ev_buffer( ev, ev_index );
-
-    for( i = 0; i < ev_index && num_processed < p->num_contours; i++ )
+    // XXX removed free - need to clean up ev when done
+    for( i = 0; i < total_events && num_processed < p->num_contours; i++ )
     {
         se = ev[i];
 
@@ -1117,7 +1117,7 @@ void polygon_compute_holes( struct polygon * p )
         }
     }
 
-    for( i = 0; i < ev_index; i++ )
+    for( i = 0; i < total_events; i++ )
     {
         free_sweep_event( ev[i] );
         free_sweep_event( ev_set[i] );
