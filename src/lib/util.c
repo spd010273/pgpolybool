@@ -82,7 +82,7 @@ unsigned int find_intersection(
     double       w[2]       = {0.0};
     unsigned int imax       = 0;
 
-    sq_epsilon = 0.0000001;
+    sq_epsilon = 0.0000000000000001;
 
     if( s0 == NULL || s1 == NULL )
     {
