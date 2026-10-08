@@ -2259,7 +2259,7 @@ Datum fn_get_convex_hull_point_array( PG_FUNCTION_ARGS )
         &num_points
     );
 
-    if( num_points > 1 )
+    if( num_points > 2 )
     {
         input = ( Point ** ) palloc0(
             sizeof( Point * ) * num_points
@@ -2327,7 +2327,7 @@ Datum fn_get_convex_hull_polygon( PG_FUNCTION_ARGS )
 
     cleaned = remove_duplicate_and_colinear_points( input, false );
 
-    if( cleaned == NULL )
+    if( cleaned == NULL || cleaned->npts <= 2 )
     {
         PG_RETURN_NULL();
     }

@@ -21,7 +21,7 @@ POLYGON * get_convex_hull( Point ** point_field, unsigned int num_points )
     unsigned int size      = 0;
     unsigned int i         = 0;
 
-    if( point_field == NULL || num_points == 0 )
+    if( point_field == NULL || num_points <= 2 )
     {
         return NULL;
     }
