@@ -1415,10 +1415,6 @@ Datum fn_get_parallel_segments( PG_FUNCTION_ARGS )
     elements[0] = LsegPGetDatum( l_result[0] );
     elements[1] = LsegPGetDatum( l_result[1] );
 
-    pfree( l_result[0] );
-    pfree( l_result[1] );
-    pfree( l_result );
-
     get_typlenbyvalalign( LSEGOID, &typlen, &typbyval, &typalign );
 
     result = construct_array(
@@ -1429,6 +1425,10 @@ Datum fn_get_parallel_segments( PG_FUNCTION_ARGS )
         typbyval,
         typalign
     );
+    
+    pfree( l_result[0] );
+    pfree( l_result[1] );
+    pfree( l_result );
 
     PG_RETURN_ARRAYTYPE_P( result );
 }
@@ -1535,10 +1535,6 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
     elements[0] = LsegPGetDatum( l_result[0] );
     elements[1] = LsegPGetDatum( l_result[1] );
 
-    pfree( l_result[0] );
-    pfree( l_result[1] );
-    pfree( l_result );
-
     get_typlenbyvalalign( LSEGOID, &typlen, &typbyval, &typalign );
 
     result = construct_array(
@@ -1549,6 +1545,10 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
         typbyval,
         typalign
     );
+
+    pfree( l_result[0] );
+    pfree( l_result[1] );
+    pfree( l_result );
 
     PG_RETURN_ARRAYTYPE_P( result );
 }
