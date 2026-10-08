@@ -523,6 +523,8 @@ struct contour * new_contour( void )
 
 void free_contour( struct contour * c )
 {
+    unsigned int i = 0;
+
     if( c == NULL )
     {
         return;
@@ -530,6 +532,11 @@ void free_contour( struct contour * c )
 
     if( c->points != NULL )
     {
+        for( i = 0; i < c->num_points; i++ )
+        {
+            pfree( c->points[i] );
+        }
+
         pfree( c->points );
     }
 
