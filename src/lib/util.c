@@ -236,7 +236,7 @@ unsigned int find_intersection(
     if( imax > 0 )
     {
         p0->x = isect_s0->x + w[0] * d0->x;
-        p0->y = isect_s1->y + w[0] * d0->y;
+        p0->y = isect_s0->y + w[0] * d0->y;
 
         if( distance( p0, s0->p1 ) < sq_epsilon )
         {
