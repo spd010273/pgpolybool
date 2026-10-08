@@ -28,6 +28,7 @@ extern void set_polygon_boundbox( POLYGON * );
 extern double get_polygon_area( POLYGON * );
 extern void rotate_polygon( POLYGON *, double );
 extern Point ** get_polygon_points( POLYGON * );
+extern bool polygon_contains_point( POLYGON *, Point * );
 extern POLYGON * box_to_polygon( BOX * );
 extern POLYGON * line_segment_to_polygon( LSEG *, double );
 extern POLYGON * polygon_from_points( Point **, unsigned int );
