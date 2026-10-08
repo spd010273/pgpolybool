@@ -1809,7 +1809,7 @@ Datum fn_cross_product( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    return PG_RETURN_FLOAT8( cross_product( a, b ) );
+    PG_RETURN_FLOAT8( cross_product( a, b ) );
 }
 
 Datum fn_lseg_to_vector( PG_FUNCTION_ARGS )
