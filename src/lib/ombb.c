@@ -42,7 +42,7 @@ Point ** get_ombb(
     double                 width            = 0.0;
     double                 min_area         = 0.0;
 
-    if( p == NULL )
+    if( p == NULL || p->npts < 3 )
     {
         return NULL;
     }
@@ -86,9 +86,9 @@ Point ** get_ombb(
 
     for( i = 0; i < p->npts; i++ )
     {
-        rotation_angle = -atan(
-            ( edge_list[i].p[1].y - edge_list[i].p[0].y )
-          / ( edge_list[i].p[1].x - edge_list[i].p[0].x )
+        rotation_angle = -atan2(
+            ( edge_list[i].p[1].y - edge_list[i].p[0].y ),
+            ( edge_list[i].p[1].x - edge_list[i].p[0].x )
         );
 
         cumulative_angle += rotation_angle;
