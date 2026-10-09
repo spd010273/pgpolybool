@@ -1090,8 +1090,10 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
     {
         return NULL;
     }
+    
+    elog( DEBUG1, "SINGLE_RESULT: %d num_contours: %d", (int) single_result, (int) mpoly->num_contours );
 
-    if( single_result || mpoly->num_contours == 1 )
+    if( single_result )
     {
         result = ( POLYGON ** ) palloc0( sizeof( POLYGON * ) );
 
@@ -1102,7 +1104,8 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
             );
         }
     }
-    else if( mpoly->num_contours > 1 )
+
+    if( mpoly->num_contours >= 1 )
     {
         arr = ( POLYGON ** ) palloc0(
             sizeof( POLYGON * ) * mpoly->num_contours
