@@ -145,7 +145,7 @@ void polygon_erase_contour( struct polygon * p, unsigned int ind )
         return;
     }
 
-    if( i >= p->num_contours )
+    if( ind >= p->num_contours )
     {
         return;
     }
@@ -282,27 +282,90 @@ struct segment * sweep_event_get_segment( struct sweep_event * se )
     return s;
 }
 
-// God forgive me for minifying these two functions
-inline bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
+bool sweep_event_below( struct sweep_event * e, Point * p )
 {
-    return points_equal( ( ( struct sweep_event * ) e1 )->p, ( ( struct sweep_event * ) e2 )->p )
-         ? ( ( struct sweep_event * ) e1 )->left == ( ( struct sweep_event * ) e2 )->left
-             ? sweep_event_below( ( ( struct sweep_event * ) e1 ), ( ( struct sweep_event * ) e2 )->other->p )
-             : !( ( struct sweep_event * ) e1 )->left
-         : ( ( struct sweep_event * ) e1 )->p->x != ( ( struct sweep_event * ) e2 )->p->x
-            ? ( ( struct sweep_event * ) e1 )->p->x < ( ( struct sweep_event * ) e2 )->p->x
-            : ( ( struct sweep_event * ) e1 )->p->y < ( ( struct sweep_event * ) e2 )->p->y;
+    double area = 0.0;
+
+    if( e->left )
+    {
+        area = signed_area_three( e->p, e->other->p, p );
+
+        if( area > 0.0 )
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    area = signed_area_three( e->other->p, e->p, p );
+
+    if( area > 0.0 )
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool sweep_event_above( struct sweep_event * e, Point * p )
+{
+    return !sweep_event_below( e, p );
+}
+
+bool sweep_event_sl_comp_wrapper_inverted( void * e1, void * e2 )
+{
+    return !sweep_event_sl_comp(
+        ( struct sweep_event * ) e1,
+        ( struct sweep_event * ) e2
+    );
+}
+
+bool sweep_event_sl_comp_wrapper( void * e1, void * e2 )
+{
+    return sweep_event_sl_comp(
+        ( struct sweep_event * ) e1,
+        ( struct sweep_event * ) e2
+    );
 }
 
 // Used for comparing Status Line Events
-inline bool sweep_event_sl_comp(
+bool sweep_event_sl_comp(
     struct sweep_event * e1,
     struct sweep_event * e2
 )
 {
-    return points_equal ( e1->p, e2->p )
-         ? e1->left == e2->left ? sweep_event_above( e1, e2->other->p ) : e1->left
-         : e1->p->x != e2->p->x ? e1->p->x > e2->p->x : e1->p->y > e2->p->y;
+    if( e1->p->x > e2->p->x )
+    {
+        return true;
+    }
+
+    if( e2->p->x > e1->p->x )
+    {
+        return false;
+    }
+
+    if( !points_equal( e1->p, e2->p ) )
+    {
+        if( e1->p->y > e2->p->y )
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    if( e1->left != e2->left )
+    {
+        return e1->left;
+    }
+
+    if( sweep_event_above( e1, e2->other->p ) )
+    {
+        return true;
+    }
+
+    return false;
 }
 
 bool sweep_event_ev_comp_wrapper( void * e1, void * e2 )
@@ -344,64 +407,144 @@ bool sweep_event_ev_comp(
         return !e1->left;
     }
 
-    return sweep_event_below( (e1), (e2->other->p) );
+    return sweep_event_below( e1, e2->other->p );
 }
 
-bool sweep_event_sl_segment_comp( void * e0, void * e1 )
+bool sweep_event_sl_segment_comp_wrapper_inverted( void * e0, void * e1 )
 {
+    return !sweep_event_sl_segment_comp(
+        ( struct sweep_event * ) e0,
+        ( struct sweep_event * ) e1
+    );
+}
+
+bool sweep_event_sl_segment_comp_wrapper( void * e0, void * e1 )
+{
+    return sweep_event_sl_segment_comp(
+        ( struct sweep_event * ) e0,
+        ( struct sweep_event * ) e1
+    );
+}
+
+bool sweep_event_sl_segment_comp(
+    struct sweep_event * e0,
+    struct sweep_event * e1
+)
+{
+    bool result = false;
+
     if( e0 == e1 )
     {
+#ifdef DEBUG
+        elog(
+            DEBUG1,
+            "1st case: (%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
+            e0->p->x, e0->p->y,
+            e0->other->p->x, e0->other->p->y,
+            e1->p->x, e1->p->y,
+            e1->other->p->x, e1->other->p->y,
+            result?"T":"F"
+        );
+#endif // DEBUG
         return false;
     }
 
     if(
-          signed_area_three(
-              ( ( struct sweep_event * ) e0 )->p,
-              ( ( struct sweep_event * ) e0 )->other->p,
-              ( ( struct sweep_event * ) e1 )->p
-          ) != 0.0
-       || signed_area_three(
-              ( ( struct sweep_event * ) e0 )->p,
-              ( ( struct sweep_event * ) e0 )->other->p,
-              ( ( struct sweep_event * ) e1 )->other->p
-          ) != 0.0
+          signed_area_three( e0->p, e0->other->p, e1->p ) != 0
+       || signed_area_three( e0->p, e0->other->p, e1->other->p ) != 0
       )
     {
-        if(
-            points_equal(
-                ( ( struct sweep_event * ) e0 )->p,
-                ( ( struct sweep_event * ) e1 )->p
-            )
-          )
+#ifdef DEBUG
+        elog(
+            DEBUG1,
+            "2nd cond (%f,%f)(%f,%f) SA (%f,%f)(%f,%f)",
+            e0->p->x, e0->p->y,
+            e0->other->p->x, e0->other->p->y,
+            e1->p->x, e1->p->y,
+            e1->other->p->x, e1->other->p->y
+        );
+#endif // DEBUG
+        if( points_equal( e0->p, e1->p ) )
         {
-            return sweep_event_below(
-                ( ( struct sweep_event * ) e0 ),
-                ( ( struct sweep_event * ) e1 )->other->p
+            result = sweep_event_below( e0, e1->other->p );
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                "2.1 comp: (%f,%f)(%f,%f) ==  (%f,%f)(%f,%f) result: %s",
+                e0->p->x, e0->p->y,
+                e0->other->p->x, e0->other->p->y,
+                e1->p->x, e1->p->y,
+                e1->other->p->x, e1->other->p->y,
+                result?"T":"F"
             );
-        }
-        else if(
-                  sweep_event_sl_comp(
-                      ( ( struct sweep_event * ) e0 ),
-                      ( ( struct sweep_event * ) e1 )
-                  )
-               )
-        {
-            return sweep_event_above(
-                ( ( struct sweep_event * ) e1 ),
-                ( ( struct sweep_event * ) e0 )->p
-            );
+#endif // DEBUG
+            return result;
         }
 
-        return sweep_event_below(
-            ( ( struct sweep_event * ) e0 ),
-            ( ( struct sweep_event * ) e1 )->p
+        if( sweep_event_sl_comp( e0, e1 ) )
+        {
+            result = sweep_event_above( e1, e0->p );
+#ifdef DEBUG
+            elog(
+                DEBUG1,
+                "2.2 comp: (%f,%f)(%f,%f) == (%f,%f)(%f,%f) result: %s",
+                e0->p->x, e0->p->y,
+                e0->other->p->x, e0->other->p->y,
+                e1->p->x, e1->p->y,
+                e1->other->p->x, e1->other->p->y,
+                result?"T":"F"
+            );
+#endif // DEBUG
+            return result;
+        }
+
+        result = sweep_event_below( e0, e1->p );
+#ifdef DEBUG
+        elog(
+            DEBUG1,
+            "2nd cond catchall: (%f,%f)(%f,%f) bl (%f,%f)(%f,%f) result: %s",
+            e0->p->x, e0->p->y,
+            e0->other->p->x, e0->other->p->y,
+            e1->p->x, e1->p->y,
+            e1->other->p->x, e1->other->p->y,
+            result?"T":"F"
         );
+#endif // DEBUG
+        return result;
     }
 
-    return sweep_event_sl_comp(
-        ( ( struct sweep_event * ) e0 ),
-        ( ( struct sweep_event * ) e1 )
+    if( points_equal( e0->p, e1->p ) )
+    {
+        result = sweep_event_sl_comp( e0, e1 );
+#ifdef DEBUG
+        elog(
+            DEBUG1,
+            "final point comp in segments comp: "\
+            "(%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
+            e0->p->x, e0->p->y,
+            e0->other->p->x, e0->other->p->y,
+            e1->p->x, e1->p->y,
+            e1->other->p->x, e1->other->p->y,
+            result?"T":"F"
+        );
+#endif // DEBUG
+        return result;
+    }
+
+    result = sweep_event_sl_comp( e0, e1 );
+#ifdef DEBUG
+    elog(
+        DEBUG1,
+        "catchall in segments comp: "\
+        "(%f,%f)(%f,%f) vs (%f,%f)(%f,%f) result: %s",
+        e0->p->x, e0->p->y,
+        e0->other->p->x, e0->other->p->y,
+        e1->p->x, e1->p->y,
+        e1->other->p->x, e1->other->p->y,
+        result?"T":"F"
     );
+#endif // DEBUG
+    return result;
 }
 
 bool sweep_event_ev_segment_comp(
@@ -421,12 +564,12 @@ bool sweep_event_ev_segment_comp(
     {
         if( points_equal( e0->p, e1->p ) )
         {
-            return sweep_event_below( (e0), (e1->other->p) );
+            return sweep_event_below( e0, e1->other->p );
         }
 
         if( sweep_event_ev_comp( e0, e1 ) )
         {
-            return sweep_event_below( (e0), (e1->p) );
+            return sweep_event_below( e0, e1->p );
         }
 
         return sweep_event_above( e1, e0->p );
@@ -480,7 +623,6 @@ void free_sweep_event( struct sweep_event * s )
 
     s->p = NULL;
     pfree( s );
-    s = NULL;
 
     return;
 }
@@ -724,8 +866,6 @@ struct sweep_event ** _process_ev_buffer(
         new_ev[i]->position = i;
     }
 
-    pfree( ev );
-
     return new_ev;
 }
 
@@ -785,6 +925,7 @@ void polygon_compute_holes( struct polygon * p )
     bool *                 processed     = NULL;
     unsigned int *         hole_of       = NULL;
     unsigned int           insertion_ind = 0;
+    unsigned int           total_events  = 0;
 
     if( p == NULL )
     {
@@ -856,6 +997,7 @@ void polygon_compute_holes( struct polygon * p )
 
     // Sort SEs in place
     _sort_ev_buffer( ev, 0, ev_index - 1 );
+    total_events = ev_index;
 
     processed = ( bool * ) palloc0(
         sizeof( bool ) * p->num_contours
@@ -878,8 +1020,8 @@ void polygon_compute_holes( struct polygon * p )
     // may need to init ev_set with ev prior to entry
 
     ev_set = _process_ev_buffer( ev, ev_index );
-
-    for( i = 0; i < ev_index && num_processed < p->num_contours; i++ )
+    // XXX removed free - need to clean up ev when done
+    for( i = 0; i < total_events && num_processed < p->num_contours; i++ )
     {
         se = ev[i];
 
@@ -974,10 +1116,9 @@ void polygon_compute_holes( struct polygon * p )
         }
     }
 
-    for( i = 0; i < ev_index; i++ )
+    for( i = 0; i < total_events; i++ )
     {
         free_sweep_event( ev[i] );
-        free_sweep_event( ev_set[i] );
     }
 
     pfree( ev );
@@ -1017,7 +1158,7 @@ void _dump_polygon( struct polygon * p )
     return;
 }
 
-void _dump_sweep_event_rbtree_wrapper( void * event )
+void _dump_sweep_event_dlpq_wrapper( void * event )
 {
     _dump_sweep_event( ( struct sweep_event * ) event );
     return;
@@ -1032,7 +1173,7 @@ void _dump_sweep_event( struct sweep_event * e )
     }
 
     elog(
-        DEBUG1,"p(%f,%f) o(%f,%f) L/R %s, Inside %s, In/Ou %s ET: %s PT: %s",
+        DEBUG1,"p (%f, %f) o ( %f, %f ) L %s, I %s, I/O %s ET: %s PT: %s",
         e->p->x,
         e->p->y,
         e->other->p->x,
@@ -1082,11 +1223,6 @@ void _dump_se_set( struct sweep_event *** ev_set, unsigned int ev_index )
 }
 #endif // DEBUG
 
-bool sweep_event_equal_wrapper( void * e0, void * e1 )
-{
-    return sweep_event_equal( ( struct sweep_event * ) e0, ( struct sweep_event * ) e1 );
-}
-
 bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
 {
     if( e0 == NULL || e1 == NULL )
@@ -1104,15 +1240,32 @@ bool sweep_event_equal( struct sweep_event * e0, struct sweep_event * e1 )
         return true;
     }
 
-    if(
-          e0->left != e1->left
-       || e0->inside != e1->inside
-       || e0->in_out != e1->in_out
-       || e0->edge_type != e1->edge_type
-       || e0->polygon_type != e1->polygon_type
-       || !points_equal( e0->p, e1->p )
-       || !points_equal( e0->other->p, e1->other->p )
-      )
+    if( !points_equal( e0->p, e1->p ) )
+    {
+        return false;
+    }
+
+    if( !points_equal( e0->other->p, e1->other->p ) )
+    {
+        return false;
+    }
+
+    if( e0->left != e1->left || e0->inside != e1->inside )
+    {
+        return false;
+    }
+
+    if( e0->polygon != e1->polygon )
+    {
+        return false;
+    }
+
+    if( e0->in_out != e1->in_out )
+    {
+        return false;
+    }
+
+    if( e0->edge_type != e1->edge_type )
     {
         return false;
     }

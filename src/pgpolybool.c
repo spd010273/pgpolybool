@@ -65,6 +65,7 @@ PG_FUNCTION_INFO_V1( fn_points_to_polygon );
 PG_FUNCTION_INFO_V1( fn_get_polygon_ombb );
 PG_FUNCTION_INFO_V1( fn_get_points_ombb );
 PG_FUNCTION_INFO_V1( fn_get_ombb );
+PG_FUNCTION_INFO_V1( fn_get_polygon_distance );
 
 // LSEG functions
 PG_FUNCTION_INFO_V1( fn_get_parallel_segment );
@@ -546,15 +547,17 @@ Datum fn_intersect_polygons( PG_FUNCTION_ARGS )
     }
 
     new_polygon = poly_postprocessing( new_polygon, NULL, 0, false );
-    set_polygon_boundbox( new_polygon );
 #ifdef DEBUG
     dump_polygon( new_polygon );
 #endif
+
     if( new_polygon == NULL )
     {
         elog( ERROR, "Polygon post-processing error" );
     }
-
+    
+    set_polygon_boundbox( new_polygon );
+    
     SET_VARSIZE(
         new_polygon,
         offsetof( POLYGON, p )
@@ -1414,10 +1417,6 @@ Datum fn_get_parallel_segments( PG_FUNCTION_ARGS )
     elements[0] = LsegPGetDatum( l_result[0] );
     elements[1] = LsegPGetDatum( l_result[1] );
 
-    //pfree( l_result[0] );
-    //pfree( l_result[1] );
-    pfree( l_result );
-
     get_typlenbyvalalign( LSEGOID, &typlen, &typbyval, &typalign );
 
     result = construct_array(
@@ -1428,6 +1427,10 @@ Datum fn_get_parallel_segments( PG_FUNCTION_ARGS )
         typbyval,
         typalign
     );
+    
+    pfree( l_result[0] );
+    pfree( l_result[1] );
+    pfree( l_result );
 
     PG_RETURN_ARRAYTYPE_P( result );
 }
@@ -1534,10 +1537,6 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
     elements[0] = LsegPGetDatum( l_result[0] );
     elements[1] = LsegPGetDatum( l_result[1] );
 
-    //pfree( l_result[0] );
-    //pfree( l_result[1] );
-    pfree( l_result );
-
     get_typlenbyvalalign( LSEGOID, &typlen, &typbyval, &typalign );
 
     result = construct_array(
@@ -1548,6 +1547,10 @@ Datum fn_get_orthogonal_segments( PG_FUNCTION_ARGS )
         typbyval,
         typalign
     );
+
+    pfree( l_result[0] );
+    pfree( l_result[1] );
+    pfree( l_result );
 
     PG_RETURN_ARRAYTYPE_P( result );
 }
@@ -1808,7 +1811,7 @@ Datum fn_cross_product( PG_FUNCTION_ARGS )
         PG_RETURN_NULL();
     }
 
-    return cross_product( a, b );
+    PG_RETURN_FLOAT8( cross_product( a, b ) );
 }
 
 Datum fn_lseg_to_vector( PG_FUNCTION_ARGS )
@@ -2166,6 +2169,29 @@ Datum fn_get_ombb( PG_FUNCTION_ARGS )
     PG_RETURN_DATUM( HeapTupleGetDatum( heap_tuple ) );
 }
 
+Datum fn_get_polygon_distance( PG_FUNCTION_ARGS )
+{
+    POLYGON * p1       = NULL;
+    POLYGON * p2       = NULL;
+    float8    distance = 0.0;
+
+    if( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+    {
+        PG_RETURN_NULL();
+    }
+
+    p1 = PG_GETARG_POLYGON_P(0);
+    p2 = PG_GETARG_POLYGON_P(1);
+
+    if( p1 == NULL || p2 == NULL )
+    {
+        PG_RETURN_NULL();
+    }
+
+    distance = get_polygon_distance( p1, p2 );
+    PG_RETURN_FLOAT8( distance );
+}
+
 Datum fn_get_root_orthogonal_segment( PG_FUNCTION_ARGS )
 {
     LSEG *  input    = NULL;
@@ -2235,7 +2261,7 @@ Datum fn_get_convex_hull_point_array( PG_FUNCTION_ARGS )
         &num_points
     );
 
-    if( num_points > 1 )
+    if( num_points > 2 )
     {
         input = ( Point ** ) palloc0(
             sizeof( Point * ) * num_points
@@ -2303,7 +2329,7 @@ Datum fn_get_convex_hull_polygon( PG_FUNCTION_ARGS )
 
     cleaned = remove_duplicate_and_colinear_points( input, false );
 
-    if( cleaned == NULL )
+    if( cleaned == NULL || cleaned->npts <= 2 )
     {
         PG_RETURN_NULL();
     }

@@ -82,7 +82,7 @@ unsigned int find_intersection(
     double       w[2]       = {0.0};
     unsigned int imax       = 0;
 
-    sq_epsilon = 0.0000001;
+    sq_epsilon = 0.0000000000000001;
 
     if( s0 == NULL || s1 == NULL )
     {
@@ -236,7 +236,7 @@ unsigned int find_intersection(
     if( imax > 0 )
     {
         p0->x = isect_s0->x + w[0] * d0->x;
-        p0->y = isect_s1->y + w[0] * d0->y;
+        p0->y = isect_s0->y + w[0] * d0->y;
 
         if( distance( p0, s0->p1 ) < sq_epsilon )
         {

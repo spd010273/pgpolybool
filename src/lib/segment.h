@@ -26,6 +26,5 @@ extern void segment_set_begin( struct segment *, Point * p );
 extern void segment_set_end( struct segment *, Point * p );
 extern void segment_change_orientation( struct segment * );
 extern struct segment * new_segment( void );
-extern void free_segment( struct segment * );
 
 #endif // SEGMENT_H

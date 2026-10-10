@@ -17,7 +17,7 @@
 void process_segment(
     struct segment *       s,
     unsigned int           poly_type,
-    struct rbtree *        rb_tree,
+    struct dlpq *          phead,
     struct sweep_event *** ev_set,
     unsigned int *         ev_index
 )
@@ -69,8 +69,8 @@ void process_segment(
         e1->left = false;
     }
 
-    rbtree_insert( rb_tree, ( void * ) e1 );
-    rbtree_insert( rb_tree, ( void * ) e2 );
+    dlpq_push( phead, ( void * ) e1 );
+    dlpq_push( phead, ( void * ) e2 );
 
     _se_set_insert( ev_set, e1, ev_index, &sweep_event_ev_segment_comp );
     _se_set_insert( ev_set, e2, ev_index, &sweep_event_ev_segment_comp );
@@ -82,7 +82,7 @@ void process_segment(
 void divide_segment(
     struct sweep_event *   e,
     Point *                p,
-    struct rbtree *        rb_tree,
+    struct dlpq *          phead,
     struct sweep_event *** ev_set,
     unsigned int *         ev_index
 )
@@ -129,14 +129,14 @@ void divide_segment(
     _dump_sweep_event( e0 );
     elog( DEBUG1, "Divided left segment" );
     _dump_sweep_event( e1 );
-    rbtree_debug( rb_tree );
+    _dlpq_debug( phead );
 #endif // DEBUG
 
     _se_set_insert( ev_set, e1, ev_index, &sweep_event_ev_segment_comp );
     _se_set_insert( ev_set, e0, ev_index, &sweep_event_ev_segment_comp );
 
-    rbtree_insert( rb_tree, ( void * ) e1 );
-    rbtree_insert( rb_tree, ( void * ) e0 );
+    dlpq_push( phead, ( void * ) e1 );
+    dlpq_push( phead, ( void * ) e0 );
 
     return;
 }
@@ -145,7 +145,7 @@ void possible_intersection(
     struct sweep_event *   e0,
     struct sweep_event *   e1,
     unsigned int *         num_int,
-    struct rbtree *        rb_tree,
+    struct dlpq *          phead,
     struct sweep_event *** ev_set,
     unsigned int *         ev_length
 )
@@ -172,19 +172,18 @@ void possible_intersection(
     num_intersections = find_intersection( seg0, seg1, isect_p0, isect_p1 );
 
 #ifdef DEBUG
-    elog( DEBUG1, "Comping e0 (%p) and e1 (%p)", e0, e1 );
     elog(
         DEBUG1,
         "Locating intersections between p (%f,%f) o (%f,%f) "\
         "and p (%f,%f) o (%f,%f)",
-        e0 == NULL ? 0.0 : e0->p->x,
-        e0 == NULL ? 0.0 : e0->p->y,
-        e0 == NULL ? 0.0 : e0->other->p->x,
-        e0 == NULL ? 0.0 : e0->other->p->y,
-        e1 == NULL ? 0.0 : e1->p->x,
-        e1 == NULL ? 0.0 : e1->p->y,
-        e1 == NULL ? 0.0 : e1->other->p->x,
-        e1 == NULL ? 0.0 : e1->other->p->y
+        e0->p->x,
+        e0->p->y,
+        e0->other->p->x,
+        e0->other->p->y,
+        e1->p->x,
+        e1->p->y,
+        e1->other->p->x,
+        e1->other->p->y
     );
     elog(
         DEBUG1,
@@ -227,7 +226,7 @@ void possible_intersection(
             && !points_equal( e0->other->p, isect_p0 )
           )
         {
-            divide_segment( e0, isect_p0, rb_tree, ev_set, ev_length );
+            divide_segment( e0, isect_p0, phead, ev_set, ev_length );
         }
 
         if(
@@ -235,7 +234,7 @@ void possible_intersection(
             && !points_equal( e1->other->p, isect_p0 )
           )
         {
-            divide_segment( e1, isect_p0, rb_tree, ev_set, ev_length );
+            divide_segment( e1, isect_p0, phead, ev_set, ev_length );
         }
 
         return;
@@ -330,17 +329,11 @@ void possible_intersection(
 
         if( ev[0] != NULL )
         {
-            divide_segment( ev[0], ev[1]->p, rb_tree, ev_set, ev_length );
+            divide_segment( ev[0], ev[1]->p, phead, ev_set, ev_length );
         }
         else
         {
-            divide_segment(
-                ev[2]->other,
-                ev[1]->p,
-                rb_tree,
-                ev_set,
-                ev_length
-            );
+            divide_segment( ev[2]->other, ev[1]->p, phead, ev_set, ev_length );
         }
 
         pfree( ev );
@@ -360,8 +353,8 @@ void possible_intersection(
             ev[2]->edge_type = EDGE_TYPE_DIFFERENT_TRANSITION;
         }
 
-        divide_segment( ev[0], ev[1]->p, rb_tree, ev_set, ev_length );
-        divide_segment( ev[1], ev[2]->p, rb_tree, ev_set, ev_length );
+        divide_segment( ev[0], ev[1]->p, phead, ev_set, ev_length );
+        divide_segment( ev[1], ev[2]->p, phead, ev_set, ev_length );
 
         pfree( ev );
 
@@ -371,7 +364,7 @@ void possible_intersection(
     ev[1]->edge_type        = EDGE_TYPE_NON_CONTRIBUTING;
     ev[1]->other->edge_type = EDGE_TYPE_NON_CONTRIBUTING;
 
-    divide_segment( ev[0], ev[1]->p, rb_tree, ev_set, ev_length );
+    divide_segment( ev[0], ev[1]->p, phead, ev_set, ev_length );
 
     if( e0->in_out == e1->in_out )
     {
@@ -382,7 +375,7 @@ void possible_intersection(
         ev[3]->edge_type = EDGE_TYPE_DIFFERENT_TRANSITION;
     }
 
-    divide_segment( ev[3]->other, ev[2]->p, rb_tree, ev_set, ev_length );
+    divide_segment( ev[3]->other, ev[2]->p, phead, ev_set, ev_length );
 
     pfree( ev );
 
@@ -408,13 +401,14 @@ struct polygon * compute(
     Point *                    max_subj       = NULL;
     Point *                    min_clip       = NULL;
     Point *                    max_clip       = NULL;
-    struct rbtree *            rb_tree        = NULL;
-    struct rbtree *            sl_rb_tree     = NULL;
+    struct dlpq *              phead          = NULL;
+    struct dlpq *              sl_head        = NULL; // Status line
     struct segment *           seg            = NULL;
     struct polygon_connector * pc             = NULL;
     struct sweep_event *       event          = NULL;
     struct sweep_event **      ev_set         = NULL;
     struct polygon *           result         = NULL;
+    void *                     dlpq_peek      = NULL;
 
     if( subject == NULL || clipping == NULL )
     {
@@ -436,14 +430,11 @@ struct polygon * compute(
         return result;
     }
 
-    rb_tree = new_rbtree(
-        &sweep_event_sl_comp_wrapper_inverted,
-        NULL
-//        &sweep_event_equal_wrapper
-    );
+    phead = new_dlpq( &sweep_event_sl_comp_wrapper );
 #ifdef DEBUG
-    rbtree_setup_debug( rb_tree, &_dump_sweep_event_rbtree_wrapper );
+    _dlpq_setup_debug( phead, &_dump_sweep_event_dlpq_wrapper );
 #endif
+
     min_subj = ( Point * ) palloc0( sizeof( Point ) );
     max_subj = ( Point * ) palloc0( sizeof( Point ) );
     min_clip = ( Point * ) palloc0( sizeof( Point ) );
@@ -550,7 +541,7 @@ struct polygon * compute(
             process_segment(
                 seg,
                 POLY_TYPE_SUBJECT,
-                rb_tree,
+                phead,
                 &ev_set,
                 &ev_length
             );
@@ -565,7 +556,7 @@ struct polygon * compute(
             process_segment(
                 seg,
                 POLY_TYPE_CLIPPING,
-                rb_tree,
+                phead,
                 &ev_set,
                 &ev_length
             );
@@ -579,11 +570,7 @@ struct polygon * compute(
         min_max_x = max_clip->x;
     }
 
-    sl_rb_tree = new_rbtree(
-        &sweep_event_sl_segment_comp,
-        NULL
-//        &sweep_event_equal_wrapper
-    );
+    sl_head = new_dlpq( &sweep_event_sl_segment_comp_wrapper_inverted );
 
 #ifdef DEBUG
     elog(
@@ -591,16 +578,25 @@ struct polygon * compute(
         " =========== Entering Main Loop ===========\nmin_max_x: %f",
         min_max_x
     );
+    _dlpq_debug( phead );
+    _dlpq_setup_debug( sl_head, &_dump_sweep_event_dlpq_wrapper );
+#endif // DEBUG
 
-    rbtree_debug( rb_tree );
-    rbtree_setup_debug( sl_rb_tree, &_dump_sweep_event_rbtree_wrapper );
+#ifdef DEBUG
+    elog(
+        DEBUG1,
+        " =========== Entering Main Loop ===========\nmin_max_x: %f",
+        min_max_x
+    );
 #endif // DEBUG
 
     pc = new_polygon_connector( NULL, NULL );
 
-    while( !rbtree_empty( rb_tree ) )
+    // TODO: verify all events are freed
+    while( !dlpq_empty( phead ) )
     {
-        event = ( struct sweep_event * ) rbtree_pop( rb_tree );
+        event = ( struct sweep_event * ) dlpq_pop( phead );
+
 #ifdef DEBUG
         elog( DEBUG1, "================================ LOOP");
         elog( DEBUG1, "Got event %p :", event );
@@ -624,8 +620,9 @@ struct polygon * compute(
             pfree( min_clip );
             pfree( max_clip );
             free_polygon_connector( pc );
-            free_rbtree( rb_tree );
-            free_rbtree( sl_rb_tree );
+            free_dlpq( &sl_head );
+            free_dlpq( &phead );
+
             return result;
         }
 
@@ -645,7 +642,7 @@ struct polygon * compute(
                 event->other->p->y
             );
             elog( DEBUG1, "status line state:" );
-            rbtree_debug( sl_rb_tree );
+            _dlpq_debug( sl_head );
             elog( DEBUG1, "polygon connector state:" );
             _dump_polygon_connector( pc );
 #endif // DEBUG
@@ -656,15 +653,15 @@ struct polygon * compute(
                 polygon_connector_add_segment( pc, seg );
             }
 
-            while( !rbtree_empty( rb_tree ) )
+            while( !dlpq_empty( phead ) )
             {
-                event = ( struct sweep_event * ) rbtree_pop( rb_tree );
+                event = ( struct sweep_event * ) dlpq_pop( phead );
 #ifdef DEBUG
                 elog(
                     DEBUG1,
-                    "Got event %p from rbtree_pop of %p",
+                    "Got event %p from dlpq_pop of %p",
                     event,
-                    rb_tree
+                    phead
                 );
 #endif // DEBUG
                 if( !event->left )
@@ -680,8 +677,8 @@ struct polygon * compute(
             _dump_polygon( result );
 #endif // DEBUG
             free_polygon_connector( pc );
-            free_rbtree( rb_tree );
-            free_rbtree( sl_rb_tree );
+            free_dlpq( &sl_head );
+            free_dlpq( &phead );
             pfree( min_subj );
             pfree( max_subj );
             pfree( min_clip );
@@ -700,13 +697,14 @@ struct polygon * compute(
                 previous_event,
                 next_event,
                 event_position,
-                sl_rb_tree->size
+                sl_head->size
             );
 
             elog( DEBUG1, "Adding event to SE set" );
 #endif // DEBUG
-            rbtree_insert( sl_rb_tree, ( void * ) event );
-            event_position = rbtree_get_position( sl_rb_tree, ( void * ) event );
+            dlpq_push( sl_head, event );
+
+            event_position = dlpq_get_position( sl_head, event );
             next_event     = event_position;
             previous_event = event_position;
 
@@ -716,25 +714,26 @@ struct polygon * compute(
             }
             else
             {
-                previous_event = sl_rb_tree->size;
+                previous_event = sl_head->size;
             }
 
 #ifdef DEBUG
             elog( DEBUG1, "event in/out & inside logic" );
             elog( DEBUG1, "status line state:" );
-            rbtree_debug( sl_rb_tree );
-
+            _dlpq_debug( sl_head );
             elog(
                 DEBUG1,
                 "P %d, N %d, ep %d S: %d",
                 previous_event,
                 next_event,
                 event_position,
-                sl_rb_tree->size
+                sl_head->size
             );
 #endif //DEBUG
+            // Peek since we reference the previous_event multiple times
+            dlpq_peek = dlpq_peek_position( sl_head, previous_event );
 
-            if( sl_rb_tree->size == previous_event )
+            if( sl_head->size == previous_event )
             {
 #ifdef DEBUG
                 elog( DEBUG1, "Event is not inside not inout" );
@@ -743,11 +742,9 @@ struct polygon * compute(
                 event->in_out = false;
             }
             else if(
-                     (
-                        (struct sweep_event *) rbtree_peek_position(
-                            sl_rb_tree,
-                            previous_event
-                        )
+                     dlpq_peek != NULL
+                  && (
+                        (struct sweep_event *) dlpq_peek
                      )->edge_type != EDGE_TYPE_NORMAL
                    )
             {
@@ -773,78 +770,66 @@ struct polygon * compute(
                     }
 
                     if(
-                        (
-                         (struct sweep_event *) rbtree_peek_position(
-                             sl_rb_tree,
-                             previous_event
-                         )
-                        )->polygon_type == event->polygon_type
+                         dlpq_peek_position( sl_head, colinear_event ) != NULL
                       )
                     {
-                        event->in_out = !(
+                        if(
                             (
-                             (struct sweep_event *) rbtree_peek_position(
-                                 sl_rb_tree,
-                                 previous_event
-                             )
-                            )->in_out
-                        );
-                        event->inside = !(
-                            (
-                             (struct sweep_event *) rbtree_peek_position(
-                                 sl_rb_tree,
-                                 colinear_event
-                             )
-                            )->in_out
-                        );
+                             (struct sweep_event *) dlpq_peek
+                            )->polygon_type == event->polygon_type
+                          )
+                        {
+                            event->in_out = !(
+                                (
+                                 (struct sweep_event *) dlpq_peek
+                                )->in_out
+                            );
+                            event->inside = !(
+                                (
+                                 (struct sweep_event *) dlpq_peek_position(
+                                     sl_head,
+                                     colinear_event
+                                 )
+                                )->in_out
+                            );
 #ifdef DEBUG
-                        elog( DEBUG1, "Event is in first colinear cond" );
+                            elog( DEBUG1, "Event is in first colinear cond" );
 #endif // DEBUG
-                    }
-                    else
-                    {
-                        event->in_out = !(
-                            (
-                             (struct sweep_event *) rbtree_peek_position(
-                                 sl_rb_tree,
-                                 colinear_event
-                             )
-                            )->in_out
-                        );
-                        event->inside = !(
-                            (
-                             (struct sweep_event *) rbtree_peek_position(
-                                 sl_rb_tree,
-                                 previous_event
-                             )
-                            )->in_out
-                        );
+                        }
+                        else
+                        {
+                            event->in_out = !(
+                                (
+                                 (struct sweep_event *) dlpq_peek_position(
+                                     sl_head,
+                                     colinear_event
+                                 )
+                                )->in_out
+                            );
+                            event->inside = !(
+                                (
+                                 (struct sweep_event *) dlpq_peek
+                                )->in_out
+                            );
 #ifdef DEBUG
-                        elog( DEBUG1, "Event is in second colinear cond" );
+                            elog( DEBUG1, "Event is in second colinear cond" );
 #endif // DEBUG
+                        }
                     }
                 }
             }
             else if(
-                        (
-                         (struct sweep_event *) rbtree_peek_position(
-                             sl_rb_tree,
-                             previous_event
-                         )
+                        dlpq_peek != NULL
+                     && (
+                         (struct sweep_event *) dlpq_peek
                         )->polygon_type == event->polygon_type
                    )
             {
                 event->inside = (
-                 (struct sweep_event *) rbtree_peek_position(
-                     sl_rb_tree,
-                     previous_event
-                 )
+                 (struct sweep_event *) dlpq_peek
                 )->inside;
                 event->in_out = !(
-                 (struct sweep_event *) rbtree_peek_position(
-                     sl_rb_tree,
-                     previous_event
-                 )
+                 (struct sweep_event *) dlpq_peek
                 )->in_out;
 #ifdef DEBUG
                 elog( DEBUG1, "Event is in first polytype check cond" );
@@ -852,18 +837,15 @@ struct polygon * compute(
             }
             else
             {
-                event->inside = !(
-                 (struct sweep_event *) rbtree_peek_position(
-                     sl_rb_tree,
-                     previous_event
-                 )
-                )->in_out;
-                event->in_out = (
-                 (struct sweep_event *) rbtree_peek_position(
-                     sl_rb_tree,
-                     previous_event
-                 )
-                )->inside;
+                if( dlpq_peek != NULL )
+                {
+                    event->inside = !(
+                     (struct sweep_event *) dlpq_peek
+                    )->in_out;
+                    event->in_out = (
+                     (struct sweep_event *) dlpq_peek
+                    )->inside;
+                }
 #ifdef DEBUG
                 elog( DEBUG1, "Event is in second polytype check cond" );
 #endif // DEBUG
@@ -873,28 +855,28 @@ struct polygon * compute(
             elog( DEBUG1, "Checking possible intersections" );
 #endif // DEBUG
 
-            if( ( next_event + 1 ) >= sl_rb_tree->size )
+            if( ( next_event + 1 ) >= sl_head->size  )
             {
-                next_event = sl_rb_tree->size;
+                next_event = sl_head->size;
             }
             else
             {
                 next_event++;
             }
 
-            if( next_event != sl_rb_tree->size )
+            if( next_event != sl_head->size )
             {
 #ifdef DEBUG
                 elog( DEBUG1, "Calling first pi" );
 #endif // DEBUG
                 possible_intersection(
                     event,
-                    (struct sweep_event *) rbtree_peek_position(
-                        sl_rb_tree,
+                    (struct sweep_event *) dlpq_peek_position(
+                        sl_head,
                         next_event
                     ),
                     &num_int,
-                    rb_tree,
+                    phead,
                     &ev_set,
                     &ev_length
                 );
@@ -903,7 +885,7 @@ struct polygon * compute(
                     DEBUG1,
                     "============== 1 POST POSSIBLE INTERSECTION ============="
                 );
-                rbtree_debug( rb_tree );
+                _dlpq_debug( phead );
                 elog(
                     DEBUG1,
                     "========================================================="
@@ -911,16 +893,16 @@ struct polygon * compute(
 #endif // DEBUG
             }
 
-            if( previous_event != sl_rb_tree->size )
+            if( previous_event != sl_head->size )
             {
                 possible_intersection(
-                    (struct sweep_event *) rbtree_peek_position(
-                        sl_rb_tree,
+                    (struct sweep_event *) dlpq_peek_position(
+                        sl_head,
                         previous_event
                     ),
                     event,
                     &num_int,
-                    rb_tree,
+                    phead,
                     &ev_set,
                     &ev_length
                 );
@@ -929,7 +911,7 @@ struct polygon * compute(
                     DEBUG1,
                     "============== 2 POST POSSIBLE INTERSECTION ============="
                 );
-                rbtree_debug( rb_tree );
+                _dlpq_debug( phead );
                 elog(
                     DEBUG1,
                     "========================================================="
@@ -939,17 +921,20 @@ struct polygon * compute(
         }
         else
         {
-            colinear_event = rbtree_get_position( sl_rb_tree, event->other );
+#ifdef DEBUG
+            elog( DEBUG1, "colinear & edge logic" );
+#endif // DEBUG
+            colinear_event = dlpq_get_position( sl_head, event->other );
             previous_event = colinear_event;
             next_event     = colinear_event;
 #ifdef DEBUG
             elog( DEBUG1, "colinear & edge logic (right handed E)" );
-            elog( DEBUG1, "RS: P: %d, N: %d ep %d S: %d", previous_event, next_event, event_position, sl_rb_tree->size );
+            elog( DEBUG1, "RS: P: %d, N: %d ep %d S: %d", previous_event, next_event, event_position, sl_head->size );
 #endif // DEBUG
 
-            if( next_event >= sl_rb_tree->size )
+            if( next_event >= sl_head->size )
             {
-                next_event = sl_rb_tree->size;
+                next_event = sl_head->size;
             }
             else
             {
@@ -962,7 +947,7 @@ struct polygon * compute(
             }
             else
             {
-                previous_event = sl_rb_tree->size;
+                previous_event = sl_head->size;
             }
 
             switch( event->edge_type )
@@ -1022,31 +1007,31 @@ struct polygon * compute(
                     break;
             }
 
-            rbtree_delete(
-                sl_rb_tree,
-                rbtree_peek_position(
-                    sl_rb_tree,
+            dlpq_remove(
+                sl_head,
+                dlpq_peek_position(
+                    sl_head,
                     colinear_event
                 )
             );
 
             if(
-                    next_event < sl_rb_tree->size - 1
-                 && previous_event < sl_rb_tree->size - 1
-                 && sl_rb_tree->size != 0
+                    next_event < sl_head->size - 1
+                 && previous_event < sl_head->size - 1
+                 && sl_head->size != 0
               )
             {
                 possible_intersection(
-                    (struct sweep_event *) rbtree_peek_position(
-                        sl_rb_tree,
+                    (struct sweep_event *) dlpq_peek_position(
+                        sl_head,
                         previous_event
                     ),
-                    (struct sweep_event *) rbtree_peek_position(
-                        sl_rb_tree,
+                    (struct sweep_event *) dlpq_peek_position(
+                        sl_head,
                         next_event
                     ),
                     &num_int,
-                    rb_tree,
+                    phead,
                     &ev_set,
                     &ev_length
                 );
@@ -1055,16 +1040,15 @@ struct polygon * compute(
     }
 
 #ifdef DEBUG
-    elog( DEBUG1, "Ended main loop. rbtree:" );
-    rbtree_debug( rb_tree );
+    elog( DEBUG1, "Ended main loop. dlpq:" );
     _dump_polygon_connector( pc );
 #endif // DEBUG
 
     result = polygon_connector_to_polygon( pc );
 
     free_polygon_connector( pc );
-    free_rbtree( sl_rb_tree );
-    free_rbtree( rb_tree );
+    free_dlpq( &sl_head );
+    free_dlpq( &phead );
     pfree( min_subj );
     pfree( max_subj );
     pfree( min_clip );
@@ -1137,6 +1121,8 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
     {
         return NULL;
     }
+    
+    elog( DEBUG1, "SINGLE_RESULT: %d num_contours: %d", (int) single_result, (int) mpoly->num_contours );
 
     if( single_result )
     {
@@ -1150,8 +1136,7 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
         }
     }
 
-    // TODO: This function needs to be modified to respect an arg of false for single_result and num_contours = 1
-    if( mpoly->num_contours > 1 )
+    if( mpoly->num_contours >= 1 )
     {
         arr = ( POLYGON ** ) palloc0(
             sizeof( POLYGON * ) * mpoly->num_contours
@@ -1163,6 +1148,10 @@ POLYGON ** mpoly_to_poly( struct polygon * mpoly, bool single_result )
                 "Could not allocate array for polygon contours"
             );
         }
+    }
+    else
+    {
+        return NULL;
     }
 
     for( c = 0; c < mpoly->num_contours; c++ )

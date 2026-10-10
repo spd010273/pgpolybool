@@ -75,24 +75,3 @@ struct segment * new_segment( void )
 
     return new_segment;
 }
-
-void free_segment( struct segment * old_segment )
-{
-    if( old_segment == NULL )
-    {
-        return;
-    }
-
-    if( old_segment->p1 != NULL )
-    {
-        pfree( old_segment->p1 );
-    }
-
-    if( old_segment->p2 != NULL )
-    {
-        pfree( old_segment->p2 );
-    }
-
-    pfree( old_segment );
-    return;
-}

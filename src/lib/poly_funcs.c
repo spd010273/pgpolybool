@@ -25,6 +25,8 @@
  * Error Conditions:
  *     None
  */
+//static bool __bbox_intersect( POLYGON *, POLYGON * );
+
 void set_polygon_boundbox( POLYGON * p )
 {
     double       max_x = -DBL_MAX;
@@ -447,6 +449,66 @@ POLYGON * polygon_from_points( Point ** points, unsigned int num_points )
 
     return p;
 }
+/*
+ * bool polygon_contains_point( POLYGON * poly, Point * p )
+ *
+ *      Ray casting test for point within polygon, returns true if p resides
+ *      within or on a boundary of poly.
+ *
+ * Arguments:
+ *      POLYGON * poly:     polygon to test against
+ *      Point *   p:        point under test
+ * Result:
+ *      bool:               true if p is within or on the boundary of poly
+ * Error Conditions:
+ *      None ( returns false on NULL or degenerate input )
+ */
+bool polygon_contains_point( POLYGON * poly, Point * p )
+{
+    unsigned int i              = 0;
+    unsigned int j              = 0;
+    Point *      vertex_i       = NULL;
+    Point *      vertex_j       = NULL;
+    double       cross_product  = 0.0;
+    double       segment_length = 0.0;
+    bool         is_inside      = false;
+
+    if( poly == NULL || p == NULL || poly->npts < 3 )
+    {
+        return false;
+    }
+
+    for( i = 0; i < poly->npts; i++ )
+    {
+        j              = ( i + 1 ) % poly->npts;
+        vertex_i       = &( poly->p[i] );
+        vertex_j       = &( poly->p[j] );
+        cross_product  = ( vertex_i->x - vertex_j->x ) * ( p->y - vertex_j->y )
+                       - ( p->x - vertex_j->x ) * ( vertex_i->y - vertex_j->y );
+        segment_length = distance( vertex_i, vertex_j );
+
+        if(
+                fabs( cross_product ) <= DBL_EPSILON * segment_length
+             && p->x >= min( vertex_i->x, vertex_j->x ) - DBL_EPSILON
+             && p->x <= max( vertex_i->x, vertex_j->x ) + DBL_EPSILON
+             && p->y >= min( vertex_i->y, vertex_j->y ) - DBL_EPSILON
+             && p->y <= max( vertex_i->y, vertex_j->y ) + DBL_EPSILON
+          )
+        {
+            return true;
+        }
+
+        if(
+                ( vertex_i->y > p->y ) != ( vertex_j->y > p->y )
+             && ( p->x < ( ( vertex_j->x - vertex_i->x ) * ( p->y - vertex_i->y ) / ( vertex_j->y - vertex_i->y ) ) + vertex_i->x )
+          )
+        {
+            is_inside = !is_inside;
+        }
+    }
+
+    return is_inside;
+}
 
 LSEG ** get_polygon_lsegs( POLYGON * poly )
 {
@@ -491,6 +553,84 @@ LSEG ** get_polygon_lsegs( POLYGON * poly )
     }
 
     return result;
+}
+
+double get_polygon_distance( POLYGON * a, POLYGON * b )
+{
+    double            min_distance = 0.0;
+    double            t_dist       = 0.0;
+    LSEG **           a_seg        = NULL;
+    LSEG **           b_seg        = NULL;
+    unsigned long int i            = 0;
+    unsigned long int j            = 0;
+    unsigned long int limit        = 0;
+
+    if( a == NULL || b == NULL || a->npts == 0 || b->npts == 0 )
+    {
+        return 0.0;
+    }
+
+    for( i = 0; i < a->npts; i++ )
+    {
+        if( polygon_contains_point( b, &( a->p[i] ) ) )
+        {
+            return 0.0;
+        }
+    }
+
+    for( i = 0; i < b->npts; i++ )
+    {
+        if( polygon_contains_point( a, &( b->p[i] ) ) )
+        {
+            return 0.0;
+        }
+    }
+
+    limit = ( a->npts > b->npts ) ? a->npts : b->npts;
+
+    a_seg = get_polygon_lsegs( a );
+    b_seg = get_polygon_lsegs( b );
+
+    min_distance = DBL_MAX;
+    for( i = 0; i < a->npts; i++ )
+    {
+        for( j = 0; j < b->npts; j++ )
+        {
+            t_dist = line_segment_distance( a_seg[i], b_seg[j] );
+
+            if( t_dist < min_distance )
+            {
+                min_distance = t_dist;
+                if( min_distance == 0.0 )
+                {
+                    break;
+                }
+            }
+        }
+
+        if( min_distance == 0.0 )
+        {
+            break;
+        }
+    }
+
+    for( j = 0; j < limit; j++ )
+    {
+        if( j < a->npts )
+        {
+            pfree( a_seg[j] );
+        }
+
+        if( j < b->npts )
+        {
+            pfree( b_seg[j] );
+        }
+    }
+
+    pfree( a_seg );
+    pfree( b_seg );
+
+    return min_distance;
 }
 
 /*

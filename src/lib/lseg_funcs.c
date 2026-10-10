@@ -27,7 +27,7 @@ bool line_segment_intersect( LSEG * a, LSEG * b )
     segment_set_begin( mp_sega, &(a->p[0]) );
     segment_set_end( mp_sega, &(a->p[1]) );
     segment_set_begin( mp_segb, &(b->p[0]) );
-    segment_set_end( mp_segb, &(b->p[0]) );
+    segment_set_end( mp_segb, &(b->p[1]) );
 
     isect_p0 = ( Point * ) palloc0( sizeof( Point ) );
     isect_p1 = ( Point * ) palloc0( sizeof( Point ) );
@@ -71,7 +71,7 @@ Point * line_segment_intersection( LSEG * a, LSEG * b )
     segment_set_begin( mp_sega, &(a->p[0]) );
     segment_set_end( mp_sega, &(a->p[1]) );
     segment_set_begin( mp_segb, &(b->p[0]) );
-    segment_set_end( mp_segb, &(b->p[0]) );
+    segment_set_end( mp_segb, &(b->p[1]) );
 
     isect_p0 = ( Point * ) palloc0( sizeof( Point ) );
     isect_p1 = ( Point * ) palloc0( sizeof( Point ) );

@@ -15,6 +15,9 @@
 #define UTIL_H
 
 #include "postgres.h"
+#if PG_VERSION_NUM >= 150000
+#include "varatt.h"
+#endif // PG_VERSION_NUM
 #include "utils/geo_decls.h"
 #include "segment.h"
 #include <math.h>
@@ -35,6 +38,8 @@
 #define PI (3.14159265358979)
 #endif // PI
 
+#define min( a, b ) ( ( a < b ) ? a : b )
+#define max( a, b ) ( ( a > b ) ? a : b )
 #define signed_area_three( a, b, c ) (((a->x - c->x) * (b->y - c->y) - (b->x - c->x) * (a->y - c->y)))
 #define signed_area_two( a, b ) (((-b->x * (a->y - b->y)) - (-b->y * (a->x - b->x))))
 #define distance( a, b ) ((sqrt((a->x - b->x) * (a->x - b->x) + (a->y - b->y) * (a->y - b->y))))
